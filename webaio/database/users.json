@@ -1,0 +1,62 @@
+{
+  "743edc67-c0fe-47f0-9b36-c47d2c30e8ab": {
+    "id": "743edc67-c0fe-47f0-9b36-c47d2c30e8ab",
+    "username": "admin",
+    "email": "admin@example.com",
+    "password_hash": "40de6556fb6f8927e2e7358361300fdfbd256ec4fa4b5bb4086bc86327d1bb9c",
+    "salt": "63e47ef173d770508b2420c31f4b8b28ffc3f8793d4d9633999dc884cdeb180a",
+    "role": "admin",
+    "created_at": "2025-06-09T06:42:34.220114+00:00",
+    "description": "System Administrator",
+    "mood": "",
+    "avatar_url": "",
+    "background_url": "",
+    "is_active": true,
+    "token": "m4LayfT9mz5nyKOGaFKJJuV9jSmDNJ37qDiGpLk1jwA"
+  },
+  "ebd1da12-94f4-4bb0-bf4f-f2c1f2951cd8": {
+    "id": "ebd1da12-94f4-4bb0-bf4f-f2c1f2951cd8",
+    "username": "testuser1",
+    "email": "testuser1@example.com",
+    "password_hash": "5116b138b793186327e1dfd0b6db02711bb0a300270820d18d83f6354e7ccb8b",
+    "salt": "c36d3eb3c6134313989b9948b503a347c811d42f9dc1c78096329db3d8476cc9",
+    "role": "user",
+    "created_at": "2025-06-09T06:42:59.653595+00:00",
+    "description": "Updated test user description",
+    "mood": "Testing APIs (robot emoji)",
+    "avatar_url": "https://example.com/avatar.jpg",
+    "background_url": "https://example.com/background.jpg",
+    "is_active": true,
+    "token": "3EGXfFP7gMEy87R-lQ21Na3eVPoS5F2oYlh34IdbCsU"
+  },
+  "62577df5-58b2-4131-95d5-975e828592d5": {
+    "id": "62577df5-58b2-4131-95d5-975e828592d5",
+    "username": "testuser2",
+    "email": "testuser2@example.com",
+    "password_hash": "3277f8d9ed3c5bc7c3b8ce9d951a88c87dcdbd3d917cf267b1fef5544809d7f3",
+    "salt": "11e3bc072c067d4b6b86c8a3adc8b892271db2fdb4013fc38c16b17f49c32020",
+    "role": "user",
+    "created_at": "2025-06-09T06:42:59.679026+00:00",
+    "description": "",
+    "mood": "",
+    "avatar_url": "",
+    "background_url": "",
+    "is_active": true,
+    "token": "4_8j3WFhSXEF5_GdBiDVmiGi6TC-QRehC2n9HItYcEY"
+  },
+  "1c135798-82c7-411f-aca2-b9e5fc087417": {
+    "id": "1c135798-82c7-411f-aca2-b9e5fc087417",
+    "username": "moderator1",
+    "email": "moderator1@example.com",
+    "password_hash": "017c772ee1b2db94a32296e2d38edb20dc4b40bca55c1e6669361270b1198a3f",
+    "salt": "fd65b794e9e0122255236aff7f9864a3ddc3db15725b4994cb1f938f9bc9636c",
+    "role": "user",
+    "created_at": "2025-06-09T06:42:59.715653+00:00",
+    "description": "",
+    "mood": "",
+    "avatar_url": "",
+    "background_url": "",
+    "is_active": true,
+    "token": "OYvEWCkvbGm5MGI1Jh04b15JpkuXmqCvS-95XL1OLP8"
+  }
+}

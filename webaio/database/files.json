@@ -1,0 +1,32 @@
+{
+  "1e88ac8e-eb41-47bf-9739-2ba2c6de312e": {
+    "id": "1e88ac8e-eb41-47bf-9739-2ba2c6de312e",
+    "filename": "tmpecrbyr4a_20250609_064304.txt",
+    "original_filename": "tmpecrbyr4a.txt",
+    "path": "uploads\\ebd1da12-94f4-4bb0-bf4f-f2c1f2951cd8\\tmpecrbyr4a_20250609_064304.txt",
+    "size": 65,
+    "mimetype": "text/plain",
+    "uploaded_by": "ebd1da12-94f4-4bb0-bf4f-f2c1f2951cd8",
+    "uploaded_at": "2025-06-09T06:43:04.879352+00:00"
+  },
+  "dd6d4461-ad9e-4a3d-956f-48944c9f2509": {
+    "id": "dd6d4461-ad9e-4a3d-956f-48944c9f2509",
+    "filename": "tmptz5hzjtc_20250609_064304.json",
+    "original_filename": "tmptz5hzjtc.json",
+    "path": "uploads\\ebd1da12-94f4-4bb0-bf4f-f2c1f2951cd8\\tmptz5hzjtc_20250609_064304.json",
+    "size": 33,
+    "mimetype": "application/json",
+    "uploaded_by": "ebd1da12-94f4-4bb0-bf4f-f2c1f2951cd8",
+    "uploaded_at": "2025-06-09T06:43:04.899261+00:00"
+  },
+  "508999ab-3f81-4881-9927-0b78df118fea": {
+    "id": "508999ab-3f81-4881-9927-0b78df118fea",
+    "filename": "tmp_7szuf3i_20250609_064304.zip",
+    "original_filename": "tmp_7szuf3i.zip",
+    "path": "uploads\\ebd1da12-94f4-4bb0-bf4f-f2c1f2951cd8\\tmp_7szuf3i_20250609_064304.zip",
+    "size": 394,
+    "mimetype": "application/x-zip-compressed",
+    "uploaded_by": "ebd1da12-94f4-4bb0-bf4f-f2c1f2951cd8",
+    "uploaded_at": "2025-06-09T06:43:04.944219+00:00"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "ec9bdf76-5bb4-4b0e-b15b-31c1ad9a712f": {
+    "id": "ec9bdf76-5bb4-4b0e-b15b-31c1ad9a712f",
+    "post_id": "faaa5d67-b5ee-4b04-906f-d65bf33a45a9",
+    "author_id": "ebd1da12-94f4-4bb0-bf4f-f2c1f2951cd8",
+    "content": "Great post! Thanks for sharing @testuser1",
+    "parent_id": null,
+    "mentions": [
+      "testuser1"
+    ],
+    "created_at": "2025-06-09T06:43:03.211484+00:00",
+    "is_deleted": false
+  },
+  "46eac01e-28e5-4e6e-b300-0aa82c68db61": {
+    "id": "46eac01e-28e5-4e6e-b300-0aa82c68db61",
+    "post_id": "faaa5d67-b5ee-4b04-906f-d65bf33a45a9",
+    "author_id": "ebd1da12-94f4-4bb0-bf4f-f2c1f2951cd8",
+    "content": "I agree with the points made here. Very informative.",
+    "parent_id": null,
+    "mentions": [],
+    "created_at": "2025-06-09T06:43:03.312017+00:00",
+    "is_deleted": false
+  },
+  "264958b2-355c-44df-b5f4-4d44100ed86d": {
+    "id": "264958b2-355c-44df-b5f4-4d44100ed86d",
+    "post_id": "faaa5d67-b5ee-4b04-906f-d65bf33a45a9",
+    "author_id": "ebd1da12-94f4-4bb0-bf4f-f2c1f2951cd8",
+    "content": "This is a reply to the first comment",
+    "parent_id": "ec9bdf76-5bb4-4b0e-b15b-31c1ad9a712f",
+    "mentions": [],
+    "created_at": "2025-06-09T06:43:03.596250+00:00",
+    "is_deleted": false
+  }
+}
