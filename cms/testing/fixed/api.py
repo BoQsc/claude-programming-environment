@@ -11,6 +11,7 @@ FEATURES:
 - Public/private file sharing
 - File download and streaming
 - File management (list, delete, update)
+- FIXED: CORS support for file:// protocol downloads
 """
 
 import asyncio
@@ -53,6 +54,30 @@ MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB max file size (adjust as needed)
 
 # Ensure files directory exists
 Path(FILES_DIRECTORY).mkdir(parents=True, exist_ok=True)
+
+
+# =============================================================================
+# CORS Helper Function for StreamResponse
+# =============================================================================
+
+def add_cors_headers(headers_dict: Dict[str, str], origin: str):
+    """Add CORS headers to response headers - handles file:// protocol"""
+    if origin == 'null':
+        # Handle file:// protocol specifically
+        headers_dict['Access-Control-Allow-Origin'] = 'null'
+    elif origin:
+        # Handle specific origins
+        headers_dict['Access-Control-Allow-Origin'] = origin
+    else:
+        # Handle no origin (direct access)
+        headers_dict['Access-Control-Allow-Origin'] = '*'
+    
+    headers_dict.update({
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Max-Age': '86400'
+    })
 
 
 # =============================================================================
@@ -515,7 +540,7 @@ async def get_file_info(request):
 
 @app.get('/api/files/{file_id}/download')
 async def download_file(request):
-    """Download a file"""
+    """Download a file - FIXED with proper CORS headers for file:// protocol"""
     user = await get_current_user(request)
     path_params = get_path_params(request)
     file_id = path_params['file_id']
@@ -541,26 +566,46 @@ async def download_file(request):
     except Exception as e:
         logger.warning(f"Failed to increment download count for file {file_id}: {e}")
     
-    # Stream the file
+    # Get origin for CORS
+    origin = request.headers.get('Origin', '')
+    
+    # Prepare headers with CORS support
+    headers = {
+        'Content-Type': file_record['mime_type'],
+        'Content-Disposition': f'attachment; filename="{file_record["original_filename"]}"',
+        'Content-Length': str(file_record['file_size'])
+    }
+    
+    # Add CORS headers for file:// protocol support
+    add_cors_headers(headers, origin)
+    
+    # Create streaming response with CORS headers
     response = StreamResponse(
         status=200,
-        headers={
-            'Content-Type': file_record['mime_type'],
-            'Content-Disposition': f'attachment; filename="{file_record["original_filename"]}"',
-            'Content-Length': str(file_record['file_size'])
-        }
+        headers=headers
     )
     
     await response.prepare(request)
     
-    with open(file_path, 'rb') as f:
-        while True:
-            chunk = f.read(8192)
-            if not chunk:
-                break
-            await response.write(chunk)
+    try:
+        with open(file_path, 'rb') as f:
+            while True:
+                chunk = f.read(8192)
+                if not chunk:
+                    break
+                await response.write(chunk)
+    except Exception as e:
+        logger.warning(f"Client disconnected during download of file {file_id}: {e}")
+        # Client probably disconnected, which is normal
+        pass
     
-    await response.write_eof()
+    try:
+        await response.write_eof()
+    except Exception as e:
+        logger.warning(f"Client disconnected while finishing download of file {file_id}: {e}")
+        # Client disconnection during download is normal
+        pass
+    
     return response
 
 
@@ -675,7 +720,7 @@ async def create_file_share(request):
 
 @app.get('/api/files/share/{share_token}')
 async def download_shared_file(request):
-    """Download a file using share token (no authentication required)"""
+    """Download a file using share token (no authentication required) - FIXED with CORS"""
     path_params = get_path_params(request)
     share_token = path_params['share_token']
     
@@ -703,26 +748,46 @@ async def download_shared_file(request):
     except Exception as e:
         logger.warning(f"Failed to increment download count for shared file {file_id}: {e}")
     
-    # Stream the file
+    # Get origin for CORS
+    origin = request.headers.get('Origin', '')
+    
+    # Prepare headers with CORS support
+    headers = {
+        'Content-Type': file_record['mime_type'],
+        'Content-Disposition': f'inline; filename="{file_record["original_filename"]}"',
+        'Content-Length': str(file_record['file_size'])
+    }
+    
+    # Add CORS headers for file:// protocol support
+    add_cors_headers(headers, origin)
+    
+    # Create streaming response with CORS headers
     response = StreamResponse(
         status=200,
-        headers={
-            'Content-Type': file_record['mime_type'],
-            'Content-Disposition': f'inline; filename="{file_record["original_filename"]}"',
-            'Content-Length': str(file_record['file_size'])
-        }
+        headers=headers
     )
     
     await response.prepare(request)
     
-    with open(file_path, 'rb') as f:
-        while True:
-            chunk = f.read(8192)
-            if not chunk:
-                break
-            await response.write(chunk)
+    try:
+        with open(file_path, 'rb') as f:
+            while True:
+                chunk = f.read(8192)
+                if not chunk:
+                    break
+                await response.write(chunk)
+    except Exception as e:
+        logger.warning(f"Client disconnected during shared file download {file_id}: {e}")
+        # Client probably disconnected, which is normal
+        pass
     
-    await response.write_eof()
+    try:
+        await response.write_eof()
+    except Exception as e:
+        logger.warning(f"Client disconnected while finishing shared file download {file_id}: {e}")
+        # Client disconnection during download is normal
+        pass
+    
     return response
 
 
@@ -1213,7 +1278,8 @@ async def root_endpoint(request):
             'Like/Unlike tracking',
             'CORS support',
             'File streaming and downloads',
-            'Windows file system compatibility'
+            'Windows file system compatibility',
+            'file:// protocol support (FIXED)'
         ],
         'endpoints': {
             'auth': '/api/auth/*',

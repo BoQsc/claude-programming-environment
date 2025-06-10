@@ -20,7 +20,7 @@ class APIError(Exception):
 
 
 class WebApp:
-    """Simplified abstraction layer over aiohttp"""
+    """Simplified abstraction layer over aiohttp with FIXED CORS for file:// protocol"""
     
     def __init__(self, cors_origins: Optional[List[str]] = None):
         self.app = web.Application()
@@ -37,16 +37,35 @@ class WebApp:
     
     @web.middleware
     async def _cors_middleware(self, request: Request, handler):
-        """Handle CORS headers"""
+        """Handle CORS headers - FIXED for file:// protocol (null origin)"""
         response = await handler(request)
         
         origin = request.headers.get('Origin', '')
-        if self.cors_origins == ["*"] or origin in self.cors_origins:
-            response.headers['Access-Control-Allow-Origin'] = origin or "*"
-            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
-            response.headers['Access-Control-Allow-Credentials'] = 'true'
-            response.headers['Access-Control-Max-Age'] = '86400'
+        
+        # Handle file:// protocol (origin: null) and wildcard origins
+        if self.cors_origins == ["*"]:
+            # For wildcard, allow any origin including null
+            if origin == 'null':
+                # Specifically allow null origin for file:// protocol
+                response.headers['Access-Control-Allow-Origin'] = 'null'
+            else:
+                # For other origins or no origin, use wildcard
+                response.headers['Access-Control-Allow-Origin'] = '*'
+        elif origin in self.cors_origins or 'null' in self.cors_origins:
+            # If origin is specifically whitelisted
+            response.headers['Access-Control-Allow-Origin'] = origin
+        elif origin == 'null' and '*' in self.cors_origins:
+            # Special case: allow null origin when wildcard is configured
+            response.headers['Access-Control-Allow-Origin'] = 'null'
+        else:
+            # Origin not allowed, but still add basic CORS headers for preflight
+            response.headers['Access-Control-Allow-Origin'] = '*'
+        
+        # Add other CORS headers
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        response.headers['Access-Control-Max-Age'] = '86400'
         
         return response
     
