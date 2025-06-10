@@ -57,7 +57,8 @@
     "is_public": true,
     "share_token": "eyJmaWxlX2lkIjogIjRmNjUyNjVkLTMxZDctNGQ0Yi04ZDQzLWRiMDNlY2ExM2RhNyIsICJjcmVhdGVkX2F0IjogMTc0OTU2NDg5Ny41MDM4OTI3fQ==.99ec8a43bcdab0d48bacc5b368d62c8b4141f2bd3b8d6c0cb42ccaa86b6c96bc",
     "description": "",
-    "tags": []
+    "tags": [],
+    "views": 1
   },
   "bb11de9d-647e-4e12-babc-073122f891b8": {
     "original_filename": "3059-mc-beespin-ezgif.com-gif-to-webp-converter (2).webp",
@@ -72,6 +73,7 @@
     "is_public": false,
     "share_token": null,
     "description": "",
-    "tags": []
+    "tags": [],
+    "views": 1
   }
 }

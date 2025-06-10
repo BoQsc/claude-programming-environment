@@ -437,6 +437,62 @@
             opacity: 0.6;
         }
 
+        /* Image Thumbnail Styles */
+        .image-thumbnail-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .image-thumbnail {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 4px;
+            transition: transform 0.3s ease;
+        }
+
+        .image-thumbnail:hover {
+            transform: scale(1.05);
+        }
+
+        .image-loading-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 0.875rem;
+        }
+
+        .loading-spinner-small {
+            width: 24px;
+            height: 24px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 0.5rem;
+        }
+
+        .image-error-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 0.875rem;
+        }
+
+        .image-error-placeholder span {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.5;
+        }
+
         /* Image Modal */
         .image-modal {
             display: none;
@@ -1325,6 +1381,31 @@
             }
         }
 
+        // Global intersection observer for lazy loading
+        let imageObserver = null;
+
+        function initializeImageObserver() {
+            if (imageObserver) return;
+            
+            imageObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const fileCard = entry.target;
+                        const fileId = fileCard.dataset.fileId;
+                        const file = files.find(f => f._key === fileId);
+                        
+                        if (file && !fileCard.dataset.loaded) {
+                            fileCard.dataset.loaded = 'true';
+                            loadImageThumbnail(fileCard, file);
+                            imageObserver.unobserve(fileCard);
+                        }
+                    }
+                });
+            }, {
+                rootMargin: '50px' // Start loading when element is 50px away from viewport
+            });
+        }
+
         function renderFiles() {
             const container = document.getElementById('files-container');
             container.innerHTML = '';
@@ -1333,6 +1414,9 @@
                 container.innerHTML = '<p style="text-align: center; color: #666; grid-column: 1/-1;">No files uploaded yet. Upload your first file!</p>';
                 return;
             }
+
+            // Initialize lazy loading observer
+            initializeImageObserver();
 
             files.forEach(file => {
                 const fileElement = createFileElement(file);
@@ -1348,11 +1432,31 @@
             const uploadDate = new Date(file.uploaded_at * 1000).toLocaleDateString();
             const fileIcon = getFileIcon(file.mime_type);
             
-            // Create preview with proper event handlers for images
+            // Create preview with automatic image loading for thumbnails
             const isImageFile = isImage(file.mime_type);
-            const previewContent = isImageFile 
-                ? `<div class="file-preview-icon image-preview" title="Click to preview image">${fileIcon}</div>`
-                : `<div class="file-preview-icon">${fileIcon}</div>`;
+            let previewContent;
+            
+            if (isImageFile) {
+                // For images, show actual thumbnail with loading placeholder
+                previewContent = `
+                    <div class="image-thumbnail-container">
+                        <div class="image-loading-placeholder">
+                            <div class="loading-spinner-small"></div>
+                            <span>Loading...</span>
+                        </div>
+                        <img class="image-thumbnail" 
+                             alt="${escapeHtml(file.original_filename)}"
+                             title="Click to view full size"
+                             style="display: none;">
+                        <div class="image-error-placeholder" style="display: none;">
+                            <span>${fileIcon}</span>
+                            <small>Preview failed</small>
+                        </div>
+                    </div>`;
+            } else {
+                // For non-images, show icon
+                previewContent = `<div class="file-preview-icon">${fileIcon}</div>`;
+            }
 
             div.innerHTML = `
                 <div class="file-preview" ${isImageFile ? `data-file-id="${file._key}" data-filename="${escapeHtml(file.original_filename)}"` : ''}>
@@ -1388,8 +1492,12 @@
                 </div>
             `;
             
-            // Add click event listener for image preview
+            // Load image thumbnail immediately for debugging
             if (isImageFile) {
+                // Load thumbnail immediately (no lazy loading for now)
+                setTimeout(() => loadImageThumbnail(div, file), 100);
+                
+                // Add click event listener for full-size preview
                 const previewElement = div.querySelector('.file-preview');
                 previewElement.addEventListener('click', () => {
                     previewImage(file._key, file.original_filename);
@@ -1461,6 +1569,101 @@
             }
             
             imagePreview.src = '';
+        }
+
+        // Asynchronous image thumbnail loading - ENHANCED with debugging
+        async function loadImageThumbnail(fileCardElement, file) {
+            const container = fileCardElement.querySelector('.image-thumbnail-container');
+            const loadingPlaceholder = container.querySelector('.image-loading-placeholder');
+            const thumbnail = container.querySelector('.image-thumbnail');
+            const errorPlaceholder = container.querySelector('.image-error-placeholder');
+            
+            console.log(`🖼️ Loading thumbnail for: ${file.original_filename}`);
+            
+            try {
+                // Show loading state
+                loadingPlaceholder.style.display = 'flex';
+                thumbnail.style.display = 'none';
+                errorPlaceholder.style.display = 'none';
+                
+                // Fetch the image with preview parameter
+                const imageUrl = `${createFileURL(file._key)}?preview=true`;
+                console.log(`📡 Fetching: ${imageUrl}`);
+                
+                const response = await fetch(imageUrl, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                console.log(`📡 Response status: ${response.status} ${response.statusText}`);
+                console.log(`📡 Response headers:`, {
+                    'Content-Type': response.headers.get('Content-Type'),
+                    'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin')
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`❌ HTTP ${response.status}: ${errorText}`);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                // Create blob URL and set it
+                const blob = await response.blob();
+                console.log(`📦 Blob created, size: ${blob.size} bytes, type: ${blob.type}`);
+                
+                const blobUrl = URL.createObjectURL(blob);
+                console.log(`🔗 Blob URL created: ${blobUrl}`);
+                
+                // Set up image load handlers before setting src
+                thumbnail.onload = () => {
+                    console.log(`✅ Image loaded successfully: ${file.original_filename}`);
+                    loadingPlaceholder.style.display = 'none';
+                    thumbnail.style.display = 'block';
+                    errorPlaceholder.style.display = 'none';
+                };
+                
+                thumbnail.onerror = (event) => {
+                    console.error(`❌ Image load error for ${file.original_filename}:`, event);
+                    loadingPlaceholder.style.display = 'none';
+                    thumbnail.style.display = 'none';
+                    errorPlaceholder.style.display = 'flex';
+                    URL.revokeObjectURL(blobUrl);
+                };
+                
+                // Set the image source to trigger loading
+                thumbnail.src = blobUrl;
+                
+                // Clean up blob URL after reasonable time
+                setTimeout(() => {
+                    if (thumbnail.complete && thumbnail.naturalWidth > 0) {
+                        console.log(`🧹 Keeping blob URL for successfully loaded image: ${file.original_filename}`);
+                        // Clean up after 5 minutes to prevent memory leaks
+                        setTimeout(() => {
+                            URL.revokeObjectURL(blobUrl);
+                            console.log(`🧹 Cleaned up blob URL for: ${file.original_filename}`);
+                        }, 5 * 60 * 1000);
+                    } else {
+                        console.log(`🧹 Cleaning up blob URL for failed image: ${file.original_filename}`);
+                        URL.revokeObjectURL(blobUrl);
+                    }
+                }, 2000);
+                
+            } catch (error) {
+                console.error(`❌ Failed to load thumbnail for ${file.original_filename}:`, error);
+                console.error(`❌ Error details:`, {
+                    message: error.message,
+                    stack: error.stack
+                });
+                
+                // Show error state
+                loadingPlaceholder.style.display = 'none';
+                thumbnail.style.display = 'none';
+                errorPlaceholder.style.display = 'flex';
+                
+                // Show user-friendly error message
+                showAlert(`Failed to load thumbnail for ${file.original_filename}: ${error.message}`, 'warning');
+            }
         }
 
         // File Upload Functions
