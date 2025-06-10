@@ -75,5 +75,21 @@
     "description": "",
     "tags": [],
     "views": 1
+  },
+  "2f2b1bf5-3a95-4705-a40b-8a300b75f42f": {
+    "original_filename": "dieslfail.mp4",
+    "stored_filename": "2f2b1bf5-3a95-4705-a40b-8a300b75f42f_dieslfail.mp4",
+    "file_size": 3333232,
+    "mime_type": "video/mp4",
+    "file_hash": "1363b345181914609a82b6eba79a083be88dfe3bd6388975c1390496f7ded9c9",
+    "owner_id": "29eae8e6-24e9-4285-a027-282f72cd4939",
+    "owner_username": "boqsc",
+    "uploaded_at": 1749578654.5031307,
+    "downloads": 1,
+    "views": 1,
+    "is_public": false,
+    "share_token": null,
+    "description": "",
+    "tags": []
   }
 }
