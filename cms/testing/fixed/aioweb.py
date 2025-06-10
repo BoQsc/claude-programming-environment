@@ -20,7 +20,7 @@ class APIError(Exception):
 
 
 class WebApp:
-    """Simplified abstraction layer over aiohttp with FIXED CORS for file:// protocol"""
+    """Simplified abstraction layer over aiohttp with ENHANCED CORS for file:// protocol"""
     
     def __init__(self, cors_origins: Optional[List[str]] = None):
         self.app = web.Application()
@@ -37,19 +37,22 @@ class WebApp:
     
     @web.middleware
     async def _cors_middleware(self, request: Request, handler):
-        """Handle CORS headers - FIXED for file:// protocol (null origin)"""
+        """Handle CORS headers - ENHANCED for file:// protocol (null origin) AND image preview"""
         response = await handler(request)
         
         origin = request.headers.get('Origin', '')
         
-        # Handle file:// protocol (origin: null) and wildcard origins
+        # Enhanced CORS handling for file:// protocol and image preview
         if self.cors_origins == ["*"]:
             # For wildcard, allow any origin including null
             if origin == 'null':
                 # Specifically allow null origin for file:// protocol
                 response.headers['Access-Control-Allow-Origin'] = 'null'
+            elif origin:
+                # For specific origins, use the actual origin
+                response.headers['Access-Control-Allow-Origin'] = origin
             else:
-                # For other origins or no origin, use wildcard
+                # For no origin, use wildcard
                 response.headers['Access-Control-Allow-Origin'] = '*'
         elif origin in self.cors_origins or 'null' in self.cors_origins:
             # If origin is specifically whitelisted
@@ -61,9 +64,9 @@ class WebApp:
             # Origin not allowed, but still add basic CORS headers for preflight
             response.headers['Access-Control-Allow-Origin'] = '*'
         
-        # Add other CORS headers
+        # Add other CORS headers with enhanced support
         response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
         response.headers['Access-Control-Allow-Credentials'] = 'true'
         response.headers['Access-Control-Max-Age'] = '86400'
         
