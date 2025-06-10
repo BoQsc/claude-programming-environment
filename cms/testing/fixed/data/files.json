@@ -1,0 +1,47 @@
+{
+  "8acf632e-1a59-49b5-bc65-a5756cb349e9": {
+    "original_filename": "test_multi_1.txt",
+    "stored_filename": "8acf632e-1a59-49b5-bc65-a5756cb349e9_test_multi_1.txt",
+    "file_size": 17,
+    "mime_type": "text/plain",
+    "file_hash": "93cbdf55c2d4f53b387bd60c4fd204a6e91d70bf3bec62fe508891582f908b8d",
+    "owner_id": "c7fa6fe4-f4de-4927-9f04-dfca31987155",
+    "owner_username": "testuser_np5hsrsc",
+    "uploaded_at": 1749560518.5196595,
+    "downloads": 0,
+    "is_public": false,
+    "share_token": null,
+    "description": "",
+    "tags": []
+  },
+  "05ce3556-3096-4d9e-8465-d0d481cba0b3": {
+    "original_filename": "test_multi_2.txt",
+    "stored_filename": "05ce3556-3096-4d9e-8465-d0d481cba0b3_test_multi_2.txt",
+    "file_size": 17,
+    "mime_type": "text/plain",
+    "file_hash": "52a426fb7dc7c8035555b997ca4b6174d588d4f2001562ee1a3b7da07795b29d",
+    "owner_id": "c7fa6fe4-f4de-4927-9f04-dfca31987155",
+    "owner_username": "testuser_np5hsrsc",
+    "uploaded_at": 1749560518.5252986,
+    "downloads": 0,
+    "is_public": false,
+    "share_token": null,
+    "description": "",
+    "tags": []
+  },
+  "78b00ccf-83e0-426f-b21e-56d537e31fa5": {
+    "original_filename": "post_attachment.txt",
+    "stored_filename": "78b00ccf-83e0-426f-b21e-56d537e31fa5_post_attachment.txt",
+    "file_size": 21,
+    "mime_type": "text/plain",
+    "file_hash": "3b14a697097754d09ef453a582eb439cca59810f94dff40fa848f12aa786d80d",
+    "owner_id": "c7fa6fe4-f4de-4927-9f04-dfca31987155",
+    "owner_username": "testuser_np5hsrsc",
+    "uploaded_at": 1749560518.8671775,
+    "downloads": 0,
+    "is_public": false,
+    "share_token": null,
+    "description": "",
+    "tags": []
+  }
+}

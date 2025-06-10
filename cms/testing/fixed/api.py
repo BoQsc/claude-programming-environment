@@ -4,11 +4,13 @@ Main API implementation using aioweb and db modules
 A flat structured API with clear endpoint declarations
 NO EXTERNAL DEPENDENCIES beyond aiohttp
 
-FIXES:
-- Added proper like/unlike tracking to prevent duplicate likes
-- Added user likes tracking collection
-- Added endpoints to get user's liked posts
-- Proper like state management
+FEATURES:
+- Added comprehensive file upload and sharing system
+- Support for all file types
+- File metadata tracking
+- Public/private file sharing
+- File download and streaming
+- File management (list, delete, update)
 """
 
 import asyncio
@@ -18,8 +20,15 @@ import hmac
 import base64
 import time
 import json
+import os
+import mimetypes
+import shutil
 from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
+from pathlib import Path
+from aiohttp import web
+from aiohttp.web_request import Request
+from aiohttp.web_response import Response, StreamResponse
 
 # Import our custom modules
 from aioweb import (
@@ -39,6 +48,11 @@ app = WebApp(cors_origins=["*"])
 # Configuration
 SECRET_KEY = "your-secret-key-change-in-production"
 TOKEN_EXPIRY_HOURS = 24
+FILES_DIRECTORY = "./files"  # Directory to store uploaded files
+MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB max file size (adjust as needed)
+
+# Ensure files directory exists
+Path(FILES_DIRECTORY).mkdir(parents=True, exist_ok=True)
 
 
 # =============================================================================
@@ -163,6 +177,62 @@ async def get_user_liked_posts(user_id: str) -> list:
     return [like['post_id'] for like in user_likes]
 
 
+def generate_file_hash(file_path: str) -> str:
+    """Generate SHA-256 hash of file content"""
+    hash_sha256 = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_sha256.update(chunk)
+    return hash_sha256.hexdigest()
+
+
+def get_file_mime_type(filename: str) -> str:
+    """Get MIME type for a file"""
+    mime_type, _ = mimetypes.guess_type(filename)
+    return mime_type or 'application/octet-stream'
+
+
+def safe_filename(filename: str) -> str:
+    """Create a safe filename by removing potentially harmful characters"""
+    # Remove path separators and other potentially harmful characters
+    safe_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"
+    return ''.join(c for c in filename if c in safe_chars) or 'unnamed_file'
+
+
+async def create_share_token(file_id: str) -> str:
+    """Create a share token for public file access"""
+    share_data = {
+        'file_id': file_id,
+        'created_at': time.time(),
+        # Share tokens don't expire by default, but you could add expiry here
+    }
+    
+    payload_json = json.dumps(share_data)
+    payload_b64 = base64.b64encode(payload_json.encode()).decode()
+    signature = _create_signature(payload_b64, SECRET_KEY)
+    
+    return f"{payload_b64}.{signature}"
+
+
+async def verify_share_token(token: str) -> Optional[Dict[str, Any]]:
+    """Verify a share token"""
+    try:
+        parts = token.split('.')
+        if len(parts) != 2:
+            return None
+        
+        payload_b64, signature = parts
+        expected_signature = _create_signature(payload_b64, SECRET_KEY)
+        
+        if not hmac.compare_digest(signature, expected_signature):
+            return None
+        
+        payload_json = base64.b64decode(payload_b64.encode()).decode()
+        return json.loads(payload_json)
+    except:
+        return None
+
+
 # =============================================================================
 # Authentication Endpoints
 # =============================================================================
@@ -278,6 +348,413 @@ async def get_profile(request):
 
 
 # =============================================================================
+# File Upload and Management Endpoints
+# =============================================================================
+
+@app.post('/api/files/upload')
+async def upload_file(request: Request):
+    """Upload one or more files"""
+    user = await get_current_user(request)
+    
+    if not request.content_type or not request.content_type.startswith('multipart/'):
+        raise APIError("Request must be multipart/form-data", 400)
+    
+    reader = await request.multipart()
+    uploaded_files = []
+    files_collection = await db.get_collection('files')
+    
+    async for field in reader:
+        if field.name == 'file' or field.name == 'files' or field.name.startswith('file'):
+            if not field.filename:
+                continue
+            
+            # Generate unique file ID and storage path
+            file_id = await create_unique_id()
+            original_filename = field.filename
+            safe_name = safe_filename(original_filename)
+            file_extension = Path(original_filename).suffix
+            stored_filename = f"{file_id}_{safe_name}"
+            file_path = Path(FILES_DIRECTORY) / stored_filename
+            
+            # Read and save file
+            try:
+                file_size = 0
+                with open(file_path, 'wb') as f:
+                    while True:
+                        chunk = await field.read_chunk(8192)
+                        if not chunk:
+                            break
+                        
+                        file_size += len(chunk)
+                        
+                        # Check file size limit
+                        if file_size > MAX_FILE_SIZE:
+                            f.close()
+                            file_path.unlink()  # Delete the file
+                            raise APIError(f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB", 413)
+                        
+                        f.write(chunk)
+                
+                # Generate file hash
+                file_hash = generate_file_hash(str(file_path))
+                
+                # Store file metadata
+                file_metadata = {
+                    'original_filename': original_filename,
+                    'stored_filename': stored_filename,
+                    'file_size': file_size,
+                    'mime_type': get_file_mime_type(original_filename),
+                    'file_hash': file_hash,
+                    'owner_id': user['_key'],
+                    'owner_username': user['username'],
+                    'uploaded_at': await create_timestamp(),
+                    'downloads': 0,
+                    'is_public': False,  # Default to private
+                    'share_token': None,
+                    'description': '',
+                    'tags': []
+                }
+                
+                await files_collection.set(file_id, file_metadata)
+                
+                uploaded_files.append({
+                    'file_id': file_id,
+                    'original_filename': original_filename,
+                    'file_size': file_size,
+                    'mime_type': file_metadata['mime_type']
+                })
+                
+            except Exception as e:
+                # Clean up file if error occurred
+                if file_path.exists():
+                    file_path.unlink()
+                
+                if isinstance(e, APIError):
+                    raise e
+                
+                logger.error(f"Error uploading file {original_filename}: {e}")
+                raise APIError(f"Failed to upload file {original_filename}", 500)
+    
+    if not uploaded_files:
+        raise APIError("No files were uploaded", 400)
+    
+    return app.json_response({
+        'message': f'{len(uploaded_files)} file(s) uploaded successfully',
+        'files': uploaded_files
+    }, status=201)
+
+
+@app.get('/api/files')
+async def list_user_files(request):
+    """List current user's files"""
+    user = await get_current_user(request)
+    query_params = get_query_params(request)
+    
+    limit = min(int(query_params.get('limit', 50)), 200)
+    include_public = query_params.get('include_public', 'false').lower() == 'true'
+    
+    files_collection = await db.get_collection('files')
+    
+    def file_filter(file_record):
+        # User's own files or public files if requested
+        if file_record.get('owner_id') == user['_key']:
+            return True
+        if include_public and file_record.get('is_public', False):
+            return True
+        return False
+    
+    user_files = await files_collection.find(filter_func=file_filter, limit=limit)
+    
+    # Sort by upload date (newest first)
+    user_files.sort(key=lambda x: x.get('uploaded_at', 0), reverse=True)
+    
+    # Remove sensitive information for public files not owned by user
+    filtered_files = []
+    for file_record in user_files:
+        if file_record.get('owner_id') != user['_key']:
+            # For other users' public files, only show limited info
+            filtered_files.append({
+                '_key': file_record['_key'],
+                'original_filename': file_record['original_filename'],
+                'file_size': file_record['file_size'],
+                'mime_type': file_record['mime_type'],
+                'uploaded_at': file_record['uploaded_at'],
+                'downloads': file_record['downloads'],
+                'owner_username': file_record['owner_username'],
+                'description': file_record.get('description', ''),
+                'tags': file_record.get('tags', [])
+            })
+        else:
+            filtered_files.append(file_record)
+    
+    return app.json_response({
+        'files': filtered_files,
+        'count': len(filtered_files)
+    })
+
+
+@app.get('/api/files/{file_id}')
+async def get_file_info(request):
+    """Get file metadata"""
+    user = await get_current_user(request)
+    path_params = get_path_params(request)
+    file_id = path_params['file_id']
+    
+    files_collection = await db.get_collection('files')
+    file_record = await files_collection.get(file_id)
+    
+    if not file_record:
+        raise APIError("File not found", 404)
+    
+    # Check permissions
+    if file_record['owner_id'] != user['_key'] and not file_record.get('is_public', False):
+        raise APIError("Unauthorized to view this file", 403)
+    
+    return app.json_response(file_record)
+
+
+@app.get('/api/files/{file_id}/download')
+async def download_file(request):
+    """Download a file"""
+    user = await get_current_user(request)
+    path_params = get_path_params(request)
+    file_id = path_params['file_id']
+    
+    files_collection = await db.get_collection('files')
+    file_record = await files_collection.get(file_id)
+    
+    if not file_record:
+        raise APIError("File not found", 404)
+    
+    # Check permissions
+    if file_record['owner_id'] != user['_key'] and not file_record.get('is_public', False):
+        raise APIError("Unauthorized to download this file", 403)
+    
+    file_path = Path(FILES_DIRECTORY) / file_record['stored_filename']
+    
+    if not file_path.exists():
+        raise APIError("File not found on disk", 404)
+    
+    # Increment download counter
+    try:
+        await files_collection.increment(file_id, 'downloads')
+    except Exception as e:
+        logger.warning(f"Failed to increment download count for file {file_id}: {e}")
+    
+    # Stream the file
+    response = StreamResponse(
+        status=200,
+        headers={
+            'Content-Type': file_record['mime_type'],
+            'Content-Disposition': f'attachment; filename="{file_record["original_filename"]}"',
+            'Content-Length': str(file_record['file_size'])
+        }
+    )
+    
+    await response.prepare(request)
+    
+    with open(file_path, 'rb') as f:
+        while True:
+            chunk = f.read(8192)
+            if not chunk:
+                break
+            await response.write(chunk)
+    
+    await response.write_eof()
+    return response
+
+
+@app.put('/api/files/{file_id}')
+async def update_file_metadata(request):
+    """Update file metadata (description, tags, public status)"""
+    user = await get_current_user(request)
+    path_params = get_path_params(request)
+    file_id = path_params['file_id']
+    data = get_json_data(request)
+    
+    files_collection = await db.get_collection('files')
+    file_record = await files_collection.get(file_id)
+    
+    if not file_record:
+        raise APIError("File not found", 404)
+    
+    # Check ownership
+    if file_record['owner_id'] != user['_key']:
+        raise APIError("Unauthorized to modify this file", 403)
+    
+    # Update allowed fields
+    updates = {}
+    
+    if 'description' in data and isinstance(data['description'], str):
+        updates['description'] = data['description'][:500]  # Limit description length
+    
+    if 'tags' in data and isinstance(data['tags'], list):
+        # Validate tags
+        valid_tags = [tag for tag in data['tags'] if isinstance(tag, str) and len(tag.strip()) > 0]
+        updates['tags'] = valid_tags[:10]  # Limit to 10 tags
+    
+    if 'is_public' in data and isinstance(data['is_public'], bool):
+        updates['is_public'] = data['is_public']
+    
+    updates['updated_at'] = await create_timestamp()
+    
+    await files_collection.update(file_id, updates)
+    
+    return app.json_response({
+        'message': 'File metadata updated successfully',
+        'file_id': file_id
+    })
+
+
+@app.delete('/api/files/{file_id}')
+async def delete_file(request):
+    """Delete a file"""
+    user = await get_current_user(request)
+    path_params = get_path_params(request)
+    file_id = path_params['file_id']
+    
+    files_collection = await db.get_collection('files')
+    file_record = await files_collection.get(file_id)
+    
+    if not file_record:
+        raise APIError("File not found", 404)
+    
+    # Check ownership
+    if file_record['owner_id'] != user['_key']:
+        raise APIError("Unauthorized to delete this file", 403)
+    
+    # Delete file from disk
+    file_path = Path(FILES_DIRECTORY) / file_record['stored_filename']
+    
+    try:
+        if file_path.exists():
+            file_path.unlink()
+    except Exception as e:
+        logger.warning(f"Failed to delete file from disk: {e}")
+    
+    # Delete from database
+    await files_collection.delete(file_id)
+    
+    return app.json_response({
+        'message': 'File deleted successfully'
+    })
+
+
+@app.post('/api/files/{file_id}/share')
+async def create_file_share(request):
+    """Create a public share link for a file"""
+    user = await get_current_user(request)
+    path_params = get_path_params(request)
+    file_id = path_params['file_id']
+    
+    files_collection = await db.get_collection('files')
+    file_record = await files_collection.get(file_id)
+    
+    if not file_record:
+        raise APIError("File not found", 404)
+    
+    # Check ownership
+    if file_record['owner_id'] != user['_key']:
+        raise APIError("Unauthorized to share this file", 403)
+    
+    # Generate or get existing share token
+    share_token = file_record.get('share_token')
+    if not share_token:
+        share_token = await create_share_token(file_id)
+        await files_collection.update(file_id, {
+            'share_token': share_token,
+            'is_public': True
+        })
+    
+    return app.json_response({
+        'message': 'Share link created successfully',
+        'share_token': share_token,
+        'share_url': f'/api/files/share/{share_token}'
+    })
+
+
+@app.get('/api/files/share/{share_token}')
+async def download_shared_file(request):
+    """Download a file using share token (no authentication required)"""
+    path_params = get_path_params(request)
+    share_token = path_params['share_token']
+    
+    # Verify share token
+    share_data = await verify_share_token(share_token)
+    if not share_data:
+        raise APIError("Invalid share token", 404)
+    
+    file_id = share_data['file_id']
+    
+    files_collection = await db.get_collection('files')
+    file_record = await files_collection.get(file_id)
+    
+    if not file_record or not file_record.get('is_public', False):
+        raise APIError("File not found or not publicly shared", 404)
+    
+    file_path = Path(FILES_DIRECTORY) / file_record['stored_filename']
+    
+    if not file_path.exists():
+        raise APIError("File not found on disk", 404)
+    
+    # Increment download counter
+    try:
+        await files_collection.increment(file_id, 'downloads')
+    except Exception as e:
+        logger.warning(f"Failed to increment download count for shared file {file_id}: {e}")
+    
+    # Stream the file
+    response = StreamResponse(
+        status=200,
+        headers={
+            'Content-Type': file_record['mime_type'],
+            'Content-Disposition': f'inline; filename="{file_record["original_filename"]}"',
+            'Content-Length': str(file_record['file_size'])
+        }
+    )
+    
+    await response.prepare(request)
+    
+    with open(file_path, 'rb') as f:
+        while True:
+            chunk = f.read(8192)
+            if not chunk:
+                break
+            await response.write(chunk)
+    
+    await response.write_eof()
+    return response
+
+
+@app.delete('/api/files/{file_id}/share')
+async def revoke_file_share(request):
+    """Revoke public sharing for a file"""
+    user = await get_current_user(request)
+    path_params = get_path_params(request)
+    file_id = path_params['file_id']
+    
+    files_collection = await db.get_collection('files')
+    file_record = await files_collection.get(file_id)
+    
+    if not file_record:
+        raise APIError("File not found", 404)
+    
+    # Check ownership
+    if file_record['owner_id'] != user['_key']:
+        raise APIError("Unauthorized to modify this file", 403)
+    
+    # Revoke sharing
+    await files_collection.update(file_id, {
+        'share_token': None,
+        'is_public': False
+    })
+    
+    return app.json_response({
+        'message': 'File sharing revoked successfully'
+    })
+
+
+# =============================================================================
 # Posts/Content Management Endpoints
 # =============================================================================
 
@@ -313,7 +790,8 @@ async def create_post(request):
         'tags': data.get('tags', []) if isinstance(data.get('tags'), list) else [],
         'is_published': data.get('is_published', True),
         'views': 0,
-        'likes': 0
+        'likes': 0,
+        'attached_files': data.get('attached_files', [])  # File IDs can be attached to posts
     }
     
     await posts.set(post_id, post_data)
@@ -416,7 +894,7 @@ async def update_post(request):
     
     # Update allowed fields
     updates = {}
-    for field in ['title', 'content', 'tags', 'is_published']:
+    for field in ['title', 'content', 'tags', 'is_published', 'attached_files']:
         if field in data:
             if field == 'title' and data[field]:
                 updates[field] = data[field].strip()
@@ -425,6 +903,8 @@ async def update_post(request):
             elif field == 'tags' and isinstance(data[field], list):
                 updates[field] = data[field]
             elif field == 'is_published' and isinstance(data[field], bool):
+                updates[field] = data[field]
+            elif field == 'attached_files' and isinstance(data[field], list):
                 updates[field] = data[field]
     
     updates['updated_at'] = await create_timestamp()
@@ -577,7 +1057,7 @@ async def get_collection_stats(request):
     collection_name = path_params['collection_name']
     
     # Validate collection name
-    valid_collections = ['users', 'posts', 'post_likes']
+    valid_collections = ['users', 'posts', 'post_likes', 'files']
     if collection_name not in valid_collections:
         raise APIError(f"Invalid collection name. Valid collections: {', '.join(valid_collections)}", 400)
     
@@ -687,10 +1167,28 @@ async def get_status(request):
             logger.warning(f"Failed to get stats for collection {collection_name}: {e}")
             stats[collection_name] = -1
     
+    # Calculate total file storage used
+    total_file_size = 0
+    files_count = 0
+    try:
+        files_dir = Path(FILES_DIRECTORY)
+        if files_dir.exists():
+            for file_path in files_dir.iterdir():
+                if file_path.is_file():
+                    total_file_size += file_path.stat().st_size
+                    files_count += 1
+    except Exception as e:
+        logger.warning(f"Failed to calculate file storage stats: {e}")
+    
     return app.json_response({
         'status': 'running',
         'collections': stats,
         'sessions': len(_sessions),
+        'file_storage': {
+            'total_files': files_count,
+            'total_size_bytes': total_file_size,
+            'total_size_mb': round(total_file_size / (1024 * 1024), 2)
+        },
         'uptime': time.time(),
         'timestamp': await create_timestamp()
     })
@@ -700,25 +1198,38 @@ async def get_status(request):
 async def root_endpoint(request):
     """Root endpoint with API information"""
     return app.json_response({
-        'name': 'Flat Structured API',
+        'name': 'File Sharing API',
         'version': '1.0.0',
-        'description': 'A simple aiohttp API with concurrent JSON database - NO DEPENDENCIES',
+        'description': 'A comprehensive API with file upload, sharing, and content management - NO DEPENDENCIES',
         'dependencies': ['aiohttp only'],
         'features': [
             'JWT-like tokens (built-in)',
             'Session-based auth',
             'Concurrent JSON database',
+            'File upload and sharing',
+            'Public file sharing with tokens',
+            'File metadata management',
+            'Posts with file attachments',
+            'Like/Unlike tracking',
             'CORS support',
-            'File I/O via thread pools',
-            'Windows file system compatibility',
-            'Like/Unlike tracking with duplicate prevention'
+            'File streaming and downloads',
+            'Windows file system compatibility'
         ],
         'endpoints': {
             'auth': '/api/auth/*',
             'posts': '/api/posts/*',
+            'files': '/api/files/*',
             'collections': '/api/collections/*',
             'health': '/api/health',
             'status': '/api/status'
+        },
+        'file_features': {
+            'upload': 'POST /api/files/upload',
+            'list': 'GET /api/files',
+            'download': 'GET /api/files/{id}/download',
+            'share': 'POST /api/files/{id}/share',
+            'public_download': 'GET /api/files/share/{token}',
+            'max_file_size_mb': MAX_FILE_SIZE // (1024 * 1024)
         }
     })
 
@@ -736,16 +1247,22 @@ async def handle_cors_preflight(request):
 
 async def startup():
     """Application startup tasks"""
-    logger.info("Starting up the dependency-free API server...")
+    logger.info("Starting up the file sharing API server...")
+    
+    # Ensure directories exist
+    Path(FILES_DIRECTORY).mkdir(parents=True, exist_ok=True)
     
     # Initialize default collections or data if needed
     try:
         users = await db.get_collection('users')
         posts = await db.get_collection('posts')
-        post_likes = await db.get_collection('post_likes')  # New collection for likes
+        post_likes = await db.get_collection('post_likes')
+        files = await db.get_collection('files')  # New files collection
         
         logger.info("Database collections initialized")
-        logger.info("Like/Unlike tracking system enabled")
+        logger.info("File upload and sharing system enabled")
+        logger.info(f"Files will be stored in: {FILES_DIRECTORY}")
+        logger.info(f"Maximum file size: {MAX_FILE_SIZE // (1024*1024)}MB")
         logger.info("No external dependencies required beyond aiohttp!")
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
@@ -791,9 +1308,9 @@ if __name__ == '__main__':
         debug = True
         logging.getLogger().setLevel(logging.DEBUG)
     
-    logger.info(f"Starting dependency-free API server on {host}:{port} (debug={debug})")
+    logger.info(f"Starting file sharing API server on {host}:{port} (debug={debug})")
     logger.info("Dependencies: aiohttp only!")
-    logger.info("Features: Like/Unlike tracking with duplicate prevention")
+    logger.info("Features: File upload/sharing + content management + like tracking")
     
     try:
         app.run(host=host, port=port, debug=debug)

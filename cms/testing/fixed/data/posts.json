@@ -1,1 +1,21 @@
-{}
+{
+  "501b65b4-1bae-4af8-90a4-6916bef50779": {
+    "title": "Test Post About Technology 9013",
+    "content": "This is test content generated at 2025-06-10 16:01:58.871866. This is test content generated at 2025-06-10 16:01:58.871866. This is test content generated at 2025-06-10 16:01:58.871866. This is test content generated at 2025-06-10 16:01:58.871866. This is test content generated at 2025-06-10 16:01:58.871866.",
+    "author_id": "c7fa6fe4-f4de-4927-9f04-dfca31987155",
+    "author_username": "testuser_np5hsrsc",
+    "created_at": 1749560518.8723922,
+    "updated_at": 1749560518.8723924,
+    "tags": [
+      "api",
+      "web",
+      "async"
+    ],
+    "is_published": true,
+    "views": 0,
+    "likes": 0,
+    "attached_files": [
+      "78b00ccf-83e0-426f-b21e-56d537e31fa5"
+    ]
+  }
+}
