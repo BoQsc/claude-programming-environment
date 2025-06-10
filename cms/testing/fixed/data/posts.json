@@ -13,9 +13,26 @@
     ],
     "is_published": true,
     "views": 0,
-    "likes": 0,
+    "likes": 1,
     "attached_files": [
       "78b00ccf-83e0-426f-b21e-56d537e31fa5"
+    ]
+  },
+  "350346dd-1243-4d00-96c9-addc624fdcf4": {
+    "title": "test",
+    "content": "tqw",
+    "author_id": "29eae8e6-24e9-4285-a027-282f72cd4939",
+    "author_username": "boqsc",
+    "created_at": 1749564829.5134325,
+    "updated_at": 1749564829.5134327,
+    "tags": [
+      "arar"
+    ],
+    "is_published": true,
+    "views": 0,
+    "likes": 0,
+    "attached_files": [
+      "4f65265d-31d7-4d4b-8d43-db03eca13da7"
     ]
   }
 }
