@@ -23,7 +23,7 @@ from typing import Dict, List, Optional, Any, Set
 from dataclasses import dataclass, asdict
 from contextlib import asynccontextmanager
 
-from aiohttp import web, ClientError, WSMsgType
+from aiohttp import web, ClientError
 from aiohttp.client import ClientResponseError, ClientConnectorError
 from aiohttp.web import middleware
 import ssl
@@ -1080,25 +1080,16 @@ async def websocket_handler(request):
     
     try:
         async for msg in ws:
-            if msg.type == WSMsgType.TEXT:
-                try:
-                    data = json.loads(msg.data)
-                    logger.debug(f"WebSocket message: {data}")
+            if msg.type == web.MsgType.TEXT:
+                data = json.loads(msg.data)
+                logger.debug(f"WebSocket message: {data}")
+                
+                # Handle different message types
+                if data.get('type') == 'ping':
+                    await ws.send_str(json.dumps({'type': 'pong'}))
                     
-                    # Handle different message types
-                    if data.get('type') == 'ping':
-                        await ws.send_str(json.dumps({'type': 'pong'}))
-                        logger.debug("Sent pong response")
-                        
-                except json.JSONDecodeError as e:
-                    logger.error(f"Invalid JSON in WebSocket message: {e}")
-                    await ws.send_str(json.dumps({'type': 'error', 'message': 'Invalid JSON'}))
-                    
-            elif msg.type == WSMsgType.ERROR:
+            elif msg.type == web.MsgType.ERROR:
                 logger.error(f"WebSocket error: {ws.exception()}")
-                break
-            elif msg.type == WSMsgType.CLOSE:
-                logger.info("WebSocket closed by client")
                 break
     except Exception as e:
         logger.error(f"WebSocket error: {e}")

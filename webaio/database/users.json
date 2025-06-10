@@ -58,5 +58,20 @@
     "background_url": "",
     "is_active": true,
     "token": "OYvEWCkvbGm5MGI1Jh04b15JpkuXmqCvS-95XL1OLP8"
+  },
+  "4e1cd954-c9ca-4cf9-ad6b-1752b0c4b9b6": {
+    "id": "4e1cd954-c9ca-4cf9-ad6b-1752b0c4b9b6",
+    "username": "boqsc",
+    "email": "vaidas.boqsc@gmail.com",
+    "password_hash": "4634bc45056bd9fe4108c26d69d719f5a0207bbcd499b116cf9e6b30bc5bb4a2",
+    "salt": "45eb762245bddc5eba265e42f82a8aee417dc0146a9d249e06d4c3d6a33fbacc",
+    "role": "user",
+    "created_at": "2025-06-09T10:15:20.030992+00:00",
+    "description": "",
+    "mood": "",
+    "avatar_url": "",
+    "background_url": "",
+    "is_active": true,
+    "token": "PDae_zWiWAR3mBOyjkIHryLzPvUpPnJgHElqcuJHpTs"
   }
 }

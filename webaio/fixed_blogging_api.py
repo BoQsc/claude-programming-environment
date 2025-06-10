@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-AIOHTTP Blogging API - Complete Implementation
+AIOHTTP Blogging API - Complete Fixed Implementation
 Features: Users, Posts, Comments, Tags, File Uploads, Search, Real-time updates
 Security: Token auth, rate limiting, input validation, CORS
 Database: Custom async JSON database
@@ -372,9 +372,12 @@ class WebSocketManager:
         logger.debug(f"Broadcasting to {len(self.connections)} connections")
         disconnected = set()
         
-        for ws in self.connections:
+        for ws in self.connections.copy():
             try:
-                await ws.send_str(json.dumps(message))
+                if ws.closed:
+                    disconnected.add(ws)
+                else:
+                    await ws.send_str(json.dumps(message))
             except Exception as e:
                 logger.error(f"Error sending to WebSocket: {e}")
                 disconnected.add(ws)
@@ -471,7 +474,7 @@ async def cors_middleware(request, handler):
 async def rate_limit_middleware(request, handler):
     """Rate limiting middleware"""
     rate_limiter = request.app['rate_limiter']
-    client_ip = request.remote
+    client_ip = request.remote or '127.0.0.1'
     
     logger.debug(f"Rate limit check for {client_ip}")
     
@@ -1005,6 +1008,9 @@ class FileHandler:
         try:
             user = request['user']
             
+            if not request.content_type or not request.content_type.startswith('multipart/'):
+                return web.json_response({'error': 'Multipart form data required'}, status=400)
+            
             reader = await request.multipart()
             field = await reader.next()
             
@@ -1034,7 +1040,7 @@ class FileHandler:
             
         except Exception as e:
             logger.error(f"Upload error: {e}")
-            return web.json_response({'error': 'Upload failed'}, status=500)
+            return web.json_response({'error': f'Upload failed: {str(e)}'}, status=500)
     
     @staticmethod
     async def get_file(request):
@@ -1241,6 +1247,10 @@ def main():
         app = loop.run_until_complete(init_app())
         
         logger.info(f"Starting server on port {port}")
+        logger.info("🚀 API is ready!")
+        logger.info("📝 Default admin account: username=admin, password=admin123")
+        logger.info("🌐 WebSocket endpoint: ws://localhost:8080/ws")
+        
         web.run_app(
             app,
             host='0.0.0.0',

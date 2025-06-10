@@ -1,0 +1,426 @@
+2025-06-09 10:01:15,966 - flask_app - INFO - <module>:360 - Flask app initialized with secret key: ae511d7c26...
+2025-06-09 10:01:15,966 - flask_app - INFO - <module>:361 - Max content length: 52428800 bytes
+2025-06-09 10:01:15,967 - flask_app - INFO - <module>:366 - Uploads directory: C:\Users\Windows10_new\Documents\3d-character-controller-v2\claude-programming-environment\webaio\client_uploads
+2025-06-09 10:01:15,967 - flask_app - INFO - __init__:75 - APIClient initialized with base_url: http://localhost:8080
+2025-06-09 10:01:15,968 - flask_app - DEBUG - __init__:82 - Default headers set: {'User-Agent': 'BlogWebClient/1.0', 'Accept-Encoding': 'gzip, deflate', 'Accept': '*/*', 'Connection': 'keep-alive', 'Content-Type': 'application/json'}
+2025-06-09 10:01:15,974 - flask_app - INFO - main:2023 - Starting Blog Web Client
+2025-06-09 10:01:15,974 - flask_app - INFO - main:2024 - Python version: 3.13.1 (tags/v3.13.1:0671451, Dec  3 2024, 19:06:28) [MSC v.1942 64 bit (AMD64)]
+2025-06-09 10:01:16,006 - flask_app - INFO - main:2025 - Flask version: 3.1.1
+2025-06-09 10:01:16,006 - flask_app - INFO - main:2026 - Working directory: C:\Users\Windows10_new\Documents\3d-character-controller-v2\claude-programming-environment\webaio
+2025-06-09 10:01:16,006 - flask_app - INFO - main:2027 - Upload directory: C:\Users\Windows10_new\Documents\3d-character-controller-v2\claude-programming-environment\webaio\client_uploads
+2025-06-09 10:01:16,007 - flask_app - INFO - main:2034 - Running as administrator: 0
+2025-06-09 10:01:16,007 - flask_app - WARNING - main:2036 - Port 80 requires administrator privileges on Windows
+2025-06-09 10:01:16,008 - flask_app - INFO - main:2043 - Starting web server on port 8000
+2025-06-09 10:01:16,008 - flask_app - INFO - main:2047 - Testing API connectivity...
+2025-06-09 10:01:16,008 - flask_app - DEBUG - _make_request:103 - Making GET request to: http://localhost:8080/health
+2025-06-09 10:01:16,008 - flask_app - DEBUG - _make_request:104 - Request headers: {'User-Agent': 'BlogWebClient/1.0', 'Accept-Encoding': 'gzip, deflate', 'Accept': '*/*', 'Connection': 'keep-alive', 'Content-Type': 'application/json'}
+2025-06-09 10:01:16,010 - urllib3.connectionpool - DEBUG - _new_conn:241 - Starting new HTTP connection (1): localhost:8080
+2025-06-09 10:01:18,064 - urllib3.connectionpool - DEBUG - _make_request:544 - http://localhost:8080 "GET /health HTTP/1.1" 200 90
+2025-06-09 10:01:18,068 - flask_app - INFO - _make_request:119 - GET /health - Status: 200 - Duration: 2.060s
+2025-06-09 10:01:18,069 - flask_app - DEBUG - _make_request:120 - Response headers: {'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Max-Age': '86400', 'Content-Length': '90', 'Date': 'Mon, 09 Jun 2025 07:01:18 GMT', 'Server': 'Python/3.13 aiohttp/3.11.11'}
+2025-06-09 10:01:18,069 - flask_app - DEBUG - _make_request:125 - Response JSON: {'status': 'healthy', 'timestamp': '2025-06-09T07:01:18.063306+00:00', 'version': '1.0.0'}
+2025-06-09 10:01:18,069 - flask_app - INFO - main:2051 - ✓ API is reachable and healthy
+2025-06-09 10:01:18,069 - flask_app - INFO - main:2057 - Web client starting on http://localhost:8000
+2025-06-09 10:01:18,070 - flask_app - INFO - main:2058 - Press Ctrl+C to stop the server
+2025-06-09 10:01:18,110 - werkzeug - INFO - _log:97 - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8000
+ * Running on http://192.168.0.90:8000
+2025-06-09 10:01:18,111 - werkzeug - INFO - _log:97 - [33mPress CTRL+C to quit[0m
+2025-06-09 10:01:32,117 - flask_app - INFO - before_request:747 - REQUEST START: GET /
+2025-06-09 10:01:32,117 - flask_app - DEBUG - before_request:748 - Request headers: {'Host': '127.0.0.1:8000', 'Connection': 'keep-alive', 'Sec-Ch-Ua': '"Google Chrome";v="137", "Chromium";v="137", "Not/A)Brand";v="24"', 'Sec-Ch-Ua-Mobile': '?0', 'Sec-Ch-Ua-Platform': '"Windows"', 'Dnt': '1', 'Upgrade-Insecure-Requests': '1', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36', 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7', 'Sec-Fetch-Site': 'none', 'Sec-Fetch-Mode': 'navigate', 'Sec-Fetch-User': '?1', 'Sec-Fetch-Dest': 'document', 'Accept-Encoding': 'gzip, deflate, br, zstd', 'Accept-Language': 'en-US,en;q=0.9,lt-LT;q=0.8,lt;q=0.7'}
+2025-06-09 10:01:32,118 - flask_app - DEBUG - before_request:749 - Request args: {}
+2025-06-09 10:01:32,118 - flask_app - DEBUG - before_request:750 - Request form: {}
+2025-06-09 10:01:32,118 - flask_app - DEBUG - before_request:751 - Session data: {}
+2025-06-09 10:01:32,118 - flask_app - DEBUG - before_request:752 - Remote addr: 127.0.0.1
+2025-06-09 10:01:32,119 - flask_app - DEBUG - before_request:753 - User agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36
+2025-06-09 10:01:32,119 - flask_app - INFO - index:774 - Rendering home page
+2025-06-09 10:01:32,120 - flask_app - DEBUG - index:781 - Home page params: page=1, category=None
+2025-06-09 10:01:32,120 - flask_app - DEBUG - get_posts:248 - Getting posts with params: {'page': 1, 'limit': 10}
+2025-06-09 10:01:32,121 - flask_app - DEBUG - _make_request:103 - Making GET request to: http://localhost:8080/posts?page=1&limit=10
+2025-06-09 10:01:32,121 - flask_app - DEBUG - _make_request:104 - Request headers: {'User-Agent': 'BlogWebClient/1.0', 'Accept-Encoding': 'gzip, deflate', 'Accept': '*/*', 'Connection': 'keep-alive', 'Content-Type': 'application/json'}
+2025-06-09 10:01:32,124 - urllib3.connectionpool - DEBUG - _make_request:544 - http://localhost:8080 "GET /posts?page=1&limit=10 HTTP/1.1" 401 36
+2025-06-09 10:01:32,125 - flask_app - INFO - _make_request:119 - GET /posts?page=1&limit=10 - Status: 401 - Duration: 0.004s
+2025-06-09 10:01:32,125 - flask_app - DEBUG - _make_request:120 - Response headers: {'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Max-Age': '86400', 'Content-Length': '36', 'Date': 'Mon, 09 Jun 2025 07:01:32 GMT', 'Server': 'Python/3.13 aiohttp/3.11.11'}
+2025-06-09 10:01:32,125 - flask_app - DEBUG - _make_request:125 - Response JSON: {'error': 'Authentication required'}
+2025-06-09 10:01:32,125 - flask_app - WARNING - get_posts:261 - Failed to get posts: {'error': 'Authentication required'}
+2025-06-09 10:01:32,126 - flask_app - ERROR - index:787 - Failed to fetch posts: {'error': 'Authentication required'}
+2025-06-09 10:01:32,127 - flask_app - DEBUG - get_posts:248 - Getting posts with params: {'page': 1, 'limit': 100}
+2025-06-09 10:01:32,127 - flask_app - DEBUG - _make_request:103 - Making GET request to: http://localhost:8080/posts?page=1&limit=100
+2025-06-09 10:01:32,127 - flask_app - DEBUG - _make_request:104 - Request headers: {'User-Agent': 'BlogWebClient/1.0', 'Accept-Encoding': 'gzip, deflate', 'Accept': '*/*', 'Connection': 'keep-alive', 'Content-Type': 'application/json'}
+2025-06-09 10:01:32,130 - urllib3.connectionpool - DEBUG - _make_request:544 - http://localhost:8080 "GET /posts?page=1&limit=100 HTTP/1.1" 401 36
+2025-06-09 10:01:32,130 - flask_app - INFO - _make_request:119 - GET /posts?page=1&limit=100 - Status: 401 - Duration: 0.003s
+2025-06-09 10:01:32,130 - flask_app - DEBUG - _make_request:120 - Response headers: {'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Max-Age': '86400', 'Content-Length': '36', 'Date': 'Mon, 09 Jun 2025 07:01:32 GMT', 'Server': 'Python/3.13 aiohttp/3.11.11'}
+2025-06-09 10:01:32,131 - flask_app - DEBUG - _make_request:125 - Response JSON: {'error': 'Authentication required'}
+2025-06-09 10:01:32,131 - flask_app - WARNING - get_posts:261 - Failed to get posts: {'error': 'Authentication required'}
+2025-06-09 10:01:32,148 - flask_app - ERROR - index:905 - Error in index route: block 'title' defined twice
+Traceback (most recent call last):
+  File "C:\Users\Windows10_new\Documents\3d-character-controller-v2\claude-programming-environment\webaio\web_client.py", line 898, in index
+    return render_template_string(template,
+                                posts=posts,
+                                pagination=pagination,
+                                category=category,
+                                categories=sorted(categories))
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\templating.py", line 161, in render_template_string
+    template = app.jinja_env.from_string(source)
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 368, in template
+jinja2.exceptions.TemplateAssertionError: block 'title' defined twice
+2025-06-09 10:01:32,188 - web_client - ERROR - log_exception:875 - Exception on / [GET]
+Traceback (most recent call last):
+  File "C:\Users\Windows10_new\Documents\3d-character-controller-v2\claude-programming-environment\webaio\web_client.py", line 898, in index
+    return render_template_string(template,
+                                posts=posts,
+                                pagination=pagination,
+                                category=category,
+                                categories=sorted(categories))
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\templating.py", line 161, in render_template_string
+    template = app.jinja_env.from_string(source)
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 368, in template
+jinja2.exceptions.TemplateAssertionError: block 'title' defined twice
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Windows10_new\Documents\3d-character-controller-v2\claude-programming-environment\webaio\web_client.py", line 907, in index
+    return render_template_string(BASE_TEMPLATE + '''
+    {% block content %}
+    ...<6 lines>...
+    {% endblock %}
+    ''')
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\templating.py", line 161, in render_template_string
+    template = app.jinja_env.from_string(source)
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 368, in template
+jinja2.exceptions.TemplateAssertionError: block 'content' defined twice
+2025-06-09 10:01:32,211 - flask_app - ERROR - internal_error:1992 - 500 error: 500 Internal Server Error: The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.
+Traceback (most recent call last):
+  File "C:\Users\Windows10_new\Documents\3d-character-controller-v2\claude-programming-environment\webaio\web_client.py", line 898, in index
+    return render_template_string(template,
+                                posts=posts,
+                                pagination=pagination,
+                                category=category,
+                                categories=sorted(categories))
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\templating.py", line 161, in render_template_string
+    template = app.jinja_env.from_string(source)
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 368, in template
+jinja2.exceptions.TemplateAssertionError: block 'title' defined twice
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Windows10_new\Documents\3d-character-controller-v2\claude-programming-environment\webaio\web_client.py", line 907, in index
+    return render_template_string(BASE_TEMPLATE + '''
+    {% block content %}
+    ...<6 lines>...
+    {% endblock %}
+    ''')
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\templating.py", line 161, in render_template_string
+    template = app.jinja_env.from_string(source)
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 368, in template
+jinja2.exceptions.TemplateAssertionError: block 'content' defined twice
+2025-06-09 10:01:32,220 - werkzeug - INFO - _log:97 - 127.0.0.1 - - [09/Jun/2025 10:01:32] "[35m[1mGET / HTTP/1.1[0m" 500 -
+2025-06-09 10:01:32,295 - werkzeug - ERROR - _log:97 - Error on request:
+Traceback (most recent call last):
+  File "C:\Users\Windows10_new\Documents\3d-character-controller-v2\claude-programming-environment\webaio\web_client.py", line 898, in index
+    return render_template_string(template,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\templating.py", line 161, in render_template_string
+    template = app.jinja_env.from_string(source)
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 368, in template
+jinja2.exceptions.TemplateAssertionError: block 'title' defined twice
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Windows10_new\Documents\3d-character-controller-v2\claude-programming-environment\webaio\web_client.py", line 907, in index
+    return render_template_string(BASE_TEMPLATE + '''
+    
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\templating.py", line 161, in render_template_string
+    template = app.jinja_env.from_string(source)
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 368, in template
+jinja2.exceptions.TemplateAssertionError: block 'content' defined twice
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\werkzeug\serving.py", line 370, in run_wsgi
+    execute(self.server.app)
+    ~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\werkzeug\serving.py", line 331, in execute
+    application_iter = app(environ, start_response)
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 1536, in __call__
+    return self.wsgi_app(environ, start_response)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 1514, in wsgi_app
+    response = self.handle_exception(e)
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 860, in handle_exception
+    server_error = self.ensure_sync(handler)(server_error)
+  File "C:\Users\Windows10_new\Documents\3d-character-controller-v2\claude-programming-environment\webaio\web_client.py", line 2019, in internal_error
+    return render_template_string(template), 500
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\templating.py", line 161, in render_template_string
+    template = app.jinja_env.from_string(source)
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 368, in template
+jinja2.exceptions.TemplateAssertionError: block 'title' defined twice
+2025-06-09 10:01:32,468 - flask_app - INFO - before_request:747 - REQUEST START: GET /favicon.ico
+2025-06-09 10:01:32,469 - flask_app - DEBUG - before_request:748 - Request headers: {'Host': '127.0.0.1:8000', 'Connection': 'keep-alive', 'Sec-Ch-Ua-Platform': '"Windows"', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36', 'Sec-Ch-Ua': '"Google Chrome";v="137", "Chromium";v="137", "Not/A)Brand";v="24"', 'Dnt': '1', 'Sec-Ch-Ua-Mobile': '?0', 'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8', 'Sec-Fetch-Site': 'same-origin', 'Sec-Fetch-Mode': 'no-cors', 'Sec-Fetch-Dest': 'image', 'Referer': 'http://127.0.0.1:8000/', 'Accept-Encoding': 'gzip, deflate, br, zstd', 'Accept-Language': 'en-US,en;q=0.9,lt-LT;q=0.8,lt;q=0.7'}
+2025-06-09 10:01:32,470 - flask_app - DEBUG - before_request:749 - Request args: {}
+2025-06-09 10:01:32,470 - flask_app - DEBUG - before_request:750 - Request form: {}
+2025-06-09 10:01:32,470 - flask_app - DEBUG - before_request:751 - Session data: {}
+2025-06-09 10:01:32,470 - flask_app - DEBUG - before_request:752 - Remote addr: 127.0.0.1
+2025-06-09 10:01:32,470 - flask_app - DEBUG - before_request:753 - User agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36
+2025-06-09 10:01:32,470 - flask_app - WARNING - not_found:1959 - 404 error: /favicon.ico not found
+2025-06-09 10:01:32,478 - web_client - ERROR - log_exception:875 - Exception on /favicon.ico [GET]
+Traceback (most recent call last):
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 891, in dispatch_request
+    self.raise_routing_exception(req)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 500, in raise_routing_exception
+    raise request.routing_exception  # type: ignore[misc]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\ctx.py", line 362, in match_request
+    result = self.url_adapter.match(return_rule=True)  # type: ignore
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\werkzeug\routing\map.py", line 629, in match
+    raise NotFound() from None
+werkzeug.exceptions.NotFound: 404 Not Found: The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 802, in handle_user_exception
+    return self.handle_http_exception(e)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 777, in handle_http_exception
+    return self.ensure_sync(handler)(e)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\Windows10_new\Documents\3d-character-controller-v2\claude-programming-environment\webaio\web_client.py", line 1987, in not_found
+    return render_template_string(template), 404
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\templating.py", line 161, in render_template_string
+    template = app.jinja_env.from_string(source)
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 368, in template
+jinja2.exceptions.TemplateAssertionError: block 'title' defined twice
+2025-06-09 10:01:32,535 - flask_app - ERROR - internal_error:1992 - 500 error: 500 Internal Server Error: The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.
+Traceback (most recent call last):
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 891, in dispatch_request
+    self.raise_routing_exception(req)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 500, in raise_routing_exception
+    raise request.routing_exception  # type: ignore[misc]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\ctx.py", line 362, in match_request
+    result = self.url_adapter.match(return_rule=True)  # type: ignore
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\werkzeug\routing\map.py", line 629, in match
+    raise NotFound() from None
+werkzeug.exceptions.NotFound: 404 Not Found: The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 802, in handle_user_exception
+    return self.handle_http_exception(e)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 777, in handle_http_exception
+    return self.ensure_sync(handler)(e)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\Windows10_new\Documents\3d-character-controller-v2\claude-programming-environment\webaio\web_client.py", line 1987, in not_found
+    return render_template_string(template), 404
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\templating.py", line 161, in render_template_string
+    template = app.jinja_env.from_string(source)
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 368, in template
+jinja2.exceptions.TemplateAssertionError: block 'title' defined twice
+2025-06-09 10:01:32,544 - werkzeug - INFO - _log:97 - 127.0.0.1 - - [09/Jun/2025 10:01:32] "[35m[1mGET /favicon.ico HTTP/1.1[0m" 500 -
+2025-06-09 10:01:32,570 - werkzeug - ERROR - _log:97 - Error on request:
+Traceback (most recent call last):
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 891, in dispatch_request
+    self.raise_routing_exception(req)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 500, in raise_routing_exception
+    raise request.routing_exception  # type: ignore[misc]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\ctx.py", line 362, in match_request
+    result = self.url_adapter.match(return_rule=True)  # type: ignore
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\werkzeug\routing\map.py", line 629, in match
+    raise NotFound() from None
+werkzeug.exceptions.NotFound: 404 Not Found: The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 802, in handle_user_exception
+    return self.handle_http_exception(e)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 777, in handle_http_exception
+    return self.ensure_sync(handler)(e)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\Windows10_new\Documents\3d-character-controller-v2\claude-programming-environment\webaio\web_client.py", line 1987, in not_found
+    return render_template_string(template), 404
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\templating.py", line 161, in render_template_string
+    template = app.jinja_env.from_string(source)
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 368, in template
+jinja2.exceptions.TemplateAssertionError: block 'title' defined twice
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\werkzeug\serving.py", line 370, in run_wsgi
+    execute(self.server.app)
+    ~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\werkzeug\serving.py", line 331, in execute
+    application_iter = app(environ, start_response)
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 1536, in __call__
+    return self.wsgi_app(environ, start_response)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 1514, in wsgi_app
+    response = self.handle_exception(e)
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\app.py", line 860, in handle_exception
+    server_error = self.ensure_sync(handler)(server_error)
+  File "C:\Users\Windows10_new\Documents\3d-character-controller-v2\claude-programming-environment\webaio\web_client.py", line 2019, in internal_error
+    return render_template_string(template), 500
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask\templating.py", line 161, in render_template_string
+    template = app.jinja_env.from_string(source)
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 1111, in from_string
+    return cls.from_code(self, self.compile(source), gs, None)
+                               ~~~~~~~~~~~~^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Windows10_new\AppData\Local\Programs\Python\Python313\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<unknown>", line 368, in template
+jinja2.exceptions.TemplateAssertionError: block 'title' defined twice
