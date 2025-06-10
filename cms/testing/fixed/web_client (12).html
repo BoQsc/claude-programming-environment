@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flat Structured API - Web Client</title>
+    <style>
+        /* Modern CSS Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Navigation */
+        .navbar {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 1rem 0;
+            margin-bottom: 2rem;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 2rem;
+        }
+
+        .nav-brand {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-link.active {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Cards */
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .card-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-subtitle {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .form-checkbox {
+            width: auto;
+            margin-right: 0.5rem;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #333;
+            border: 2px solid #e1e5e9;
+        }
+
+        .btn-secondary:hover {
+            background: #e9ecef;
+            border-color: #c3c6ca;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 0.875rem;
+        }
+
+        /* Posts Grid */
+        .posts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .post-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .post-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        .post-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+
+        .post-meta {
+            font-size: 0.875rem;
+            color: #666;
+            margin-bottom: 1rem;
+        }
+
+        .post-content {
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .post-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .tag {
+            background: #f0f2f5;
+            color: #333;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+        }
+
+        .post-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        /* Alerts */
+        .alert {
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border-left: 4px solid;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border-left-color: #28a745;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left-color: #dc3545;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left-color: #17a2b8;
+        }
+
+        /* Loading */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal.active {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+        }
+
+        /* Profile */
+        .profile-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .profile-stat {
+            text-align: center;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .profile-stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .profile-stat-label {
+            color: #666;
+            font-size: 0.875rem;
+        }
+
+        /* Hidden class */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .nav-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .nav-links {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .posts-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .card {
+                padding: 1.5rem;
+            }
+
+            .modal-content {
+                width: 95%;
+                padding: 1.5rem;
+            }
+        }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="nav-content">
+                <div class="nav-brand">🚀 Flat API Client</div>
+                <div class="nav-links">
+                    <a href="#" class="nav-link" data-view="posts">Posts</a>
+                    <a href="#" class="nav-link" data-view="profile">Profile</a>
+                    <a href="#" class="nav-link" onclick="logout()">Logout</a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Alert Container -->
+        <div id="alert-container"></div>
+
+        <!-- Auth View -->
+        <div id="auth-view" class="hidden">
+            <div class="card" style="max-width: 400px; margin: 2rem auto;">
+                <div class="card-header">
+                    <h2 class="card-title">Welcome</h2>
+                    <p class="card-subtitle">Sign in to your account or create a new one</p>
+                </div>
+
+                <!-- Login Form -->
+                <div id="login-form">
+                    <form onsubmit="login(event)">
+                        <div class="form-group">
+                            <label class="form-label" for="login-username">Username</label>
+                            <input type="text" id="login-username" class="form-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="login-password">Password</label>
+                            <input type="password" id="login-password" class="form-input" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">
+                            Sign In
+                        </button>
+                    </form>
+                    <p style="text-align: center; margin-top: 1rem; color: #666;">
+                        Don't have an account? 
+                        <a href="#" onclick="showRegister()" style="color: #667eea;">Sign up</a>
+                    </p>
+                </div>
+
+                <!-- Register Form -->
+                <div id="register-form" class="hidden">
+                    <form onsubmit="register(event)">
+                        <div class="form-group">
+                            <label class="form-label" for="register-username">Username</label>
+                            <input type="text" id="register-username" class="form-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="register-email">Email</label>
+                            <input type="email" id="register-email" class="form-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="register-password">Password</label>
+                            <input type="password" id="register-password" class="form-input" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">
+                            Create Account
+                        </button>
+                    </form>
+                    <p style="text-align: center; margin-top: 1rem; color: #666;">
+                        Already have an account? 
+                        <a href="#" onclick="showLogin()" style="color: #667eea;">Sign in</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main App View -->
+        <div id="app-view" class="hidden">
+            <!-- Posts View -->
+            <div id="posts-view">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Posts</h2>
+                        <button class="btn btn-primary" onclick="showCreatePost()">
+                            ✏️ Create Post
+                        </button>
+                    </div>
+                    
+                    <div id="posts-loading" class="loading hidden">
+                        <div class="spinner"></div>
+                    </div>
+
+                    <div id="posts-container" class="posts-grid">
+                        <!-- Posts will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile View -->
+            <div id="profile-view" class="hidden">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">User Profile</h2>
+                    </div>
+                    
+                    <div id="profile-loading" class="loading hidden">
+                        <div class="spinner"></div>
+                    </div>
+
+                    <div id="profile-content">
+                        <!-- Profile content will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create/Edit Post Modal -->
+    <div id="post-modal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <h3 id="post-modal-title">Create Post</h3>
+            
+            <form id="post-form" onsubmit="savePost(event)">
+                <input type="hidden" id="post-id" value="">
+                
+                <div class="form-group">
+                    <label class="form-label" for="post-title">Title</label>
+                    <input type="text" id="post-title" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="post-content">Content</label>
+                    <textarea id="post-content" class="form-input form-textarea" required></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="post-tags">Tags (comma-separated)</label>
+                    <input type="text" id="post-tags" class="form-input" placeholder="tech, api, tutorial">
+                </div>
+                
+                <div class="form-group">
+                    <label style="display: flex; align-items: center;">
+                        <input type="checkbox" id="post-published" class="form-checkbox">
+                        Publish immediately
+                    </label>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        Save Post
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Application State
+        let currentUser = null;
+        let authToken = localStorage.getItem('authToken');
+        let currentView = 'posts';
+        let posts = [];
+
+        // API Configuration
+        const API_BASE = 'http://localhost:8080';
+
+        // Utility Functions
+        function showAlert(message, type = 'info') {
+            const alertContainer = document.getElementById('alert-container');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            
+            alertContainer.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        function showLoading(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) element.classList.remove('hidden');
+        }
+
+        function hideLoading(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) element.classList.add('hidden');
+        }
+
+        // API Functions
+        async function apiCall(endpoint, options = {}) {
+            const url = `${API_BASE}${endpoint}`;
+            const config = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                },
+                ...options
+            };
+
+            if (authToken) {
+                config.headers.Authorization = `Bearer ${authToken}`;
+            }
+
+            try {
+                const response = await fetch(url, config);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || `HTTP ${response.status}`);
+                }
+
+                return data;
+            } catch (error) {
+                console.error('API Error:', error);
+                throw error;
+            }
+        }
+
+        // Authentication Functions
+        async function login(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+
+            try {
+                const data = await apiCall('/api/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ username, password })
+                });
+
+                authToken = data.token;
+                localStorage.setItem('authToken', authToken);
+                currentUser = { id: data.user_id, username: data.username };
+                
+                showAlert('Login successful!', 'success');
+                showApp();
+            } catch (error) {
+                showAlert(error.message, 'error');
+            }
+        }
+
+        async function register(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('register-username').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+
+            try {
+                const data = await apiCall('/api/auth/register', {
+                    method: 'POST',
+                    body: JSON.stringify({ username, email, password })
+                });
+
+                authToken = data.token;
+                localStorage.setItem('authToken', authToken);
+                currentUser = { id: data.user_id, username: data.username };
+                
+                showAlert('Registration successful!', 'success');
+                showApp();
+            } catch (error) {
+                showAlert(error.message, 'error');
+            }
+        }
+
+        function logout() {
+            authToken = null;
+            currentUser = null;
+            localStorage.removeItem('authToken');
+            showAuth();
+            showAlert('Logged out successfully', 'info');
+        }
+
+        function showLogin() {
+            document.getElementById('login-form').classList.remove('hidden');
+            document.getElementById('register-form').classList.add('hidden');
+        }
+
+        function showRegister() {
+            document.getElementById('login-form').classList.add('hidden');
+            document.getElementById('register-form').classList.remove('hidden');
+        }
+
+        // View Management
+        function showAuth() {
+            document.getElementById('auth-view').classList.remove('hidden');
+            document.getElementById('app-view').classList.add('hidden');
+        }
+
+        function showApp() {
+            document.getElementById('auth-view').classList.add('hidden');
+            document.getElementById('app-view').classList.remove('hidden');
+            loadCurrentUser();
+            showView('posts');
+        }
+
+        function showView(viewName) {
+            // Hide all views
+            document.querySelectorAll('#app-view > div').forEach(view => {
+                view.classList.add('hidden');
+            });
+
+            // Show selected view
+            document.getElementById(`${viewName}-view`).classList.remove('hidden');
+
+            // Update navigation
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            document.querySelector(`[data-view="${viewName}"]`).classList.add('active');
+
+            currentView = viewName;
+
+            // Load view data
+            if (viewName === 'posts') {
+                loadPosts();
+            } else if (viewName === 'profile') {
+                loadProfile();
+            }
+        }
+
+        // Posts Functions
+        async function loadPosts() {
+            showLoading('posts-loading');
+            
+            try {
+                const data = await apiCall('/api/posts');
+                posts = data.posts;
+                renderPosts();
+            } catch (error) {
+                showAlert('Failed to load posts: ' + error.message, 'error');
+            } finally {
+                hideLoading('posts-loading');
+            }
+        }
+
+        function renderPosts() {
+            const container = document.getElementById('posts-container');
+            container.innerHTML = '';
+
+            if (posts.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #666; grid-column: 1/-1;">No posts found. Create your first post!</p>';
+                return;
+            }
+
+            posts.forEach(post => {
+                const postElement = createPostElement(post);
+                container.appendChild(postElement);
+            });
+        }
+
+        function createPostElement(post) {
+            const div = document.createElement('div');
+            div.className = 'post-card';
+            
+            const isOwner = currentUser && post.author_id === currentUser.id;
+            const createdAt = new Date(post.created_at * 1000).toLocaleDateString();
+            
+            div.innerHTML = `
+                <div class="post-title">${escapeHtml(post.title)}</div>
+                <div class="post-meta">
+                    By ${escapeHtml(post.author_username)} • ${createdAt} • ${post.views || 0} views • ${post.likes || 0} likes
+                </div>
+                <div class="post-content">${escapeHtml(post.content).substring(0, 200)}${post.content.length > 200 ? '...' : ''}</div>
+                ${post.tags && post.tags.length > 0 ? `
+                    <div class="post-tags">
+                        ${post.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
+                    </div>
+                ` : ''}
+                <div class="post-actions">
+                    <button class="btn btn-small btn-secondary" onclick="likePost('${post._key}')">
+                        👍 Like (${post.likes || 0})
+                    </button>
+                    ${isOwner ? `
+                        <button class="btn btn-small btn-secondary" onclick="editPost('${post._key}')">
+                            ✏️ Edit
+                        </button>
+                        <button class="btn btn-small btn-danger" onclick="deletePost('${post._key}')">
+                            🗑️ Delete
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+            
+            return div;
+        }
+
+        function showCreatePost() {
+            document.getElementById('post-modal-title').textContent = 'Create Post';
+            document.getElementById('post-form').reset();
+            document.getElementById('post-id').value = '';
+            document.getElementById('post-published').checked = true;
+            document.getElementById('post-modal').classList.add('active');
+        }
+
+        function editPost(postId) {
+            const post = posts.find(p => p._key === postId);
+            if (!post) return;
+
+            document.getElementById('post-modal-title').textContent = 'Edit Post';
+            document.getElementById('post-id').value = postId;
+            document.getElementById('post-title').value = post.title;
+            document.getElementById('post-content').value = post.content;
+            document.getElementById('post-tags').value = post.tags ? post.tags.join(', ') : '';
+            document.getElementById('post-published').checked = post.is_published;
+            document.getElementById('post-modal').classList.add('active');
+        }
+
+        async function savePost(event) {
+            event.preventDefault();
+            
+            const postId = document.getElementById('post-id').value;
+            const title = document.getElementById('post-title').value;
+            const content = document.getElementById('post-content').value;
+            const tagsString = document.getElementById('post-tags').value;
+            const isPublished = document.getElementById('post-published').checked;
+            
+            const tags = tagsString ? tagsString.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
+            
+            const postData = {
+                title,
+                content,
+                tags,
+                is_published: isPublished
+            };
+
+            try {
+                if (postId) {
+                    // Edit existing post
+                    await apiCall(`/api/posts/${postId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(postData)
+                    });
+                    showAlert('Post updated successfully!', 'success');
+                } else {
+                    // Create new post
+                    await apiCall('/api/posts', {
+                        method: 'POST',
+                        body: JSON.stringify(postData)
+                    });
+                    showAlert('Post created successfully!', 'success');
+                }
+                
+                closeModal();
+                loadPosts();
+            } catch (error) {
+                showAlert('Failed to save post: ' + error.message, 'error');
+            }
+        }
+
+        async function deletePost(postId) {
+            if (!confirm('Are you sure you want to delete this post?')) return;
+
+            try {
+                await apiCall(`/api/posts/${postId}`, {
+                    method: 'DELETE'
+                });
+                showAlert('Post deleted successfully!', 'success');
+                loadPosts();
+            } catch (error) {
+                showAlert('Failed to delete post: ' + error.message, 'error');
+            }
+        }
+
+        async function likePost(postId) {
+            try {
+                await apiCall(`/api/posts/${postId}/like`, {
+                    method: 'POST'
+                });
+                loadPosts(); // Refresh to show updated like count
+            } catch (error) {
+                showAlert('Failed to like post: ' + error.message, 'error');
+            }
+        }
+
+        // Profile Functions
+        async function loadCurrentUser() {
+            try {
+                const data = await apiCall('/api/auth/profile');
+                currentUser = { ...currentUser, ...data };
+            } catch (error) {
+                console.error('Failed to load user profile:', error);
+            }
+        }
+
+        async function loadProfile() {
+            showLoading('profile-loading');
+            
+            try {
+                const [profileData, collectionsData] = await Promise.all([
+                    apiCall('/api/auth/profile'),
+                    apiCall('/api/collections')
+                ]);
+
+                renderProfile(profileData, collectionsData);
+            } catch (error) {
+                showAlert('Failed to load profile: ' + error.message, 'error');
+            } finally {
+                hideLoading('profile-loading');
+            }
+        }
+
+        function renderProfile(profile, collections) {
+            const container = document.getElementById('profile-content');
+            const userPosts = posts.filter(post => post.author_id === profile._key);
+            const joinDate = new Date(profile.created_at * 1000).toLocaleDateString();
+            const lastLogin = profile.last_login ? new Date(profile.last_login * 1000).toLocaleDateString() : 'Never';
+
+            container.innerHTML = `
+                <div class="profile-info">
+                    <div class="profile-stat">
+                        <div class="profile-stat-value">${userPosts.length}</div>
+                        <div class="profile-stat-label">Posts Created</div>
+                    </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-value">${userPosts.reduce((sum, post) => sum + (post.likes || 0), 0)}</div>
+                        <div class="profile-stat-label">Total Likes</div>
+                    </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-value">${userPosts.reduce((sum, post) => sum + (post.views || 0), 0)}</div>
+                        <div class="profile-stat-label">Total Views</div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input type="text" class="form-input" value="${escapeHtml(profile.username)}" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" value="${escapeHtml(profile.email)}" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Member Since</label>
+                    <input type="text" class="form-input" value="${joinDate}" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Last Login</label>
+                    <input type="text" class="form-input" value="${lastLogin}" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Account Status</label>
+                    <input type="text" class="form-input" value="${profile.is_active ? 'Active' : 'Inactive'}" readonly>
+                </div>
+            `;
+        }
+
+        // Modal Functions
+        function closeModal() {
+            document.getElementById('post-modal').classList.remove('active');
+        }
+
+        // Utility Functions
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if user is already logged in
+            if (authToken) {
+                showApp();
+            } else {
+                showAuth();
+            }
+
+            // Navigation event listeners
+            document.querySelectorAll('[data-view]').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    showView(this.dataset.view);
+                });
+            });
+
+            // Modal close on outside click
+            document.getElementById('post-modal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeModal();
+                }
+            });
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeModal();
+                }
+            });
+        });
+
+        // Health check on load
+        apiCall('/api/health').then(() => {
+            console.log('✅ API connection successful');
+        }).catch(() => {
+            showAlert('❌ Cannot connect to API server. Please ensure the server is running on ' + API_BASE, 'error');
+        });
+    </script>
+</body>
+</html>
