@@ -362,7 +362,7 @@ async def get_posts(request):
 
 
 @app.get('/api/posts/liked')
-async def get_user_liked_posts(request):
+async def get_current_user_liked_posts_endpoint(request):
     """Get posts that the current user has liked"""
     user = await get_current_user(request)
     
