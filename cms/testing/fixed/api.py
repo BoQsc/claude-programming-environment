@@ -3,6 +3,12 @@
 Main API implementation using aioweb and db modules
 A flat structured API with clear endpoint declarations
 NO EXTERNAL DEPENDENCIES beyond aiohttp
+
+FIXES:
+- Added proper like/unlike tracking to prevent duplicate likes
+- Added user likes tracking collection
+- Added endpoints to get user's liked posts
+- Proper like state management
 """
 
 import asyncio
@@ -132,6 +138,29 @@ async def get_current_user(request):
     user['_key'] = payload['user_id']
     
     return user
+
+
+async def get_like_key(user_id: str, post_id: str) -> str:
+    """Generate a unique key for user-post like relationship"""
+    return f"{user_id}_{post_id}"
+
+
+async def user_has_liked_post(user_id: str, post_id: str) -> bool:
+    """Check if user has liked a specific post"""
+    likes = await db.get_collection('post_likes')
+    like_key = await get_like_key(user_id, post_id)
+    return await likes.exists(like_key)
+
+
+async def get_user_liked_posts(user_id: str) -> list:
+    """Get all post IDs that a user has liked"""
+    likes = await db.get_collection('post_likes')
+    
+    def filter_user_likes(like_record):
+        return like_record.get('user_id') == user_id
+    
+    user_likes = await likes.find(filter_func=filter_user_likes)
+    return [like['post_id'] for like in user_likes]
 
 
 # =============================================================================
@@ -332,6 +361,19 @@ async def get_posts(request):
     })
 
 
+@app.get('/api/posts/liked')
+async def get_user_liked_posts(request):
+    """Get posts that the current user has liked"""
+    user = await get_current_user(request)
+    
+    liked_post_ids = await get_user_liked_posts(user['_key'])
+    
+    return app.json_response({
+        'liked_posts': liked_post_ids,
+        'count': len(liked_post_ids)
+    })
+
+
 @app.get('/api/posts/{post_id}')
 async def get_post(request):
     """Get a specific post"""
@@ -412,7 +454,15 @@ async def delete_post(request):
     if post['author_id'] != user['_key']:
         raise APIError("Unauthorized to delete this post", 403)
     
+    # Delete the post
     await posts.delete(post_id)
+    
+    # Clean up likes for this post
+    likes = await db.get_collection('post_likes')
+    post_likes = await likes.find(lambda like: like.get('post_id') == post_id)
+    
+    for like in post_likes:
+        await likes.delete(like['_key'])
     
     return app.json_response({
         'message': 'Post deleted successfully'
@@ -421,27 +471,87 @@ async def delete_post(request):
 
 @app.post('/api/posts/{post_id}/like')
 async def like_post(request):
-    """Like a post"""
-    await get_current_user(request)  # Verify authentication
+    """Like a post (only if not already liked)"""
+    user = await get_current_user(request)
     path_params = get_path_params(request)
     post_id = path_params['post_id']
+    user_id = user['_key']
     
     posts = await db.get_collection('posts')
+    likes = await db.get_collection('post_likes')
     
+    # Check if post exists
     if not await posts.exists(post_id):
         raise APIError("Post not found", 404)
     
-    # Increment likes
-    try:
-        new_likes = await posts.increment(post_id, 'likes')
-    except Exception as e:
-        logger.error(f"Failed to increment likes for post {post_id}: {e}")
-        raise APIError("Failed to like post", 500)
+    # Check if user has already liked this post
+    if await user_has_liked_post(user_id, post_id):
+        raise APIError("You have already liked this post", 400)
     
-    return app.json_response({
-        'message': 'Post liked',
-        'likes': new_likes
-    })
+    # Create like record
+    like_key = await get_like_key(user_id, post_id)
+    like_data = {
+        'user_id': user_id,
+        'post_id': post_id,
+        'created_at': await create_timestamp()
+    }
+    
+    try:
+        # Add like record
+        await likes.set(like_key, like_data)
+        
+        # Increment post likes count
+        new_likes = await posts.increment(post_id, 'likes')
+        
+        return app.json_response({
+            'message': 'Post liked successfully',
+            'likes': new_likes
+        })
+        
+    except Exception as e:
+        logger.error(f"Failed to like post {post_id} by user {user_id}: {e}")
+        raise APIError("Failed to like post", 500)
+
+
+@app.post('/api/posts/{post_id}/unlike')
+async def unlike_post(request):
+    """Unlike a post (only if already liked)"""
+    user = await get_current_user(request)
+    path_params = get_path_params(request)
+    post_id = path_params['post_id']
+    user_id = user['_key']
+    
+    posts = await db.get_collection('posts')
+    likes = await db.get_collection('post_likes')
+    
+    # Check if post exists
+    if not await posts.exists(post_id):
+        raise APIError("Post not found", 404)
+    
+    # Check if user has actually liked this post
+    if not await user_has_liked_post(user_id, post_id):
+        raise APIError("You have not liked this post", 400)
+    
+    # Remove like record
+    like_key = await get_like_key(user_id, post_id)
+    
+    try:
+        # Remove like record
+        await likes.delete(like_key)
+        
+        # Decrement post likes count (ensure it doesn't go below 0)
+        post = await posts.get(post_id)
+        current_likes = max(0, post.get('likes', 0) - 1)
+        await posts.update(post_id, {'likes': current_likes})
+        
+        return app.json_response({
+            'message': 'Post unliked successfully',
+            'likes': current_likes
+        })
+        
+    except Exception as e:
+        logger.error(f"Failed to unlike post {post_id} by user {user_id}: {e}")
+        raise APIError("Failed to unlike post", 500)
 
 
 # =============================================================================
@@ -467,7 +577,7 @@ async def get_collection_stats(request):
     collection_name = path_params['collection_name']
     
     # Validate collection name
-    valid_collections = ['users', 'posts']
+    valid_collections = ['users', 'posts', 'post_likes']
     if collection_name not in valid_collections:
         raise APIError(f"Invalid collection name. Valid collections: {', '.join(valid_collections)}", 400)
     
@@ -600,7 +710,8 @@ async def root_endpoint(request):
             'Concurrent JSON database',
             'CORS support',
             'File I/O via thread pools',
-            'Windows file system compatibility'
+            'Windows file system compatibility',
+            'Like/Unlike tracking with duplicate prevention'
         ],
         'endpoints': {
             'auth': '/api/auth/*',
@@ -631,8 +742,10 @@ async def startup():
     try:
         users = await db.get_collection('users')
         posts = await db.get_collection('posts')
+        post_likes = await db.get_collection('post_likes')  # New collection for likes
         
         logger.info("Database collections initialized")
+        logger.info("Like/Unlike tracking system enabled")
         logger.info("No external dependencies required beyond aiohttp!")
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
@@ -680,6 +793,7 @@ if __name__ == '__main__':
     
     logger.info(f"Starting dependency-free API server on {host}:{port} (debug={debug})")
     logger.info("Dependencies: aiohttp only!")
+    logger.info("Features: Like/Unlike tracking with duplicate prevention")
     
     try:
         app.run(host=host, port=port, debug=debug)

@@ -140,7 +140,7 @@
     ],
     "is_published": true,
     "views": 0,
-    "likes": 0
+    "likes": 3
   },
   "482b8116-6a8e-4778-a13f-70e799fc8875": {
     "title": "Mixed Workload Post 37637",
@@ -156,7 +156,7 @@
     ],
     "is_published": true,
     "views": 0,
-    "likes": 7
+    "likes": 12
   },
   "d6c4d0fc-05ea-43bf-bb20-b36cd6349697": {
     "title": "Mixed Workload Post 89309",
@@ -39457,6 +39457,20 @@
     "updated_at": 1749552558.2925658,
     "tags": [
       "2222222222222222"
+    ],
+    "is_published": true,
+    "views": 0,
+    "likes": 0
+  },
+  "0a76f928-0586-4f49-866b-c4b6b610cf1d": {
+    "title": "cccccccccccccccccccccccccc",
+    "content": "cccccccccccccccccccccccccc",
+    "author_id": "be8be1e9-43f2-428f-8f86-08d752ad985c",
+    "author_username": "boqsc",
+    "created_at": 1749558176.3089428,
+    "updated_at": 1749558176.3089433,
+    "tags": [
+      "zzzzzzzzzzzzzzzzzzzzz"
     ],
     "is_published": true,
     "views": 0,
