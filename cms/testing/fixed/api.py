@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Main API implementation using aioweb and db modules
+Main API implementation using aioweb and db modules with Advanced Search
 A flat structured API with clear endpoint declarations
 NO EXTERNAL DEPENDENCIES beyond aiohttp
 
@@ -14,6 +14,10 @@ FEATURES:
 - FIXED: CORS support for file:// protocol downloads
 - FIXED: Image preview with proper Content-Disposition headers
 - FIXED: JavaScript string escaping issues
+- NEW: Advanced search engine with full-text search
+- NEW: Real-time search suggestions
+- NEW: Content extraction from text files
+- NEW: TF-IDF relevance scoring
 """
 
 import asyncio
@@ -40,6 +44,9 @@ from aioweb import (
 )
 from db import AsyncJSONDB, create_unique_id, create_timestamp
 
+# Import search engine
+from search_engine import create_search_engine, SearchResult
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -53,6 +60,9 @@ SECRET_KEY = "your-secret-key-change-in-production"
 TOKEN_EXPIRY_HOURS = 24
 FILES_DIRECTORY = "./files"  # Directory to store uploaded files
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB max file size (adjust as needed)
+
+# Initialize search engine (will be set during startup)
+search_engine = None
 
 # Ensure files directory exists
 Path(FILES_DIRECTORY).mkdir(parents=True, exist_ok=True)
@@ -356,6 +366,23 @@ async def register_user(request):
     
     await users.set(user_id, user_data)
     
+    # Add user to search index
+    if search_engine:
+        try:
+            await search_engine.add_document(
+                doc_id=user_id,
+                doc_type='user',
+                title=data['username'],
+                content=data['email'],
+                author=data['username'],
+                metadata={
+                    'created_at': user_data['created_at'],
+                    'active': user_data['is_active']
+                }
+            )
+        except Exception as e:
+            logger.warning(f"Failed to add user {user_id} to search index: {e}")
+    
     # Create token
     token = create_token(user_id, data['username'])
     
@@ -420,12 +447,167 @@ async def get_profile(request):
 
 
 # =============================================================================
-# File Upload and Management Endpoints - ENHANCED with image preview support
+# Advanced Search Endpoints
+# =============================================================================
+
+@app.get('/api/search')
+async def search_content(request):
+    """Advanced search across all content types"""
+    query_params = get_query_params(request)
+    
+    # Get search query
+    query = query_params.get('q', '').strip()
+    if not query:
+        return app.json_response({
+            'results': [],
+            'total': 0,
+            'query': query,
+            'suggestions': []
+        })
+    
+    # Parse search parameters
+    limit = min(int(query_params.get('limit', 50)), 200)
+    types = query_params.get('types', '').split(',') if query_params.get('types') else None
+    author = query_params.get('author', '')
+    min_score = float(query_params.get('min_score', 0.01))
+    
+    # Parse date filters
+    date_from = None
+    date_to = None
+    if query_params.get('date_from'):
+        try:
+            date_from = float(query_params.get('date_from'))
+        except ValueError:
+            pass
+    
+    if query_params.get('date_to'):
+        try:
+            date_to = float(query_params.get('date_to'))
+        except ValueError:
+            pass
+    
+    # Build filters
+    filters = {'min_score': min_score}
+    if types:
+        # Clean up type names
+        valid_types = [t.strip() for t in types if t.strip() in ['post', 'file', 'user']]
+        if valid_types:
+            filters['types'] = valid_types
+    
+    if author:
+        filters['author'] = author
+    
+    if date_from is not None:
+        filters['date_from'] = date_from
+    
+    if date_to is not None:
+        filters['date_to'] = date_to
+    
+    try:
+        # Perform search
+        results = await search_engine.search(query, filters, limit)
+        
+        # Convert SearchResult objects to JSON-serializable dictionaries
+        result_dicts = []
+        for result in results:
+            result_dict = {
+                'id': result.id,
+                'type': result.type,
+                'title': result.title,
+                'content': result.content[:500] + '...' if len(result.content) > 500 else result.content,
+                'author': result.author,
+                'score': result.score,
+                'highlights': result.highlights,
+                'metadata': result.metadata,
+                'created_at': result.created_at
+            }
+            result_dicts.append(result_dict)
+        
+        # Get search suggestions
+        suggestions = await search_engine.get_suggestions(query, 5)
+        
+        return app.json_response({
+            'results': result_dicts,
+            'total': len(result_dicts),
+            'query': query,
+            'suggestions': suggestions,
+            'filters_applied': filters
+        })
+        
+    except Exception as e:
+        logger.error(f"Search error: {e}")
+        raise APIError(f"Search failed: {str(e)}", 500)
+
+
+@app.get('/api/search/suggestions')
+async def get_search_suggestions(request):
+    """Get real-time search suggestions"""
+    query_params = get_query_params(request)
+    query = query_params.get('q', '').strip()
+    limit = min(int(query_params.get('limit', 10)), 20)
+    
+    if not query or len(query) < 2:
+        return app.json_response({
+            'suggestions': [],
+            'query': query
+        })
+    
+    try:
+        suggestions = await search_engine.get_suggestions(query, limit)
+        return app.json_response({
+            'suggestions': suggestions,
+            'query': query
+        })
+    except Exception as e:
+        logger.error(f"Suggestions error: {e}")
+        return app.json_response({
+            'suggestions': [],
+            'query': query,
+            'error': str(e)
+        })
+
+
+@app.get('/api/search/stats')
+async def get_search_stats(request):
+    """Get search engine statistics"""
+    await get_current_user(request)  # Require authentication
+    
+    try:
+        stats = search_engine.get_stats()
+        return app.json_response(stats)
+    except Exception as e:
+        logger.error(f"Search stats error: {e}")
+        raise APIError(f"Failed to get search stats: {str(e)}", 500)
+
+
+@app.post('/api/search/reindex')
+async def reindex_search(request):
+    """Manually trigger search index rebuild"""
+    await get_current_user(request)  # Require authentication
+    
+    if search_engine.indexing_in_progress:
+        raise APIError("Indexing already in progress", 409)
+    
+    try:
+        # Start reindexing in background
+        asyncio.create_task(search_engine.rebuild_index())
+        
+        return app.json_response({
+            'message': 'Search index rebuild started',
+            'status': 'in_progress'
+        })
+    except Exception as e:
+        logger.error(f"Reindex error: {e}")
+        raise APIError(f"Failed to start reindexing: {str(e)}", 500)
+
+
+# =============================================================================
+# File Upload and Management Endpoints with Search Integration
 # =============================================================================
 
 @app.post('/api/files/upload')
 async def upload_file(request: Request):
-    """Upload one or more files"""
+    """Upload one or more files and update search index"""
     user = await get_current_user(request)
     
     if not request.content_type or not request.content_type.startswith('multipart/'):
@@ -481,14 +663,50 @@ async def upload_file(request: Request):
                     'owner_username': user['username'],
                     'uploaded_at': await create_timestamp(),
                     'downloads': 0,
-                    'views': 0,  # NEW: separate counter for previews
-                    'is_public': False,  # Default to private
+                    'views': 0,
+                    'is_public': False,
                     'share_token': None,
                     'description': '',
                     'tags': []
                 }
                 
                 await files_collection.set(file_id, file_metadata)
+                
+                # Update search index
+                if search_engine:
+                    try:
+                        # Try to extract text content if it's a text file
+                        content = file_metadata['description']
+                        if search_engine.text_extractor.can_extract(original_filename, file_metadata['mime_type']):
+                            try:
+                                extracted_text = await search_engine.text_extractor.extract_text(
+                                    stored_filename, original_filename, file_metadata['mime_type']
+                                )
+                                if extracted_text:
+                                    content = f"{content} {extracted_text}".strip()
+                            except Exception as e:
+                                logger.warning(f"Failed to extract content for search indexing: {e}")
+                        
+                        await search_engine.add_document(
+                            doc_id=file_id,
+                            doc_type='file',
+                            title=original_filename,
+                            content=content,
+                            author=user['username'],
+                            metadata={
+                                'filename': original_filename,
+                                'tags': file_metadata['tags'],
+                                'created_at': file_metadata['uploaded_at'],
+                                'file_size': file_metadata['file_size'],
+                                'mime_type': file_metadata['mime_type'],
+                                'downloads': file_metadata['downloads'],
+                                'views': file_metadata['views'],
+                                'public': file_metadata['is_public'],
+                                'description': file_metadata['description']
+                            }
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to add file {file_id} to search index: {e}")
                 
                 uploaded_files.append({
                     'file_id': file_id,
@@ -705,7 +923,7 @@ async def download_file(request):
 
 @app.put('/api/files/{file_id}')
 async def update_file_metadata(request):
-    """Update file metadata (description, tags, public status)"""
+    """Update file metadata and search index"""
     user = await get_current_user(request)
     path_params = get_path_params(request)
     file_id = path_params['file_id']
@@ -739,6 +957,49 @@ async def update_file_metadata(request):
     
     await files_collection.update(file_id, updates)
     
+    # Update search index
+    if search_engine:
+        try:
+            updated_file = {**file_record, **updates}
+            
+            # Rebuild content with updated description
+            content = updated_file['description']
+            if search_engine.text_extractor.can_extract(
+                updated_file['original_filename'], 
+                updated_file['mime_type']
+            ):
+                try:
+                    extracted_text = await search_engine.text_extractor.extract_text(
+                        updated_file['stored_filename'], 
+                        updated_file['original_filename'], 
+                        updated_file['mime_type']
+                    )
+                    if extracted_text:
+                        content = f"{content} {extracted_text}".strip()
+                except Exception as e:
+                    logger.warning(f"Failed to extract content for search update: {e}")
+            
+            await search_engine.update_document(
+                doc_id=file_id,
+                doc_type='file',
+                title=updated_file['original_filename'],
+                content=content,
+                author=updated_file['owner_username'],
+                metadata={
+                    'filename': updated_file['original_filename'],
+                    'tags': updated_file['tags'],
+                    'created_at': updated_file['uploaded_at'],
+                    'file_size': updated_file['file_size'],
+                    'mime_type': updated_file['mime_type'],
+                    'downloads': updated_file.get('downloads', 0),
+                    'views': updated_file.get('views', 0),
+                    'public': updated_file['is_public'],
+                    'description': updated_file['description']
+                }
+            )
+        except Exception as e:
+            logger.warning(f"Failed to update file {file_id} in search index: {e}")
+    
     return app.json_response({
         'message': 'File metadata updated successfully',
         'file_id': file_id
@@ -747,7 +1008,7 @@ async def update_file_metadata(request):
 
 @app.delete('/api/files/{file_id}')
 async def delete_file(request):
-    """Delete a file"""
+    """Delete a file and update search index"""
     user = await get_current_user(request)
     path_params = get_path_params(request)
     file_id = path_params['file_id']
@@ -773,6 +1034,13 @@ async def delete_file(request):
     
     # Delete from database
     await files_collection.delete(file_id)
+    
+    # Update search index
+    if search_engine:
+        try:
+            await search_engine.remove_document(file_id)
+        except Exception as e:
+            logger.warning(f"Failed to remove file {file_id} from search index: {e}")
     
     return app.json_response({
         'message': 'File deleted successfully'
@@ -938,12 +1206,12 @@ async def revoke_file_share(request):
 
 
 # =============================================================================
-# Posts/Content Management Endpoints
+# Posts/Content Management Endpoints with Search Integration
 # =============================================================================
 
 @app.post('/api/posts')
 async def create_post(request):
-    """Create a new post"""
+    """Create a new post and update search index"""
     user = await get_current_user(request)
     data = get_json_data(request)
     
@@ -974,10 +1242,30 @@ async def create_post(request):
         'is_published': data.get('is_published', True),
         'views': 0,
         'likes': 0,
-        'attached_files': data.get('attached_files', [])  # File IDs can be attached to posts
+        'attached_files': data.get('attached_files', [])
     }
     
     await posts.set(post_id, post_data)
+    
+    # Update search index
+    if search_engine:
+        try:
+            await search_engine.add_document(
+                doc_id=post_id,
+                doc_type='post',
+                title=post_data['title'],
+                content=post_data['content'],
+                author=post_data['author_username'],
+                metadata={
+                    'tags': post_data['tags'],
+                    'created_at': post_data['created_at'],
+                    'views': post_data['views'],
+                    'likes': post_data['likes'],
+                    'published': post_data['is_published']
+                }
+            )
+        except Exception as e:
+            logger.warning(f"Failed to update search index for new post {post_id}: {e}")
     
     return app.json_response({
         'message': 'Post created successfully',
@@ -1059,7 +1347,7 @@ async def get_post(request):
 
 @app.put('/api/posts/{post_id}')
 async def update_post(request):
-    """Update a post"""
+    """Update a post and search index"""
     user = await get_current_user(request)
     path_params = get_path_params(request)
     post_id = path_params['post_id']
@@ -1094,6 +1382,27 @@ async def update_post(request):
     
     await posts.update(post_id, updates)
     
+    # Update search index
+    if search_engine:
+        try:
+            updated_post = {**post, **updates}
+            await search_engine.update_document(
+                doc_id=post_id,
+                doc_type='post',
+                title=updated_post['title'],
+                content=updated_post['content'],
+                author=updated_post['author_username'],
+                metadata={
+                    'tags': updated_post['tags'],
+                    'created_at': updated_post['created_at'],
+                    'views': updated_post.get('views', 0),
+                    'likes': updated_post.get('likes', 0),
+                    'published': updated_post['is_published']
+                }
+            )
+        except Exception as e:
+            logger.warning(f"Failed to update search index for post {post_id}: {e}")
+    
     return app.json_response({
         'message': 'Post updated successfully',
         'post_id': post_id
@@ -1102,7 +1411,7 @@ async def update_post(request):
 
 @app.delete('/api/posts/{post_id}')
 async def delete_post(request):
-    """Delete a post"""
+    """Delete a post and update search index"""
     user = await get_current_user(request)
     path_params = get_path_params(request)
     post_id = path_params['post_id']
@@ -1126,6 +1435,13 @@ async def delete_post(request):
     
     for like in post_likes:
         await likes.delete(like['_key'])
+    
+    # Update search index
+    if search_engine:
+        try:
+            await search_engine.remove_document(post_id)
+        except Exception as e:
+            logger.warning(f"Failed to remove post {post_id} from search index: {e}")
     
     return app.json_response({
         'message': 'Post deleted successfully'
@@ -1332,7 +1648,11 @@ async def health_check(request):
     return app.json_response({
         'status': 'healthy',
         'timestamp': await create_timestamp(),
-        'version': '1.0.0'
+        'version': '1.0.0',
+        'features': {
+            'search_enabled': search_engine is not None,
+            'search_indexing': search_engine.indexing_in_progress if search_engine else False
+        }
     })
 
 
@@ -1363,6 +1683,14 @@ async def get_status(request):
     except Exception as e:
         logger.warning(f"Failed to calculate file storage stats: {e}")
     
+    # Get search stats if available
+    search_stats = {}
+    if search_engine:
+        try:
+            search_stats = search_engine.get_stats()
+        except Exception as e:
+            logger.warning(f"Failed to get search stats: {e}")
+    
     return app.json_response({
         'status': 'running',
         'collections': stats,
@@ -1372,6 +1700,7 @@ async def get_status(request):
             'total_size_bytes': total_file_size,
             'total_size_mb': round(total_file_size / (1024 * 1024), 2)
         },
+        'search_engine': search_stats,
         'uptime': time.time(),
         'timestamp': await create_timestamp()
     })
@@ -1400,9 +1729,9 @@ async def test_cors(request):
 async def root_endpoint(request):
     """Root endpoint with API information"""
     return app.json_response({
-        'name': 'File Sharing API',
-        'version': '1.0.0',
-        'description': 'A comprehensive API with file upload, sharing, and content management - NO DEPENDENCIES',
+        'name': 'File Sharing API with Advanced Search',
+        'version': '2.0.0',
+        'description': 'A comprehensive API with file upload, sharing, content management, and advanced search - NO DEPENDENCIES',
         'dependencies': ['aiohttp only'],
         'features': [
             'JWT-like tokens (built-in)',
@@ -1417,18 +1746,39 @@ async def root_endpoint(request):
             'File streaming and downloads',
             'Windows file system compatibility',
             'file:// protocol support (FIXED)',
-            'Image preview with proper headers (NEW)',
-            'Separate download/view counters (NEW)',
-            'Enhanced caching and performance (NEW)'
+            'Image preview with proper headers',
+            'Video thumbnail generation',
+            'Separate download/view counters',
+            'Enhanced caching and performance',
+            'ADVANCED SEARCH ENGINE',
+            'Full-text search with TF-IDF',
+            'Real-time search suggestions',
+            'Content extraction from text files',
+            'Search filtering and sorting'
         ],
         'endpoints': {
             'auth': '/api/auth/*',
             'posts': '/api/posts/*',
             'files': '/api/files/*',
+            'search': '/api/search/*',
             'collections': '/api/collections/*',
             'health': '/api/health',
             'status': '/api/status',
             'cors_test': '/api/test/cors'
+        },
+        'search_features': {
+            'search': 'GET /api/search?q=query',
+            'suggestions': 'GET /api/search/suggestions?q=partial',
+            'stats': 'GET /api/search/stats',
+            'reindex': 'POST /api/search/reindex',
+            'supported_file_types': 'Text files: .py, .js, .md, .txt, .json, .yml, etc.',
+            'features': [
+                'TF-IDF relevance scoring',
+                'Real-time suggestions',
+                'Content extraction',
+                'Advanced filtering',
+                'Type-based search'
+            ]
         },
         'file_features': {
             'upload': 'POST /api/files/upload',
@@ -1437,7 +1787,8 @@ async def root_endpoint(request):
             'preview': 'GET /api/files/{id}/download?preview=true',
             'share': 'POST /api/files/{id}/share',
             'public_download': 'GET /api/files/share/{token}',
-            'max_file_size_mb': MAX_FILE_SIZE // (1024 * 1024)
+            'max_file_size_mb': MAX_FILE_SIZE // (1024 * 1024),
+            'searchable_files': 'Text content is extracted and indexed for search'
         }
     })
 
@@ -1466,12 +1817,14 @@ async def handle_cors_preflight(request):
 
 
 # =============================================================================
-# Application Lifecycle
+# Application Lifecycle with Search Engine Initialization
 # =============================================================================
 
 async def startup():
     """Application startup tasks"""
-    logger.info("Starting up the file sharing API server...")
+    global search_engine
+    
+    logger.info("Starting up the file sharing API server with advanced search...")
     
     # Ensure directories exist
     Path(FILES_DIRECTORY).mkdir(parents=True, exist_ok=True)
@@ -1492,8 +1845,18 @@ async def startup():
         logger.info("✅ Separate counters for downloads vs views")
         logger.info("✅ Enhanced caching and performance")
         logger.info("No external dependencies required beyond aiohttp!")
+        
+        # Initialize search engine
+        logger.info("Initializing advanced search engine...")
+        search_engine = create_search_engine(db, FILES_DIRECTORY)
+        await search_engine.initialize()
+        logger.info("✅ Advanced search engine initialized with full-text search capabilities!")
+        logger.info("✅ Text file content extraction enabled for: .py, .js, .md, .txt, .json, etc.")
+        logger.info("✅ Real-time search suggestions enabled")
+        logger.info("✅ TF-IDF relevance scoring enabled")
+        
     except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
+        logger.error(f"Failed to initialize database or search engine: {e}")
         raise
 
 
@@ -1536,14 +1899,24 @@ if __name__ == '__main__':
         debug = True
         logging.getLogger().setLevel(logging.DEBUG)
     
-    print(f"🚀 Starting File Sharing API with ENHANCED image preview support on {host}:{port}")
+    print("🚀 Starting File Sharing API with ADVANCED SEARCH CAPABILITIES")
+    print(f"🌐 Server: {host}:{port}")
     print("✅ CORS fixed for file:// protocol")
-    print("✅ Image preview with proper Content-Disposition headers")
-    print("✅ Separate counters for downloads vs views")
+    print("✅ Image & video preview with proper headers")
+    print("✅ Advanced search engine with TF-IDF scoring")
+    print("✅ Real-time search suggestions")
+    print("✅ Text file content extraction & indexing")
+    print("✅ Search filtering by type, author, date")
     print("✅ Enhanced caching and performance")
     print("✅ Better error handling and logging")
     print("Dependencies: aiohttp only!")
-    print("Features: File upload/sharing + content management + like tracking + image preview")
+    print("Features: File upload/sharing + content management + ADVANCED SEARCH")
+    print("\n🔍 Search Features:")
+    print("  • Full-text search across posts, files, users")
+    print("  • Content extraction from .py, .js, .md, .txt, .json, etc.")
+    print("  • Real-time suggestions as you type")
+    print("  • Advanced filters and relevance scoring")
+    print("  • Automatic index updates\n")
     
     try:
         app.run(host=host, port=port, debug=debug)
