@@ -58,7 +58,7 @@
     "share_token": "eyJmaWxlX2lkIjogIjRmNjUyNjVkLTMxZDctNGQ0Yi04ZDQzLWRiMDNlY2ExM2RhNyIsICJjcmVhdGVkX2F0IjogMTc0OTU2NDg5Ny41MDM4OTI3fQ==.99ec8a43bcdab0d48bacc5b368d62c8b4141f2bd3b8d6c0cb42ccaa86b6c96bc",
     "description": "",
     "tags": [],
-    "views": 2
+    "views": 4
   },
   "bb11de9d-647e-4e12-babc-073122f891b8": {
     "original_filename": "3059-mc-beespin-ezgif.com-gif-to-webp-converter (2).webp",
@@ -69,12 +69,12 @@
     "owner_id": "29eae8e6-24e9-4285-a027-282f72cd4939",
     "owner_username": "boqsc",
     "uploaded_at": 1749575749.5353322,
-    "downloads": 7,
+    "downloads": 9,
     "is_public": false,
     "share_token": null,
     "description": "",
     "tags": [],
-    "views": 2
+    "views": 4
   },
   "2f2b1bf5-3a95-4705-a40b-8a300b75f42f": {
     "original_filename": "dieslfail.mp4",
@@ -86,11 +86,14 @@
     "owner_username": "boqsc",
     "uploaded_at": 1749578654.5031307,
     "downloads": 2,
-    "views": 2,
+    "views": 4,
     "is_public": false,
     "share_token": null,
-    "description": "",
-    "tags": []
+    "description": "woah",
+    "tags": [
+      "videois"
+    ],
+    "updated_at": 1749630732.879225
   },
   "23303323-7fef-416b-81c7-dd7c0868da79": {
     "original_filename": "enhanced_web_client_js.js",
@@ -101,7 +104,7 @@
     "owner_id": "29eae8e6-24e9-4285-a027-282f72cd4939",
     "owner_username": "boqsc",
     "uploaded_at": 1749580603.7768712,
-    "downloads": 1,
+    "downloads": 2,
     "views": 0,
     "is_public": true,
     "share_token": "eyJmaWxlX2lkIjogIjIzMzAzMzIzLTdmZWYtNDE2Yi04MWM3LWRkN2MwODY4ZGE3OSIsICJjcmVhdGVkX2F0IjogMTc0OTU4MDYzNC4zNzM2Nzk2fQ==.a97e6151b88dd7be7497bff12dcd3a7f2e998949fc2aa889ba6f0c9aa81ca581",
