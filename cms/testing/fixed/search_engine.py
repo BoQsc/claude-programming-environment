@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 """
-Advanced Search Engine Module for File Sharing API
-Provides sophisticated search capabilities across posts, files, usernames, and file content
+Enhanced Advanced Search Engine Module with Partial Matching Support
+Provides sophisticated search capabilities with partial word matching, prefix matching, and fuzzy matching
 
-FEATURES:
-- Full-text search with TF-IDF scoring
-- Real-time search suggestions
-- File content extraction and indexing
-- Fuzzy matching and typo tolerance
-- Multi-type search (posts, files, users)
-- Relevance scoring and ranking
-- Search filters and advanced operators
-- Incremental indexing for performance
+ENHANCED FEATURES:
+- Partial word matching (e.g., "pyth" finds "python")
+- Prefix matching (e.g., "java" finds "javascript")
+- Substring matching (e.g., "script" finds "javascript")
+- Enhanced search suggestions with partial matching
+- Improved relevance scoring with similarity multipliers
+- Better highlighting with partial match detection
+- All original features preserved and enhanced
 """
 
 import re
@@ -184,8 +183,8 @@ class TextExtractor:
         return text.strip()
 
 
-class SearchIndex:
-    """In-memory search index with TF-IDF scoring"""
+class EnhancedSearchIndex:
+    """Enhanced search index with partial matching, fuzzy search, and improved relevance scoring"""
     
     def __init__(self):
         self.documents: Dict[str, Dict] = {}  # doc_id -> document data
@@ -234,6 +233,104 @@ class SearchIndex:
                     cleaned_tokens.append(token)
         
         return cleaned_tokens
+    
+    def _find_matching_terms(self, query_token: str, match_type: str = "auto") -> List[Tuple[str, float]]:
+        """
+        Find terms that match the query token with different strategies
+        Returns list of (term, similarity_score) tuples
+        """
+        matches = []
+        query_len = len(query_token)
+        
+        # Auto-detect best matching strategy based on query length
+        if match_type == "auto":
+            if query_len <= 2:
+                match_type = "prefix"
+            elif query_len <= 4:
+                match_type = "prefix_and_substring"
+            else:
+                match_type = "all"
+        
+        for term in self.term_frequencies.keys():
+            similarity = 0.0
+            term_len = len(term)
+            
+            if match_type == "exact":
+                # Exact matching only
+                if term == query_token:
+                    similarity = 1.0
+            
+            elif match_type == "prefix":
+                # Prefix matching with length-based scoring
+                if term.startswith(query_token):
+                    if term == query_token:
+                        similarity = 1.0  # Exact match gets highest score
+                    else:
+                        # Score based on how much of the term the query covers
+                        similarity = 0.8 + 0.2 * (query_len / term_len)
+            
+            elif match_type == "prefix_and_substring":
+                # Prefix matching (higher score) + substring matching
+                if term.startswith(query_token):
+                    if term == query_token:
+                        similarity = 1.0
+                    else:
+                        similarity = 0.8 + 0.15 * (query_len / term_len)
+                elif query_token in term:
+                    # Substring match gets lower score
+                    similarity = 0.6 + 0.1 * (query_len / term_len)
+            
+            elif match_type == "all":
+                # Exact + prefix + substring + fuzzy
+                if term == query_token:
+                    similarity = 1.0
+                elif term.startswith(query_token):
+                    similarity = 0.8 + 0.15 * (query_len / term_len)
+                elif query_token in term:
+                    similarity = 0.6 + 0.1 * (query_len / term_len)
+                elif query_len >= 3 and self._fuzzy_match(query_token, term):
+                    # Simple fuzzy matching for typos
+                    similarity = 0.3 + 0.2 * self._calculate_similarity(query_token, term)
+            
+            if similarity > 0:
+                matches.append((term, similarity))
+        
+        # Sort by similarity score (descending) and limit results
+        matches.sort(key=lambda x: x[1], reverse=True)
+        return matches[:50]  # Limit to prevent performance issues
+    
+    def _fuzzy_match(self, query: str, term: str, max_edits: int = 2) -> bool:
+        """Simple fuzzy matching using edit distance"""
+        if abs(len(query) - len(term)) > max_edits * 2:
+            return False
+        
+        return self._edit_distance(query, term) <= max_edits
+    
+    def _edit_distance(self, s1: str, s2: str) -> int:
+        """Calculate edit distance (Levenshtein distance)"""
+        if len(s1) > len(s2):
+            s1, s2 = s2, s1
+        
+        distances = range(len(s1) + 1)
+        for i2, c2 in enumerate(s2):
+            distances_ = [i2 + 1]
+            for i1, c1 in enumerate(s1):
+                if c1 == c2:
+                    distances_.append(distances[i1])
+                else:
+                    distances_.append(1 + min((distances[i1], distances[i1 + 1], distances_[-1])))
+            distances = distances_
+        
+        return distances[-1]
+    
+    def _calculate_similarity(self, s1: str, s2: str) -> float:
+        """Calculate similarity ratio between two strings"""
+        max_len = max(len(s1), len(s2))
+        if max_len == 0:
+            return 1.0
+        
+        edit_dist = self._edit_distance(s1, s2)
+        return 1.0 - (edit_dist / max_len)
     
     def add_document(self, doc_id: str, doc_type: str, title: str, 
                     content: str, author: str, metadata: Dict = None):
@@ -320,7 +417,7 @@ class SearchIndex:
     
     def search(self, query: str, limit: int = 50, doc_types: List[str] = None,
               min_score: float = 0.01) -> List[SearchResult]:
-        """Search the index and return ranked results"""
+        """Enhanced search with partial matching support"""
         if not query.strip():
             return []
         
@@ -332,40 +429,55 @@ class SearchIndex:
         if not query_tokens:
             return []
         
-        # Calculate scores for all documents
+        # Calculate scores for all documents with enhanced partial matching
         scores = defaultdict(float)
         
-        for token in query_tokens:
-            if token not in self.term_frequencies:
-                continue
+        for query_token in query_tokens:
+            # Find matching terms (exact, prefix, substring, fuzzy)
+            matching_terms = self._find_matching_terms(query_token)
             
-            # Calculate IDF for this term
-            df = self.document_frequencies[token]
-            if df == 0:
-                continue
-            
-            idf = math.log(self.total_documents / df)
-            
-            # Score documents containing this term
-            for doc_id, tf in self.term_frequencies[token].items():
-                # Apply type filter
-                if doc_types and self.documents[doc_id]['type'] not in doc_types:
+            for term, similarity_score in matching_terms:
+                if term not in self.term_frequencies:
                     continue
                 
-                # TF-IDF score with smoothing
-                tf_score = 1 + math.log(tf) if tf > 0 else 0
-                scores[doc_id] += tf_score * idf
+                # Calculate IDF for this term
+                df = self.document_frequencies[term]
+                if df == 0:
+                    continue
+                
+                idf = math.log(self.total_documents / df)
+                
+                # Score documents containing this term
+                for doc_id, tf in self.term_frequencies[term].items():
+                    # Apply type filter
+                    if doc_types and self.documents[doc_id]['type'] not in doc_types:
+                        continue
+                    
+                    # TF-IDF score with similarity multiplier
+                    tf_score = 1 + math.log(tf) if tf > 0 else 0
+                    term_score = tf_score * idf * similarity_score
+                    scores[doc_id] += term_score
         
-        # Boost scores for title matches
+        # Enhanced title boost with partial matching
         for doc_id, score in list(scores.items()):
             doc = self.documents[doc_id]
             title_tokens = self._tokenize(doc['title'])
             
-            # Check for query tokens in title
-            title_matches = sum(1 for token in query_tokens if token in title_tokens)
-            if title_matches > 0:
-                # Boost score by 50% for each title match
-                scores[doc_id] += score * 0.5 * title_matches
+            # Check for partial matches in title
+            title_boost = 0
+            for query_token in query_tokens:
+                for title_token in title_tokens:
+                    if title_token == query_token:
+                        title_boost += 1.0  # Exact title match
+                    elif title_token.startswith(query_token):
+                        title_boost += 0.8  # Prefix title match
+                    elif query_token in title_token:
+                        title_boost += 0.6  # Substring title match
+                    elif len(query_token) >= 3 and self._fuzzy_match(query_token, title_token):
+                        title_boost += 0.4  # Fuzzy title match
+            
+            if title_boost > 0:
+                scores[doc_id] += score * 0.5 * title_boost
         
         # Convert to SearchResult objects
         results = []
@@ -375,7 +487,7 @@ class SearchIndex:
             
             doc = self.documents[doc_id]
             
-            # Generate highlights
+            # Generate highlights with enhanced partial matching
             highlights = self._generate_highlights(doc, query_tokens)
             
             result = SearchResult(
@@ -424,27 +536,26 @@ class SearchIndex:
         return results[:limit]
     
     def _generate_highlights(self, doc: Dict, query_tokens: List[str]) -> List[str]:
-        """Generate highlighted snippets for search results"""
+        """Generate highlighted snippets with enhanced partial matching"""
         content = doc['content']
         title = doc['title']
         
         highlights = []
         
-        # Search in title
+        # Search in title with partial matching
         title_lower = title.lower()
         for token in query_tokens:
-            if token in title_lower:
-                highlighted_title = self._highlight_text(title, token, 100)
+            if self._find_partial_match_in_text(title_lower, token):
+                highlighted_title = self._highlight_text_partial(title, token, 100)
                 if highlighted_title and highlighted_title not in highlights:
                     highlights.append(highlighted_title)
         
-        # Search in content
+        # Search in content with partial matching
         if content:
             content_lower = content.lower()
             for token in query_tokens:
-                if token in content_lower:
-                    # Find context around the match
-                    snippet = self._extract_snippet(content, token, 150)
+                if self._find_partial_match_in_text(content_lower, token):
+                    snippet = self._extract_snippet_partial(content, token, 150)
                     if snippet and snippet not in highlights:
                         highlights.append(snippet)
                         
@@ -454,45 +565,118 @@ class SearchIndex:
         
         return highlights[:3]  # Limit to 3 highlights
     
-    def _highlight_text(self, text: str, term: str, max_length: int = 150) -> str:
-        """Highlight search term in text"""
+    def _find_partial_match_in_text(self, text: str, token: str) -> bool:
+        """Check if token has partial matches in text"""
+        # Exact match
+        if token in text:
+            return True
+        
+        # Word boundary matches for partial tokens
+        words = re.findall(r'\w+', text)
+        for word in words:
+            if word.startswith(token) or token in word:
+                return True
+            # Add fuzzy matching for longer tokens
+            if len(token) >= 3 and self._fuzzy_match(token, word):
+                return True
+        
+        return False
+    
+    def _highlight_text_partial(self, text: str, term: str, max_length: int = 150) -> str:
+        """Highlight search term with enhanced partial matching"""
         if not text or not term:
             return ""
         
-        # Simple case-insensitive highlighting
-        pattern = re.compile(re.escape(term), re.IGNORECASE)
-        highlighted = pattern.sub(f"**{term}**", text)
+        # Find the best match in the text
+        text_lower = text.lower()
+        term_lower = term.lower()
+        
+        # Try exact match first
+        if term_lower in text_lower:
+            pattern = re.compile(re.escape(term_lower), re.IGNORECASE)
+            highlighted = pattern.sub(f"**{term}**", text)
+        else:
+            # Try partial word matching
+            words = re.findall(r'\w+', text)
+            highlighted = text
+            best_match = None
+            best_score = 0
+            
+            for word in words:
+                word_lower = word.lower()
+                score = 0
+                
+                if word_lower.startswith(term_lower):
+                    score = 0.8 + 0.2 * (len(term_lower) / len(word_lower))
+                elif term_lower in word_lower:
+                    score = 0.6 + 0.1 * (len(term_lower) / len(word_lower))
+                elif len(term_lower) >= 3 and self._fuzzy_match(term_lower, word_lower):
+                    score = 0.4 * self._calculate_similarity(term_lower, word_lower)
+                
+                if score > best_score:
+                    best_score = score
+                    best_match = word
+            
+            if best_match:
+                # Highlight the best matching word
+                pattern = re.compile(r'\b' + re.escape(best_match) + r'\b', re.IGNORECASE)
+                highlighted = pattern.sub(f"**{best_match}**", highlighted)
         
         if len(highlighted) > max_length:
             highlighted = highlighted[:max_length] + "..."
         
         return highlighted
     
-    def _extract_snippet(self, text: str, term: str, context_length: int = 150) -> str:
-        """Extract a snippet of text around the search term"""
+    def _extract_snippet_partial(self, text: str, term: str, context_length: int = 150) -> str:
+        """Extract a snippet of text around the search term with partial matching"""
         if not text or not term:
             return ""
         
         text_lower = text.lower()
         term_lower = term.lower()
         
-        pos = text_lower.find(term_lower)
+        # Find best match position
+        pos = -1
+        match_word = term
+        
+        # Try exact match first
+        if term_lower in text_lower:
+            pos = text_lower.find(term_lower)
+        else:
+            # Try word-based partial matching
+            words = re.finditer(r'\w+', text)
+            best_score = 0
+            
+            for match in words:
+                word = match.group().lower()
+                score = 0
+                
+                if word.startswith(term_lower):
+                    score = 0.8
+                elif term_lower in word:
+                    score = 0.6
+                elif len(term_lower) >= 3 and self._fuzzy_match(term_lower, word):
+                    score = 0.4
+                
+                if score > best_score:
+                    best_score = score
+                    pos = match.start()
+                    match_word = match.group()
+        
         if pos == -1:
             return ""
         
-        # Find start and end positions
+        # Find start and end positions for context
         start = max(0, pos - context_length // 2)
-        end = min(len(text), pos + len(term) + context_length // 2)
+        end = min(len(text), pos + len(match_word) + context_length // 2)
         
         # Try to break on word boundaries
         if start > 0:
-            # Find the next space after start
             space_pos = text.find(' ', start)
             if space_pos != -1 and space_pos - start < 20:
                 start = space_pos + 1
         
         if end < len(text):
-            # Find the previous space before end
             space_pos = text.rfind(' ', 0, end)
             if space_pos != -1 and end - space_pos < 20:
                 end = space_pos
@@ -505,56 +689,51 @@ class SearchIndex:
         if end < len(text):
             snippet = snippet + "..."
         
-        # Highlight the term
-        snippet = self._highlight_text(snippet, term, len(snippet) + 20)
+        # Highlight the match
+        snippet = self._highlight_text_partial(snippet, term, len(snippet) + 20)
         
         return snippet
     
     def get_suggestions(self, query: str, limit: int = 10) -> List[str]:
-        """Get search suggestions based on partial query"""
+        """Get enhanced search suggestions with partial matching"""
         if not query.strip() or len(query.strip()) < 2:
             return []
         
         query = query.lower().strip()
-        suggestions = set()
         
-        # Look for terms that start with the query
-        for term in self.term_frequencies.keys():
-            if term.startswith(query) and len(term) > len(query):
-                suggestions.add(term)
-                if len(suggestions) >= limit * 2:  # Get extra to filter later
-                    break
+        # Get matching terms with scores
+        matching_terms = self._find_matching_terms(query, "prefix_and_substring")
         
-        # Look for terms that contain the query
-        if len(suggestions) < limit:
-            for term in self.term_frequencies.keys():
-                if query in term and term not in suggestions and len(term) > 2:
-                    suggestions.add(term)
-                    if len(suggestions) >= limit * 2:
-                        break
+        # Sort by frequency and similarity
+        scored_suggestions = []
+        for term, similarity in matching_terms:
+            frequency = self.document_frequencies.get(term, 0)
+            # Combined score: similarity * log(frequency + 1)
+            score = similarity * math.log(frequency + 1)
+            scored_suggestions.append((term, score))
         
-        # Sort suggestions by frequency (popularity)
-        suggestion_list = list(suggestions)
-        suggestion_list.sort(key=lambda term: self.document_frequencies.get(term, 0), reverse=True)
+        # Sort by score and take top suggestions
+        scored_suggestions.sort(key=lambda x: x[1], reverse=True)
+        suggestions = [term for term, score in scored_suggestions[:limit]]
         
-        return suggestion_list[:limit]
+        return suggestions
 
 
 class AdvancedSearchEngine:
-    """Main search engine class"""
+    """Main search engine class with enhanced partial matching capabilities"""
     
     def __init__(self, db, files_directory: str):
         self.db = db
-        self.index = SearchIndex()
+        self.index = EnhancedSearchIndex()  # Use enhanced index
         self.text_extractor = TextExtractor(files_directory)
         self.indexing_in_progress = False
         self.last_full_index = 0
         
     async def initialize(self):
         """Initialize the search engine and build initial index"""
-        logger.info("Initializing search engine...")
+        logger.info("Initializing enhanced search engine with partial matching support...")
         await self.rebuild_index()
-        logger.info("Search engine initialized successfully")
+        logger.info("Enhanced search engine initialized successfully!")
     
     async def rebuild_index(self):
         """Rebuild the entire search index"""
@@ -566,10 +745,10 @@ class AdvancedSearchEngine:
         start_time = time.time()
         
         try:
-            logger.info("Rebuilding search index...")
+            logger.info("Rebuilding search index with enhanced partial matching...")
             
             # Clear existing index
-            self.index = SearchIndex()
+            self.index = EnhancedSearchIndex()
             
             # Index posts
             await self._index_posts()
@@ -583,8 +762,8 @@ class AdvancedSearchEngine:
             self.last_full_index = time.time()
             duration = time.time() - start_time
             
-            logger.info(f"Search index rebuilt in {duration:.2f}s. "
-                       f"Indexed {self.index.total_documents} documents.")
+            logger.info(f"Enhanced search index rebuilt in {duration:.2f}s. "
+                       f"Indexed {self.index.total_documents} documents with partial matching support.")
             
         except Exception as e:
             logger.error(f"Error rebuilding search index: {e}")
@@ -629,7 +808,7 @@ class AdvancedSearchEngine:
                 except Exception as e:
                     logger.warning(f"Failed to index post {post.get('_key', 'unknown')}: {e}")
             
-            logger.info(f"Indexed {indexed_count} posts")
+            logger.info(f"Indexed {indexed_count} posts with enhanced search capabilities")
             
         except Exception as e:
             logger.error(f"Error indexing posts: {e}")
@@ -694,7 +873,8 @@ class AdvancedSearchEngine:
                 except Exception as e:
                     logger.warning(f"Failed to index file {file_record.get('_key', 'unknown')}: {e}")
             
-            logger.info(f"Indexed {indexed_count} files, extracted content from {content_extracted_count} text files")
+            logger.info(f"Indexed {indexed_count} files with enhanced search, "
+                       f"extracted content from {content_extracted_count} text files")
             
         except Exception as e:
             logger.error(f"Error indexing files: {e}")
@@ -735,14 +915,14 @@ class AdvancedSearchEngine:
                 except Exception as e:
                     logger.warning(f"Failed to index user {user.get('_key', 'unknown')}: {e}")
             
-            logger.info(f"Indexed {indexed_count} users")
+            logger.info(f"Indexed {indexed_count} users with enhanced search")
             
         except Exception as e:
             logger.error(f"Error indexing users: {e}")
     
     async def search(self, query: str, filters: Dict[str, Any] = None, 
                     limit: int = 50) -> List[SearchResult]:
-        """Perform a search query"""
+        """Perform an enhanced search query with partial matching"""
         if not query.strip():
             return []
         
@@ -752,7 +932,7 @@ class AdvancedSearchEngine:
             if 'types' in filters:
                 doc_types = filters['types'] if isinstance(filters['types'], list) else [filters['types']]
         
-        # Perform search
+        # Perform enhanced search
         results = self.index.search(
             query=query,
             limit=limit,
@@ -790,36 +970,36 @@ class AdvancedSearchEngine:
         return filtered_results
     
     async def get_suggestions(self, query: str, limit: int = 10) -> List[str]:
-        """Get search suggestions"""
+        """Get enhanced search suggestions with partial matching"""
         return self.index.get_suggestions(query, limit)
     
     async def add_document(self, doc_id: str, doc_type: str, title: str,
                           content: str, author: str, metadata: Dict = None):
-        """Add a single document to the index"""
+        """Add a single document to the enhanced index"""
         try:
             self.index.add_document(doc_id, doc_type, title, content, author, metadata)
         except Exception as e:
-            logger.error(f"Failed to add document {doc_id} to search index: {e}")
+            logger.error(f"Failed to add document {doc_id} to enhanced search index: {e}")
     
     async def remove_document(self, doc_id: str):
-        """Remove a document from the index"""
+        """Remove a document from the enhanced index"""
         try:
             self.index.remove_document(doc_id)
         except Exception as e:
-            logger.error(f"Failed to remove document {doc_id} from search index: {e}")
+            logger.error(f"Failed to remove document {doc_id} from enhanced search index: {e}")
     
     async def update_document(self, doc_id: str, doc_type: str, title: str,
                              content: str, author: str, metadata: Dict = None):
-        """Update a document in the index"""
+        """Update a document in the enhanced index"""
         try:
             # Remove and re-add (simpler than partial updates)
             self.index.remove_document(doc_id)
             self.index.add_document(doc_id, doc_type, title, content, author, metadata)
         except Exception as e:
-            logger.error(f"Failed to update document {doc_id} in search index: {e}")
+            logger.error(f"Failed to update document {doc_id} in enhanced search index: {e}")
     
     def get_stats(self) -> Dict[str, Any]:
-        """Get search engine statistics"""
+        """Get enhanced search engine statistics"""
         return {
             'total_documents': self.index.total_documents,
             'total_terms': len(self.index.term_frequencies),
@@ -827,7 +1007,16 @@ class AdvancedSearchEngine:
             'last_full_index': self.last_full_index,
             'indexing_in_progress': self.indexing_in_progress,
             'types_breakdown': self._get_type_breakdown(),
-            'supported_file_types': list(self.text_extractor.TEXT_EXTENSIONS)
+            'supported_file_types': list(self.text_extractor.TEXT_EXTENSIONS),
+            'enhanced_features': [
+                'Partial word matching',
+                'Prefix matching',
+                'Substring matching',
+                'Fuzzy matching for typos',
+                'Enhanced relevance scoring',
+                'Improved search suggestions',
+                'Better highlighting'
+            ]
         }
     
     def _get_type_breakdown(self) -> Dict[str, int]:
@@ -840,5 +1029,5 @@ class AdvancedSearchEngine:
 
 # Factory function
 def create_search_engine(db, files_directory: str) -> AdvancedSearchEngine:
-    """Create and return a search engine instance"""
+    """Create and return an enhanced search engine instance with partial matching"""
     return AdvancedSearchEngine(db, files_directory)
