@@ -13,7 +13,7 @@
     ],
     "is_published": true,
     "views": 0,
-    "likes": 1,
+    "likes": 0,
     "attached_files": [
       "78b00ccf-83e0-426f-b21e-56d537e31fa5"
     ]
@@ -24,9 +24,10 @@
     "author_id": "29eae8e6-24e9-4285-a027-282f72cd4939",
     "author_username": "boqsc",
     "created_at": 1749564829.5134325,
-    "updated_at": 1749564829.5134327,
+    "updated_at": 1749580432.2030232,
     "tags": [
-      "arar"
+      "arar",
+      "dfg"
     ],
     "is_published": true,
     "views": 0,

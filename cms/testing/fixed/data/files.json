@@ -91,5 +91,21 @@
     "share_token": null,
     "description": "",
     "tags": []
+  },
+  "23303323-7fef-416b-81c7-dd7c0868da79": {
+    "original_filename": "enhanced_web_client_js.js",
+    "stored_filename": "23303323-7fef-416b-81c7-dd7c0868da79_enhanced_web_client_js.js",
+    "file_size": 17667,
+    "mime_type": "text/javascript",
+    "file_hash": "4834a425a6863485ff8dfafb77e1b5e40741c48141784904a4ec21c54f44d178",
+    "owner_id": "29eae8e6-24e9-4285-a027-282f72cd4939",
+    "owner_username": "boqsc",
+    "uploaded_at": 1749580603.7768712,
+    "downloads": 1,
+    "views": 0,
+    "is_public": true,
+    "share_token": "eyJmaWxlX2lkIjogIjIzMzAzMzIzLTdmZWYtNDE2Yi04MWM3LWRkN2MwODY4ZGE3OSIsICJjcmVhdGVkX2F0IjogMTc0OTU4MDYzNC4zNzM2Nzk2fQ==.a97e6151b88dd7be7497bff12dcd3a7f2e998949fc2aa889ba6f0c9aa81ca581",
+    "description": "",
+    "tags": []
   }
 }
