@@ -1127,17 +1127,18 @@
                     <input type="text" id="search-input" class="search-input" placeholder="Search posts, files, users..." autocomplete="off">
                     <button id="search-clear" class="search-clear" onclick="clearSearch()">&times;</button>
                     
-                    <!-- Search Suggestions -->
-                    <div id="search-suggestions" class="search-suggestions">
-                        <!-- Suggestions will be populated here -->
-                    </div>
+                    <!-- Real-time suggestions dropdown - This is not required for now in the design. -->
+                    <!-- <div id="search-suggestions" class="search-suggestions">
+                        Suggestions will be populated here
+                    </div> -->
                 </div>
                 
                 <div id="authenticated-nav" class="nav-links hidden">
                     <div class="user-info">
                         Welcome, <span id="username-display"></span>!
                     </div>
-                    <a href="#" class="nav-link" data-view="search">🔍 Search</a>
+                    <!-- This is not required for now in the design. -->
+                    <!-- <a href="#" class="nav-link" data-view="search">🔍 Search</a> -->
                     <a href="#" class="nav-link" data-view="files">📁 Files</a>
                     <a href="#" class="nav-link" data-view="posts">📝 Posts</a>
                     <a href="#" class="nav-link" data-view="profile">👤 Profile</a>
@@ -1504,7 +1505,6 @@
         let searchResults = [];
         let currentSearchQuery = '';
         let searchTimeout = null;
-        let suggestionTimeout = null;
 
         // API Configuration
         const API_BASE = 'http://localhost:8080';
@@ -1703,6 +1703,12 @@
             }
 
             currentSearchQuery = query;
+            
+            // Auto-switch to search view when searching
+            if (currentView !== 'search') {
+                showView('search');
+            }
+            
             showSearchResults();
             showLoading('search-loading');
             hideElement('search-empty');
@@ -1742,6 +1748,8 @@
             }
         }
 
+        // Real-time suggestions - This is not required for now in the design.
+        /*
         async function getSearchSuggestions(query) {
             if (!query || query.length < 2) {
                 hideSuggestions();
@@ -1784,11 +1792,11 @@
             hideSuggestions();
             performSearch(suggestion);
         }
+        */
 
         function clearSearch() {
             document.getElementById('search-input').value = '';
             document.getElementById('search-clear').classList.remove('visible');
-            hideSuggestions();
             clearSearchResults();
         }
 
@@ -2034,7 +2042,7 @@
             }
             
             await loadUserLikes();
-            showView('search'); // Default to search view
+            showView('files'); // Default to files view
         }
 
         async function initializeApp() {
@@ -2074,11 +2082,6 @@
                 loadPosts();
             } else if (viewName === 'profile') {
                 loadProfile();
-            } else if (viewName === 'search') {
-                // Focus search input when showing search view
-                setTimeout(() => {
-                    document.getElementById('search-input').focus();
-                }, 100);
             }
         }
 
@@ -3221,56 +3224,33 @@
                     searchClear.classList.remove('visible');
                 }
 
-                // Clear existing timeouts
+                // Clear existing timeout
                 if (searchTimeout) clearTimeout(searchTimeout);
-                if (suggestionTimeout) clearTimeout(suggestionTimeout);
 
-                // Only search in search view
-                if (currentView === 'search') {
-                    // Debounce search
-                    searchTimeout = setTimeout(() => {
-                        performSearch(query);
-                    }, 300);
-                }
-
-                // Show suggestions with shorter delay
-                suggestionTimeout = setTimeout(() => {
-                    getSearchSuggestions(query);
-                }, 150);
+                // Real-time search as you type
+                searchTimeout = setTimeout(() => {
+                    performSearch(query);
+                }, 300); // Debounce search with 300ms delay
             });
 
             searchInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    hideSuggestions();
-                    
-                    const query = e.target.value.trim();
-                    if (query) {
-                        // Switch to search view if not already there
-                        if (currentView !== 'search') {
-                            showView('search');
-                        }
-                        performSearch(query);
-                    }
-                }
-                
                 if (e.key === 'Escape') {
-                    hideSuggestions();
+                    this.blur();
+                    if (currentView === 'search' && !this.value.trim()) {
+                        // If in search view with empty search, go back to files view
+                        showView('files');
+                    }
                 }
             });
 
             searchInput.addEventListener('focus', function() {
                 const query = this.value.trim();
-                if (query && query.length >= 2) {
-                    getSearchSuggestions(query);
+                if (query) {
+                    // If there's already a query, switch to search view
+                    if (currentView !== 'search') {
+                        showView('search');
+                    }
                 }
-            });
-
-            searchInput.addEventListener('blur', function() {
-                // Delay hiding suggestions to allow clicks
-                setTimeout(() => {
-                    hideSuggestions();
-                }, 200);
             });
 
             // Modal close on outside click
@@ -3292,7 +3272,6 @@
                         closeModal(modal.id);
                     });
                     closeMediaModal();
-                    hideSuggestions();
                 }
 
                 // Ctrl/Cmd + K to focus search
@@ -3300,19 +3279,18 @@
                     e.preventDefault();
                     if (currentUser) {
                         searchInput.focus();
-                        if (currentView !== 'search') {
-                            showView('search');
-                        }
                     }
                 }
             });
 
-            // Click outside to hide suggestions
+            // Click outside to hide suggestions - This is not required for now in the design.
+            /*
             document.addEventListener('click', function(e) {
                 if (!document.getElementById('search-container').contains(e.target)) {
                     hideSuggestions();
                 }
             });
+            */
         });
 
         // Health check on load
