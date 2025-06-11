@@ -30,10 +30,40 @@
       "dfg"
     ],
     "is_published": true,
-    "views": 4,
-    "likes": 0,
+    "views": 5,
+    "likes": 9,
     "attached_files": [
       "4f65265d-31d7-4d4b-8d43-db03eca13da7"
     ]
+  },
+  "acb00ab0-b8a2-4278-a5d1-2ea4b440f609": {
+    "title": "test",
+    "content": "azzxd",
+    "author_name": "meme",
+    "author_email": "",
+    "author_website": "",
+    "created_at": 1749642221.5775795,
+    "updated_at": 1749642221.5775797,
+    "tags": [],
+    "is_published": true,
+    "is_anonymous": true,
+    "views": 3,
+    "likes": 3,
+    "ip_address": "127.0.0.1"
+  },
+  "dfbc7b35-9729-4f28-bcc0-056c7dc32b08": {
+    "title": "woah",
+    "content": "testtest",
+    "author_name": "Anonymous",
+    "author_email": "",
+    "author_website": "",
+    "created_at": 1749644063.5866373,
+    "updated_at": 1749644063.5866377,
+    "tags": [],
+    "is_published": true,
+    "is_anonymous": true,
+    "views": 3,
+    "likes": 0,
+    "ip_address": "127.0.0.1"
   }
 }

@@ -1,0 +1,3314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Sharing API - Web Client with Advanced Search</title>
+    <style>
+        /* Modern CSS Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Navigation */
+        .navbar {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 1rem 0;
+            margin-bottom: 2rem;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 2rem;
+            gap: 1rem;
+        }
+
+        .nav-brand {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        /* Search Bar */
+        .search-container {
+            flex: 1;
+            max-width: 400px;
+            position: relative;
+            margin: 0 1rem;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 16px 12px 45px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.9);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
+            background: white;
+        }
+
+        .search-input::placeholder {
+            color: #666;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .search-clear {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            font-size: 1.1rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .search-clear.visible {
+            opacity: 1;
+        }
+
+        .search-clear:hover {
+            color: #333;
+        }
+
+        /* Search Suggestions */
+        .search-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .search-suggestions.visible {
+            display: block;
+        }
+
+        .suggestion-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .suggestion-item:hover {
+            background: #f8f9fa;
+        }
+
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .suggestion-icon {
+            opacity: 0.6;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-link.active {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* User info in navbar */
+        .user-info {
+            color: white;
+            font-size: 0.9rem;
+            margin-right: 1rem;
+            white-space: nowrap;
+        }
+
+        /* Cards */
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-subtitle {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        /* Search Results */
+        .search-results {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .search-result-item {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border-left: 4px solid transparent;
+        }
+
+        .search-result-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .search-result-item.post {
+            border-left-color: #667eea;
+        }
+
+        .search-result-item.file {
+            border-left-color: #28a745;
+        }
+
+        .search-result-item.user {
+            border-left-color: #ffc107;
+        }
+
+        .search-result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .search-result-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 0.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .search-result-type {
+            background: #f8f9fa;
+            color: #666;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+
+        .search-result-meta {
+            font-size: 0.875rem;
+            color: #666;
+            margin-bottom: 0.75rem;
+        }
+
+        .search-result-content {
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .search-result-highlights {
+            margin-bottom: 1rem;
+        }
+
+        .search-highlight {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            font-family: 'Courier New', monospace;
+        }
+
+        .search-result-score {
+            font-size: 0.75rem;
+            color: #999;
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 8px;
+        }
+
+        .search-result-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .search-filters {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .filter-select {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.875rem;
+        }
+
+        .search-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .search-query-display {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .search-count {
+            color: #666;
+            font-size: 0.875rem;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .form-checkbox {
+            width: auto;
+            margin-right: 0.5rem;
+        }
+
+        /* File Upload Styles */
+        .file-upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .file-upload-area:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .file-upload-area.dragover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .file-upload-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .file-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 1rem;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            background: white;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex: 1;
+        }
+
+        .file-icon {
+            font-size: 1.5rem;
+        }
+
+        .file-details {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+
+        .file-meta {
+            font-size: 0.875rem;
+            color: #666;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #333;
+            border: 2px solid #e1e5e9;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #e9ecef;
+            border-color: #c3c6ca;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 0.875rem;
+        }
+
+        .btn-liked {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-liked:hover:not(:disabled) {
+            background: #218838;
+        }
+
+        /* Posts Grid */
+        .posts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .post-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .post-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        .post-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+
+        .post-meta {
+            font-size: 0.875rem;
+            color: #666;
+            margin-bottom: 1rem;
+        }
+
+        .post-content {
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .post-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .tag {
+            background: #f0f2f5;
+            color: #333;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+        }
+
+        .post-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .post-attachments {
+            margin: 1rem 0;
+        }
+
+        .attachment-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            background: #f8f9fa;
+            border-radius: 6px;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        /* Files Grid */
+        .files-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .file-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .file-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .file-preview {
+            width: 100%;
+            height: 150px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            overflow: hidden;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .file-preview img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: cover;
+        }
+
+        /* Video Preview Styles */
+        .file-preview video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+
+        .video-thumbnail-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            border-radius: 4px;
+        }
+
+        .video-preview {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+
+        .video-preview::-webkit-media-controls {
+            display: none !important;
+        }
+
+        .video-preview::-webkit-media-controls-enclosure {
+            display: none !important;
+        }
+
+        .video-play-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+
+        .video-play-overlay:hover {
+            background: rgba(0, 0, 0, 0.9);
+            transform: translate(-50%, -50%) scale(1.1);
+        }
+
+        .video-loading-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 0.875rem;
+        }
+
+        .video-error-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 0.875rem;
+        }
+
+        .video-error-placeholder span {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.5;
+        }
+
+        .file-preview-icon {
+            font-size: 3rem;
+            opacity: 0.3;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-preview-icon:hover {
+            opacity: 0.7;
+            transform: scale(1.1);
+        }
+
+        .file-preview-icon.image-preview {
+            color: #667eea;
+            opacity: 0.6;
+        }
+
+        .file-preview-icon.video-preview {
+            color: #e74c3c;
+            opacity: 0.6;
+        }
+
+        /* Image Thumbnail Styles */
+        .image-thumbnail-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .image-thumbnail {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 4px;
+            transition: transform 0.3s ease;
+        }
+
+        .image-thumbnail:hover {
+            transform: scale(1.05);
+        }
+
+        .image-loading-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 0.875rem;
+        }
+
+        .loading-spinner-small {
+            width: 24px;
+            height: 24px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 0.5rem;
+        }
+
+        .image-error-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 0.875rem;
+        }
+
+        .image-error-placeholder span {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.5;
+        }
+
+        /* Media Modal - Enhanced for both images and videos */
+        .media-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .media-modal.active {
+            display: flex;
+        }
+
+        .media-modal img,
+        .media-modal video {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .media-modal video {
+            cursor: auto;
+        }
+
+        .media-modal-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 2rem;
+            cursor: pointer;
+            z-index: 2001;
+            background: rgba(0, 0, 0, 0.5);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .media-modal-close:hover {
+            background: rgba(0, 0, 0, 0.8);
+            transform: scale(1.1);
+        }
+
+        .media-modal-info {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            backdrop-filter: blur(5px);
+        }
+
+        /* Alerts */
+        .alert {
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border-left: 4px solid;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border-left-color: #28a745;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left-color: #dc3545;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left-color: #17a2b8;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border-left-color: #ffc107;
+        }
+
+        /* Loading */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal.active {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+        }
+
+        /* Share link display */
+        .share-link {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .share-input {
+            flex: 1;
+            min-width: 200px;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+
+        /* Profile stats */
+        .profile-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .profile-stat {
+            text-align: center;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .profile-stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .profile-stat-label {
+            color: #666;
+            font-size: 0.875rem;
+        }
+
+        /* Demo users help */
+        .demo-users {
+            background: #e7f3ff;
+            border: 1px solid #b3d4fc;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .demo-users h4 {
+            margin-bottom: 0.5rem;
+            color: #0066cc;
+        }
+
+        /* Hidden class */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .nav-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .search-container {
+                order: 2;
+                max-width: none;
+                margin: 0;
+            }
+
+            .nav-links {
+                order: 3;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .posts-grid, .files-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .card {
+                padding: 1.5rem;
+            }
+
+            .modal-content {
+                width: 95%;
+                padding: 1.5rem;
+            }
+
+            .card-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+
+            .file-actions, .post-actions {
+                justify-content: flex-start;
+            }
+
+            .share-link {
+                flex-direction: column;
+            }
+
+            .share-input {
+                min-width: auto;
+            }
+
+            .search-filters {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="nav-content">
+                <div class="nav-brand">🚀 File Sharing API</div>
+                
+                <!-- Search Bar -->
+                <div id="search-container" class="search-container hidden">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="search-input" class="search-input" placeholder="Search posts, files, users..." autocomplete="off">
+                    <button id="search-clear" class="search-clear" onclick="clearSearch()">&times;</button>
+                    
+                    <!-- Real-time suggestions dropdown - This is not required for now in the design. -->
+                    <!-- <div id="search-suggestions" class="search-suggestions">
+                        Suggestions will be populated here
+                    </div> -->
+                </div>
+                
+                <div id="authenticated-nav" class="nav-links hidden">
+                    <div class="user-info">
+                        Welcome, <span id="username-display"></span>!
+                    </div>
+                    <!-- This is not required for now in the design. -->
+                    <!-- <a href="#" class="nav-link" data-view="search">🔍 Search</a> -->
+                    <a href="#" class="nav-link" data-view="files">📁 Files</a>
+                    <a href="#" class="nav-link" data-view="posts">📝 Posts</a>
+                    <a href="#" class="nav-link" data-view="profile">👤 Profile</a>
+                    <a href="#" class="nav-link" onclick="logout()">🚪 Logout</a>
+                </div>
+                <div id="unauthenticated-nav" class="nav-links">
+                    <span style="color: white; font-size: 0.9rem;">Please sign in to continue</span>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Alert Container -->
+        <div id="alert-container"></div>
+
+        <!-- Auth View -->
+        <div id="auth-view" class="hidden">
+            <div class="card" style="max-width: 400px; margin: 2rem auto;">
+                <div class="card-header">
+                    <h2 class="card-title">Welcome</h2>
+                    <p class="card-subtitle">Sign in to your account or create a new one</p>
+                </div>
+
+                <!-- Login Form -->
+                <div id="login-form">
+                    <form onsubmit="login(event)">
+                        <div class="form-group">
+                            <label class="form-label" for="login-username">Username</label>
+                            <input type="text" id="login-username" class="form-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="login-password">Password</label>
+                            <input type="password" id="login-password" class="form-input" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;" id="login-btn">
+                            Sign In
+                        </button>
+                    </form>
+                    <p style="text-align: center; margin-top: 1rem; color: #666;">
+                        Don't have an account? 
+                        <a href="#" onclick="showRegister()" style="color: #667eea;">Sign up</a>
+                    </p>
+                </div>
+
+                <!-- Register Form -->
+                <div id="register-form" class="hidden">
+                    <form onsubmit="register(event)">
+                        <div class="form-group">
+                            <label class="form-label" for="register-username">Username</label>
+                            <input type="text" id="register-username" class="form-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="register-email">Email</label>
+                            <input type="email" id="register-email" class="form-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="register-password">Password</label>
+                            <input type="password" id="register-password" class="form-input" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;" id="register-btn">
+                            Create Account
+                        </button>
+                    </form>
+                    <p style="text-align: center; margin-top: 1rem; color: #666;">
+                        Already have an account? 
+                        <a href="#" onclick="showLogin()" style="color: #667eea;">Sign in</a>
+                    </p>
+                </div>
+
+                <!-- Demo users info -->
+                <div class="demo-users">
+                    <h4>Quick Start:</h4>
+                    <p>Register a new account or test with existing credentials. The API server should be running on <strong>localhost:8080</strong></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main App View -->
+        <div id="app-view" class="hidden">
+            <!-- Search View -->
+            <div id="search-view" class="hidden">
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <h2 class="card-title">Advanced Search</h2>
+                            <p class="card-subtitle">Search across posts, files, users, and file content with intelligent ranking</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Search Filters -->
+                    <div class="search-filters">
+                        <div class="filter-group">
+                            <label class="form-label">Type:</label>
+                            <select id="search-type-filter" class="filter-select" onchange="performSearch()">
+                                <option value="">All types</option>
+                                <option value="post">Posts</option>
+                                <option value="file">Files</option>
+                                <option value="user">Users</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label class="form-label">Author:</label>
+                            <input type="text" id="search-author-filter" class="filter-select" placeholder="Filter by author" onchange="performSearch()">
+                        </div>
+                        <div class="filter-group">
+                            <label class="form-label">Min Score:</label>
+                            <select id="search-score-filter" class="filter-select" onchange="performSearch()">
+                                <option value="0">Any relevance</option>
+                                <option value="0.1">High relevance</option>
+                                <option value="0.5">Very high relevance</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Search Stats -->
+                    <div id="search-stats" class="search-stats hidden">
+                        <div class="search-query-display">
+                            Searching for: "<span id="current-search-query"></span>"
+                        </div>
+                        <div class="search-count">
+                            <span id="search-result-count">0</span> results found
+                        </div>
+                    </div>
+                    
+                    <div id="search-loading" class="loading hidden">
+                        <div class="spinner"></div>
+                    </div>
+
+                    <div id="search-results-container" class="search-results">
+                        <!-- Search results will be loaded here -->
+                    </div>
+                    
+                    <div id="search-empty" class="hidden" style="text-align: center; padding: 3rem; color: #666;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+                        <h3>Start searching to discover content</h3>
+                        <p>Search across posts, files, users, and even inside text files!</p>
+                        <p style="font-size: 0.875rem; margin-top: 1rem; color: #999;">
+                            Supports: .py, .js, .md, .txt, .json, .yml and more text files
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Files View -->
+            <div id="files-view">
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <h2 class="card-title">File Manager</h2>
+                            <p class="card-subtitle">Upload, manage, and share your files (now with video preview!)</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="showUploadModal()">
+                            📤 Upload Files
+                        </button>
+                    </div>
+                    
+                    <div id="files-loading" class="loading hidden">
+                        <div class="spinner"></div>
+                    </div>
+
+                    <div id="files-container" class="files-grid">
+                        <!-- Files will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Posts View -->
+            <div id="posts-view" class="hidden">
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <h2 class="card-title">Posts</h2>
+                            <p class="card-subtitle">Share your thoughts and ideas</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="showCreatePost()">
+                            ✏️ Create Post
+                        </button>
+                    </div>
+                    
+                    <div id="posts-loading" class="loading hidden">
+                        <div class="spinner"></div>
+                    </div>
+
+                    <div id="posts-container" class="posts-grid">
+                        <!-- Posts will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile View -->
+            <div id="profile-view" class="hidden">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">User Profile</h2>
+                    </div>
+                    
+                    <div id="profile-loading" class="loading hidden">
+                        <div class="spinner"></div>
+                    </div>
+
+                    <div id="profile-content">
+                        <!-- Profile content will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Files Modal -->
+    <div id="upload-modal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('upload-modal')">&times;</button>
+            <h3>Upload Files</h3>
+            
+            <div class="file-upload-area" onclick="triggerFileInput()" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                <input type="file" id="file-input" multiple style="display: none;" onchange="handleFileSelect(event)">
+                <div class="file-upload-icon">📁</div>
+                <p>Click to select files or drag & drop here</p>
+                <p style="font-size: 0.875rem; color: #666; margin-top: 0.5rem;">Max file size: 100MB per file • Supports images, videos, documents, and more!</p>
+            </div>
+
+            <div id="upload-progress" class="hidden">
+                <div class="progress-bar">
+                    <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+                </div>
+                <p id="upload-status" style="text-align: center; margin-top: 0.5rem;">Uploading...</p>
+            </div>
+
+            <div id="selected-files" class="file-list hidden">
+                <!-- Selected files will appear here -->
+            </div>
+
+            <div id="upload-actions" style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('upload-modal')">
+                    Cancel
+                </button>
+                <button type="button" class="btn btn-primary" onclick="uploadFiles()" id="upload-btn" disabled>
+                    Upload Files
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Details Modal -->
+    <div id="file-modal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('file-modal')">&times;</button>
+            <h3 id="file-modal-title">File Details</h3>
+            
+            <form id="file-form" onsubmit="saveFileMetadata(event)">
+                <input type="hidden" id="file-id" value="">
+                
+                <div class="form-group">
+                    <label class="form-label" for="file-description">Description</label>
+                    <textarea id="file-description" class="form-input form-textarea" placeholder="Add a description for this file..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="file-tags">Tags (comma-separated)</label>
+                    <input type="text" id="file-tags" class="form-input" placeholder="document, important, work">
+                </div>
+                
+                <div class="form-group">
+                    <label style="display: flex; align-items: center;">
+                        <input type="checkbox" id="file-public" class="form-checkbox">
+                        Make this file public (others can discover it)
+                    </label>
+                </div>
+
+                <div id="file-share-section" class="hidden">
+                    <div class="form-group">
+                        <label class="form-label">Public Share Link</label>
+                        <div class="share-link">
+                            <input type="text" id="share-link-input" class="share-input" readonly>
+                            <button type="button" class="btn btn-small btn-secondary" onclick="copyShareLink()">Copy</button>
+                            <button type="button" class="btn btn-small btn-danger" onclick="revokeShare()">Revoke</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('file-modal')">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create/Edit Post Modal -->
+    <div id="post-modal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('post-modal')">&times;</button>
+            <h3 id="post-modal-title">Create Post</h3>
+            
+            <form id="post-form" onsubmit="savePost(event)">
+                <input type="hidden" id="post-id" value="">
+                
+                <div class="form-group">
+                    <label class="form-label" for="post-title">Title</label>
+                    <input type="text" id="post-title" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="post-content">Content</label>
+                    <textarea id="post-content" class="form-input form-textarea" required></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="post-tags">Tags (comma-separated)</label>
+                    <input type="text" id="post-tags" class="form-input" placeholder="tech, api, tutorial">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Attach Files (optional)</label>
+                    <div id="post-file-attachments">
+                        <!-- File attachment controls will appear here -->
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label style="display: flex; align-items: center;">
+                        <input type="checkbox" id="post-published" class="form-checkbox">
+                        Publish immediately
+                    </label>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('post-modal')">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        Save Post
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Enhanced Media Preview Modal (supports both images and videos) -->
+    <div id="media-modal" class="media-modal">
+        <span class="media-modal-close" onclick="closeMediaModal()">&times;</span>
+        <img id="image-preview" src="" alt="Image preview" style="display: none;">
+        <video id="video-preview" controls style="display: none;">
+            <source id="video-source" src="" type="">
+            Your browser does not support the video tag.
+        </video>
+        <div id="media-modal-info" class="media-modal-info" style="display: none;">
+            <span id="media-filename"></span>
+        </div>
+    </div>
+
+    <script>
+        // Application State
+        let currentUser = null;
+        let authToken = localStorage.getItem('authToken');
+        let currentView = 'files';
+        let posts = [];
+        let files = [];
+        let userLikes = new Set();
+        let selectedFiles = [];
+        let searchResults = [];
+        let currentSearchQuery = '';
+        let searchTimeout = null;
+
+        // API Configuration
+        const API_BASE = 'http://localhost:8080';
+
+        // Helper function to decode token and extract user info
+        function decodeToken(token) {
+            try {
+                if (!token) return null;
+                
+                const parts = token.split('.');
+                if (parts.length !== 2) return null;
+                
+                const payload = JSON.parse(atob(parts[0]));
+                
+                if (payload.exp && Date.now() / 1000 > payload.exp) {
+                    return null;
+                }
+                
+                return {
+                    id: payload.user_id,
+                    username: payload.username
+                };
+            } catch (e) {
+                console.error('Failed to decode token:', e);
+                return null;
+            }
+        }
+
+        // Utility Functions
+        function showAlert(message, type = 'info') {
+            const alertContainer = document.getElementById('alert-container');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            
+            alertContainer.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        function showLoading(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) element.classList.remove('hidden');
+        }
+
+        function hideLoading(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) element.classList.add('hidden');
+        }
+
+        function updateNavigation() {
+            const authenticatedNav = document.getElementById('authenticated-nav');
+            const unauthenticatedNav = document.getElementById('unauthenticated-nav');
+            const usernameDisplay = document.getElementById('username-display');
+            const searchContainer = document.getElementById('search-container');
+            
+            if (currentUser && authToken) {
+                authenticatedNav.classList.remove('hidden');
+                unauthenticatedNav.classList.add('hidden');
+                searchContainer.classList.remove('hidden');
+                usernameDisplay.textContent = currentUser.username;
+            } else {
+                authenticatedNav.classList.add('hidden');
+                unauthenticatedNav.classList.remove('hidden');
+                searchContainer.classList.add('hidden');
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function getFileIcon(mimeType) {
+            if (mimeType.startsWith('image/')) return '🖼️';
+            if (mimeType.startsWith('video/')) return '🎥';
+            if (mimeType.startsWith('audio/')) return '🎵';
+            if (mimeType.includes('pdf')) return '📄';
+            if (mimeType.includes('word') || mimeType.includes('document')) return '📝';
+            if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return '📊';
+            if (mimeType.includes('zip') || mimeType.includes('archive')) return '📦';
+            return '📁';
+        }
+
+        function getTypeIcon(type) {
+            switch (type) {
+                case 'post': return '📝';
+                case 'file': return '📁';
+                case 'user': return '👤';
+                default: return '📄';
+            }
+        }
+
+        function isImage(mimeType) {
+            return mimeType.startsWith('image/');
+        }
+
+        function isVideo(mimeType) {
+            return mimeType.startsWith('video/');
+        }
+
+        function isSupportedVideoFormat(mimeType) {
+            const supportedFormats = ['video/mp4', 'video/webm', 'video/ogg'];
+            return supportedFormats.includes(mimeType);
+        }
+
+        // Escape string for use in JavaScript strings
+        function escapeJsString(str) {
+            return str.replace(/\\/g, '\\\\')
+                     .replace(/'/g, "\\'")
+                     .replace(/"/g, '\\"')
+                     .replace(/\n/g, '\\n')
+                     .replace(/\r/g, '\\r')
+                     .replace(/\t/g, '\\t');
+        }
+
+        // Escape HTML content
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // API Functions
+        async function apiCall(endpoint, options = {}) {
+            const url = `${API_BASE}${endpoint}`;
+            const config = {
+                headers: {},
+                ...options
+            };
+
+            // Only add Content-Type for JSON requests
+            if (options.body && typeof options.body === 'string') {
+                config.headers['Content-Type'] = 'application/json';
+            }
+
+            if (authToken) {
+                config.headers.Authorization = `Bearer ${authToken}`;
+            }
+
+            try {
+                const response = await fetch(url, config);
+                
+                // Handle different response types
+                let data;
+                const contentType = response.headers.get('content-type');
+                
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    // For non-JSON responses (like file downloads)
+                    return response;
+                }
+
+                if (!response.ok) {
+                    throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                return data;
+            } catch (error) {
+                console.error('API Error:', error);
+                
+                // Handle network errors
+                if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                    throw new Error('Cannot connect to API server. Please ensure the server is running on ' + API_BASE);
+                }
+                
+                throw error;
+            }
+        }
+
+        // Create a URL for file download/preview
+        function createFileURL(fileId) {
+            return `${API_BASE}/api/files/${fileId}/download`;
+        }
+
+        // Create a URL for file preview (inline)
+        function createFilePreviewURL(fileId) {
+            return `${API_BASE}/api/files/${fileId}/download?preview=true`;
+        }
+
+        // Search Functions
+        async function performSearch(query = null) {
+            if (query === null) {
+                query = document.getElementById('search-input').value.trim();
+            }
+            
+            if (!query) {
+                clearSearchResults();
+                return;
+            }
+
+            currentSearchQuery = query;
+            
+            // Auto-switch to search view when searching
+            if (currentView !== 'search') {
+                showView('search');
+            }
+            
+            showSearchResults();
+            showLoading('search-loading');
+            hideElement('search-empty');
+
+            try {
+                // Get filter values
+                const typeFilter = document.getElementById('search-type-filter').value;
+                const authorFilter = document.getElementById('search-author-filter').value.trim();
+                const scoreFilter = parseFloat(document.getElementById('search-score-filter').value);
+
+                // Build query parameters
+                const params = new URLSearchParams({
+                    q: query,
+                    limit: '50',
+                    min_score: scoreFilter.toString()
+                });
+
+                if (typeFilter) {
+                    params.append('types', typeFilter);
+                }
+
+                if (authorFilter) {
+                    params.append('author', authorFilter);
+                }
+
+                const data = await apiCall(`/api/search?${params}`);
+                
+                searchResults = data.results || [];
+                renderSearchResults(data);
+
+            } catch (error) {
+                console.error('Search error:', error);
+                showAlert('Search failed: ' + error.message, 'error');
+                clearSearchResults();
+            } finally {
+                hideLoading('search-loading');
+            }
+        }
+
+        // Real-time suggestions - This is not required for now in the design.
+        /*
+        async function getSearchSuggestions(query) {
+            if (!query || query.length < 2) {
+                hideSuggestions();
+                return;
+            }
+
+            try {
+                const data = await apiCall(`/api/search/suggestions?q=${encodeURIComponent(query)}&limit=5`);
+                showSuggestions(data.suggestions || []);
+            } catch (error) {
+                console.error('Suggestions error:', error);
+                hideSuggestions();
+            }
+        }
+
+        function showSuggestions(suggestions) {
+            const suggestionsContainer = document.getElementById('search-suggestions');
+            
+            if (suggestions.length === 0) {
+                hideSuggestions();
+                return;
+            }
+
+            suggestionsContainer.innerHTML = suggestions.map(suggestion => `
+                <div class="suggestion-item" onclick="selectSuggestion('${escapeJsString(suggestion)}')">
+                    <span class="suggestion-icon">🔍</span>
+                    <span>${escapeHtml(suggestion)}</span>
+                </div>
+            `).join('');
+
+            suggestionsContainer.classList.add('visible');
+        }
+
+        function hideSuggestions() {
+            document.getElementById('search-suggestions').classList.remove('visible');
+        }
+
+        function selectSuggestion(suggestion) {
+            document.getElementById('search-input').value = suggestion;
+            hideSuggestions();
+            performSearch(suggestion);
+        }
+        */
+
+        function clearSearch() {
+            document.getElementById('search-input').value = '';
+            document.getElementById('search-clear').classList.remove('visible');
+            clearSearchResults();
+        }
+
+        function clearSearchResults() {
+            searchResults = [];
+            currentSearchQuery = '';
+            hideElement('search-stats');
+            showElement('search-empty');
+            document.getElementById('search-results-container').innerHTML = '';
+        }
+
+        function showSearchResults() {
+            hideElement('search-empty');
+            showElement('search-stats');
+        }
+
+        function renderSearchResults(data) {
+            const container = document.getElementById('search-results-container');
+            const statsContainer = document.getElementById('search-stats');
+            
+            // Update stats
+            document.getElementById('current-search-query').textContent = data.query || currentSearchQuery;
+            document.getElementById('search-result-count').textContent = data.total || 0;
+            
+            if (searchResults.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 3rem; color: #666;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+                        <h3>No results found</h3>
+                        <p>Try different keywords or check your filters</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = searchResults.map(result => createSearchResultElement(result)).join('');
+        }
+
+        function createSearchResultElement(result) {
+            const typeIcon = getTypeIcon(result.type);
+            const resultDate = new Date(result.created_at * 1000).toLocaleDateString();
+            
+            // Create highlights HTML
+            const highlightsHtml = result.highlights && result.highlights.length > 0 ? `
+                <div class="search-result-highlights">
+                    ${result.highlights.map(highlight => `
+                        <div class="search-highlight">${highlight}</div>
+                    `).join('')}
+                </div>
+            ` : '';
+
+            // Create metadata display
+            let metaText = `By ${escapeHtml(result.author)} • ${resultDate}`;
+            if (result.metadata) {
+                if (result.type === 'file' && result.metadata.file_size) {
+                    metaText += ` • ${formatFileSize(result.metadata.file_size)}`;
+                }
+                if (result.metadata.views) {
+                    metaText += ` • ${result.metadata.views} views`;
+                }
+                if (result.metadata.downloads) {
+                    metaText += ` • ${result.metadata.downloads} downloads`;
+                }
+                if (result.metadata.likes) {
+                    metaText += ` • ${result.metadata.likes} likes`;
+                }
+            }
+
+            // Create action buttons based on result type
+            let actionsHtml = '';
+            if (result.type === 'file') {
+                actionsHtml = `
+                    <div class="search-result-actions">
+                        <button class="btn btn-small btn-primary" onclick="downloadFile('${result.id}', '${escapeJsString(result.title)}')">
+                            📥 Download
+                        </button>
+                        ${result.metadata && (isImage(result.metadata.mime_type) || isVideo(result.metadata.mime_type)) ? `
+                            <button class="btn btn-small btn-secondary" onclick="${isImage(result.metadata.mime_type) ? 'previewImage' : 'previewVideo'}('${result.id}', '${escapeJsString(result.title)}'${isVideo(result.metadata.mime_type) ? `, '${result.metadata.mime_type}'` : ''})">
+                                👁️ Preview
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+            } else if (result.type === 'post') {
+                const isLiked = userLikes.has(result.id);
+                actionsHtml = `
+                    <div class="search-result-actions">
+                        <button class="${isLiked ? 'btn btn-small btn-liked' : 'btn btn-small btn-secondary'}" onclick="toggleLikePost('${result.id}')">
+                            ${isLiked ? '❤️ Liked' : '👍 Like'}
+                        </button>
+                    </div>
+                `;
+            }
+
+            // Show tags if available
+            const tagsHtml = result.metadata && result.metadata.tags && result.metadata.tags.length > 0 ? `
+                <div class="post-tags" style="margin: 0.75rem 0;">
+                    ${result.metadata.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
+                </div>
+            ` : '';
+
+            return `
+                <div class="search-result-item ${result.type}">
+                    <div class="search-result-header">
+                        <div>
+                            <div class="search-result-title">
+                                ${typeIcon} ${escapeHtml(result.title)}
+                            </div>
+                            <div class="search-result-meta">${metaText}</div>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; align-items: flex-start;">
+                            <span class="search-result-type">${result.type}</span>
+                            <span class="search-result-score">Score: ${result.score.toFixed(3)}</span>
+                        </div>
+                    </div>
+                    
+                    ${result.content ? `
+                        <div class="search-result-content">
+                            ${escapeHtml(result.content)}
+                        </div>
+                    ` : ''}
+                    
+                    ${highlightsHtml}
+                    ${tagsHtml}
+                    ${actionsHtml}
+                </div>
+            `;
+        }
+
+        function showElement(elementId) {
+            document.getElementById(elementId).classList.remove('hidden');
+        }
+
+        function hideElement(elementId) {
+            document.getElementById(elementId).classList.add('hidden');
+        }
+
+        // Authentication Functions
+        async function login(event) {
+            event.preventDefault();
+            
+            const loginBtn = document.getElementById('login-btn');
+            const originalText = loginBtn.textContent;
+            
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Signing in...';
+            
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+
+            try {
+                const data = await apiCall('/api/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ username, password })
+                });
+
+                authToken = data.token;
+                localStorage.setItem('authToken', authToken);
+                currentUser = { id: data.user_id, username: data.username };
+                
+                showAlert('Login successful!', 'success');
+                await showApp();
+            } catch (error) {
+                showAlert(error.message, 'error');
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = originalText;
+            }
+        }
+
+        async function register(event) {
+            event.preventDefault();
+            
+            const registerBtn = document.getElementById('register-btn');
+            const originalText = registerBtn.textContent;
+            
+            registerBtn.disabled = true;
+            registerBtn.textContent = 'Creating account...';
+            
+            const username = document.getElementById('register-username').value.trim();
+            const email = document.getElementById('register-email').value.trim();
+            const password = document.getElementById('register-password').value;
+
+            try {
+                const data = await apiCall('/api/auth/register', {
+                    method: 'POST',
+                    body: JSON.stringify({ username, email, password })
+                });
+
+                authToken = data.token;
+                localStorage.setItem('authToken', authToken);
+                currentUser = { id: data.user_id, username: data.username };
+                
+                showAlert('Registration successful!', 'success');
+                await showApp();
+            } catch (error) {
+                showAlert(error.message, 'error');
+            } finally {
+                registerBtn.disabled = false;
+                registerBtn.textContent = originalText;
+            }
+        }
+
+        function logout() {
+            authToken = null;
+            currentUser = null;
+            userLikes.clear();
+            files = [];
+            posts = [];
+            selectedFiles = [];
+            searchResults = [];
+            currentSearchQuery = '';
+            localStorage.removeItem('authToken');
+            showAuth();
+            showAlert('Logged out successfully', 'info');
+        }
+
+        function showLogin() {
+            document.getElementById('login-form').classList.remove('hidden');
+            document.getElementById('register-form').classList.add('hidden');
+        }
+
+        function showRegister() {
+            document.getElementById('login-form').classList.add('hidden');
+            document.getElementById('register-form').classList.remove('hidden');
+        }
+
+        // View Management
+        function showAuth() {
+            document.getElementById('auth-view').classList.remove('hidden');
+            document.getElementById('app-view').classList.add('hidden');
+            updateNavigation();
+        }
+
+        async function showApp() {
+            document.getElementById('auth-view').classList.add('hidden');
+            document.getElementById('app-view').classList.remove('hidden');
+            updateNavigation();
+            
+            if (!currentUser && authToken) {
+                await loadCurrentUser();
+                updateNavigation();
+            }
+            
+            await loadUserLikes();
+            showView('files'); // Default to files view
+        }
+
+        async function initializeApp() {
+            if (authToken) {
+                currentUser = decodeToken(authToken);
+                
+                if (currentUser) {
+                    await showApp();
+                } else {
+                    logout();
+                }
+            } else {
+                showAuth();
+            }
+        }
+
+        function showView(viewName) {
+            document.querySelectorAll('#app-view > div').forEach(view => {
+                view.classList.add('hidden');
+            });
+
+            document.getElementById(`${viewName}-view`).classList.remove('hidden');
+
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            const activeLink = document.querySelector(`[data-view="${viewName}"]`);
+            if (activeLink) {
+                activeLink.classList.add('active');
+            }
+
+            currentView = viewName;
+
+            if (viewName === 'files') {
+                loadFiles();
+            } else if (viewName === 'posts') {
+                loadPosts();
+            } else if (viewName === 'profile') {
+                loadProfile();
+            }
+        }
+
+        // File Management Functions
+        async function loadFiles() {
+            showLoading('files-loading');
+            
+            try {
+                const data = await apiCall('/api/files');
+                files = data.files;
+                renderFiles();
+            } catch (error) {
+                showAlert('Failed to load files: ' + error.message, 'error');
+            } finally {
+                hideLoading('files-loading');
+            }
+        }
+
+        // Global intersection observer for lazy loading
+        let mediaObserver = null;
+
+        function initializeMediaObserver() {
+            if (mediaObserver) return;
+            
+            mediaObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const fileCard = entry.target;
+                        const fileId = fileCard.dataset.fileId;
+                        const file = files.find(f => f._key === fileId);
+                        
+                        if (file && !fileCard.dataset.loaded) {
+                            fileCard.dataset.loaded = 'true';
+                            if (isImage(file.mime_type)) {
+                                loadImageThumbnail(fileCard, file);
+                            } else if (isVideo(file.mime_type)) {
+                                loadVideoThumbnail(fileCard, file);
+                            }
+                            mediaObserver.unobserve(fileCard);
+                        }
+                    }
+                });
+            }, {
+                rootMargin: '50px' // Start loading when element is 50px away from viewport
+            });
+        }
+
+        function renderFiles() {
+            const container = document.getElementById('files-container');
+            container.innerHTML = '';
+
+            if (files.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #666; grid-column: 1/-1;">No files uploaded yet. Upload your first file!</p>';
+                return;
+            }
+
+            // Initialize lazy loading observer
+            initializeMediaObserver();
+
+            files.forEach(file => {
+                const fileElement = createFileElement(file);
+                container.appendChild(fileElement);
+            });
+        }
+
+        function createFileElement(file) {
+            const div = document.createElement('div');
+            div.className = 'file-card';
+            
+            const isOwner = currentUser && file.owner_id === currentUser.id;
+            const uploadDate = new Date(file.uploaded_at * 1000).toLocaleDateString();
+            const fileIcon = getFileIcon(file.mime_type);
+            
+            // Create preview with automatic media loading for thumbnails
+            const isImageFile = isImage(file.mime_type);
+            const isVideoFile = isVideo(file.mime_type);
+            let previewContent;
+            
+            if (isImageFile) {
+                // For images, show actual thumbnail with loading placeholder
+                previewContent = `
+                    <div class="image-thumbnail-container">
+                        <div class="image-loading-placeholder">
+                            <div class="loading-spinner-small"></div>
+                            <span>Loading...</span>
+                        </div>
+                        <img class="image-thumbnail" 
+                             alt="${escapeHtml(file.original_filename)}"
+                             title="Click to view full size"
+                             style="display: none;">
+                        <div class="image-error-placeholder" style="display: none;">
+                            <span>${fileIcon}</span>
+                            <small>Preview failed</small>
+                        </div>
+                    </div>`;
+            } else if (isVideoFile && isSupportedVideoFormat(file.mime_type)) {
+                // For supported videos, show video thumbnail with play overlay
+                previewContent = `
+                    <div class="video-thumbnail-container">
+                        <div class="video-loading-placeholder">
+                            <div class="loading-spinner-small"></div>
+                            <span>Loading video...</span>
+                        </div>
+                        <video class="video-preview" 
+                               muted 
+                               preload="metadata"
+                               title="Click to play full video"
+                               style="display: none;">
+                            <source type="${file.mime_type}">
+                            Your browser does not support this video format.
+                        </video>
+                        <div class="video-play-overlay">
+                            ▶
+                        </div>
+                        <div class="video-error-placeholder" style="display: none;">
+                            <span>${fileIcon}</span>
+                            <small>Preview failed</small>
+                        </div>
+                    </div>`;
+            } else {
+                // For non-previewable files, show icon
+                previewContent = `<div class="file-preview-icon ${isVideoFile ? 'video-preview' : ''}">${fileIcon}</div>`;
+            }
+
+            div.innerHTML = `
+                <div class="file-preview" ${isImageFile || isVideoFile ? `data-file-id="${file._key}" data-filename="${escapeHtml(file.original_filename)}" data-mime-type="${file.mime_type}"` : ''}>
+                    ${previewContent}
+                </div>
+                <div class="file-name">${escapeHtml(file.original_filename)}</div>
+                <div class="file-meta">
+                    ${formatFileSize(file.file_size)} • ${uploadDate} • ${file.downloads || 0} downloads • ${file.views || 0} views
+                    ${file.owner_username ? `• by ${escapeHtml(file.owner_username)}` : ''}
+                </div>
+                ${file.description ? `<p style="font-size: 0.875rem; color: #666; margin: 0.5rem 0;">${escapeHtml(file.description)}</p>` : ''}
+                ${file.tags && file.tags.length > 0 ? `
+                    <div class="post-tags" style="margin: 0.5rem 0;">
+                        ${file.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
+                    </div>
+                ` : ''}
+                <div class="file-actions" style="margin-top: 1rem;">
+                    <button class="btn btn-small btn-primary" onclick="downloadFile('${file._key}', '${escapeJsString(file.original_filename)}')">
+                        📥 Download
+                    </button>
+                    ${isOwner ? `
+                        <button class="btn btn-small btn-secondary" onclick="editFile('${file._key}')">
+                            ✏️ Edit
+                        </button>
+                        <button class="btn btn-small btn-secondary" onclick="shareFile('${file._key}')">
+                            🔗 Share
+                        </button>
+                        <button class="btn btn-small btn-danger" onclick="deleteFile('${file._key}')">
+                            🗑️ Delete
+                        </button>
+                    ` : ''}
+                    ${file.is_public ? '<span class="tag" style="background: #28a745; color: white;">Public</span>' : ''}
+                </div>
+            `;
+            
+            // Load media thumbnail immediately and add click event listener
+            if (isImageFile || isVideoFile) {
+                setTimeout(() => {
+                    if (isImageFile) {
+                        loadImageThumbnail(div, file);
+                    } else if (isVideoFile) {
+                        loadVideoThumbnail(div, file);
+                    }
+                }, 100);
+                
+                // Add click event listener for full-size preview
+                const previewElement = div.querySelector('.file-preview');
+                previewElement.addEventListener('click', () => {
+                    if (isImageFile) {
+                        previewImage(file._key, file.original_filename);
+                    } else if (isVideoFile) {
+                        previewVideo(file._key, file.original_filename, file.mime_type);
+                    }
+                });
+            }
+            
+            return div;
+        }
+
+        // Enhanced media preview functions
+        async function previewImage(fileId, filename) {
+            try {
+                showAlert('Loading image preview...', 'info');
+                
+                const response = await fetch(createFileURL(fileId), {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    let errorMessage = 'Failed to load image';
+                    try {
+                        const errorData = JSON.parse(errorText);
+                        errorMessage = errorData.error || errorMessage;
+                    } catch (e) {
+                        // Error response is not JSON, use default message
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                const blob = await response.blob();
+                const imageUrl = URL.createObjectURL(blob);
+                
+                const mediaModal = document.getElementById('media-modal');
+                const imagePreview = document.getElementById('image-preview');
+                const videoPreview = document.getElementById('video-preview');
+                const mediaInfo = document.getElementById('media-modal-info');
+                const filenameSpan = document.getElementById('media-filename');
+                
+                // Hide video, show image
+                videoPreview.style.display = 'none';
+                imagePreview.style.display = 'block';
+                
+                imagePreview.src = imageUrl;
+                imagePreview.alt = filename;
+                filenameSpan.textContent = filename;
+                mediaInfo.style.display = 'block';
+                mediaModal.classList.add('active');
+                
+                showAlert('Image loaded successfully!', 'success');
+                
+                // Clean up URL when modal is closed
+                imagePreview.onload = () => {
+                    setTimeout(() => {
+                        if (!mediaModal.classList.contains('active')) {
+                            URL.revokeObjectURL(imageUrl);
+                        }
+                    }, 100);
+                };
+                
+            } catch (error) {
+                console.error('Image preview error:', error);
+                showAlert('Failed to preview image: ' + error.message, 'error');
+            }
+        }
+
+        async function previewVideo(fileId, filename, mimeType) {
+            try {
+                showAlert('Loading video preview...', 'info');
+                
+                const response = await fetch(createFileURL(fileId), {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    let errorMessage = 'Failed to load video';
+                    try {
+                        const errorData = JSON.parse(errorText);
+                        errorMessage = errorData.error || errorMessage;
+                    } catch (e) {
+                        // Error response is not JSON, use default message
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                const blob = await response.blob();
+                const videoUrl = URL.createObjectURL(blob);
+                
+                const mediaModal = document.getElementById('media-modal');
+                const imagePreview = document.getElementById('image-preview');
+                const videoPreview = document.getElementById('video-preview');
+                const videoSource = document.getElementById('video-source');
+                const mediaInfo = document.getElementById('media-modal-info');
+                const filenameSpan = document.getElementById('media-filename');
+                
+                // Hide image, show video
+                imagePreview.style.display = 'none';
+                videoPreview.style.display = 'block';
+                
+                videoSource.src = videoUrl;
+                videoSource.type = mimeType;
+                videoPreview.load(); // Reload the video element
+                
+                filenameSpan.textContent = filename;
+                mediaInfo.style.display = 'block';
+                mediaModal.classList.add('active');
+                
+                // Clean up URL when video ends or modal is closed
+                videoPreview.addEventListener('ended', () => {
+                    setTimeout(() => URL.revokeObjectURL(videoUrl), 1000);
+                });
+                
+                showAlert('Video loaded successfully!', 'success');
+                
+            } catch (error) {
+                console.error('Video preview error:', error);
+                showAlert('Failed to preview video: ' + error.message, 'error');
+            }
+        }
+
+        function closeMediaModal() {
+            const mediaModal = document.getElementById('media-modal');
+            const imagePreview = document.getElementById('image-preview');
+            const videoPreview = document.getElementById('video-preview');
+            const videoSource = document.getElementById('video-source');
+            
+            mediaModal.classList.remove('active');
+            
+            // Clean up the object URLs
+            if (imagePreview.src.startsWith('blob:')) {
+                URL.revokeObjectURL(imagePreview.src);
+                imagePreview.src = '';
+            }
+            
+            if (videoSource.src.startsWith('blob:')) {
+                URL.revokeObjectURL(videoSource.src);
+                videoSource.src = '';
+                videoPreview.load(); // Reset video element
+            }
+            
+            // Hide both elements
+            imagePreview.style.display = 'none';
+            videoPreview.style.display = 'none';
+            document.getElementById('media-modal-info').style.display = 'none';
+        }
+
+        // Asynchronous image thumbnail loading
+        async function loadImageThumbnail(fileCardElement, file) {
+            const container = fileCardElement.querySelector('.image-thumbnail-container');
+            const loadingPlaceholder = container.querySelector('.image-loading-placeholder');
+            const thumbnail = container.querySelector('.image-thumbnail');
+            const errorPlaceholder = container.querySelector('.image-error-placeholder');
+            
+            console.log(`🖼️ Loading thumbnail for: ${file.original_filename}`);
+            
+            try {
+                // Show loading state
+                loadingPlaceholder.style.display = 'flex';
+                thumbnail.style.display = 'none';
+                errorPlaceholder.style.display = 'none';
+                
+                // Fetch the image with preview parameter
+                const imageUrl = `${createFileURL(file._key)}?preview=true`;
+                console.log(`📡 Fetching: ${imageUrl}`);
+                
+                const response = await fetch(imageUrl, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                console.log(`📡 Response status: ${response.status} ${response.statusText}`);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`❌ HTTP ${response.status}: ${errorText}`);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                // Create blob URL and set it
+                const blob = await response.blob();
+                console.log(`📦 Blob created, size: ${blob.size} bytes, type: ${blob.type}`);
+                
+                const blobUrl = URL.createObjectURL(blob);
+                console.log(`🔗 Blob URL created: ${blobUrl}`);
+                
+                // Set up image load handlers before setting src
+                thumbnail.onload = () => {
+                    console.log(`✅ Image loaded successfully: ${file.original_filename}`);
+                    loadingPlaceholder.style.display = 'none';
+                    thumbnail.style.display = 'block';
+                    errorPlaceholder.style.display = 'none';
+                };
+                
+                thumbnail.onerror = (event) => {
+                    console.error(`❌ Image load error for ${file.original_filename}:`, event);
+                    loadingPlaceholder.style.display = 'none';
+                    thumbnail.style.display = 'none';
+                    errorPlaceholder.style.display = 'flex';
+                    URL.revokeObjectURL(blobUrl);
+                };
+                
+                // Set the image source to trigger loading
+                thumbnail.src = blobUrl;
+                
+                // Clean up blob URL after reasonable time
+                setTimeout(() => {
+                    if (thumbnail.complete && thumbnail.naturalWidth > 0) {
+                        console.log(`🧹 Keeping blob URL for successfully loaded image: ${file.original_filename}`);
+                        // Clean up after 5 minutes to prevent memory leaks
+                        setTimeout(() => {
+                            URL.revokeObjectURL(blobUrl);
+                            console.log(`🧹 Cleaned up blob URL for: ${file.original_filename}`);
+                        }, 5 * 60 * 1000);
+                    } else {
+                        console.log(`🧹 Cleaning up blob URL for failed image: ${file.original_filename}`);
+                        URL.revokeObjectURL(blobUrl);
+                    }
+                }, 2000);
+                
+            } catch (error) {
+                console.error(`❌ Failed to load thumbnail for ${file.original_filename}:`, error);
+                
+                // Show error state
+                loadingPlaceholder.style.display = 'none';
+                thumbnail.style.display = 'none';
+                errorPlaceholder.style.display = 'flex';
+                
+                // Show user-friendly error message
+                showAlert(`Failed to load thumbnail for ${file.original_filename}: ${error.message}`, 'warning');
+            }
+        }
+
+        // Asynchronous video thumbnail loading
+        async function loadVideoThumbnail(fileCardElement, file) {
+            const container = fileCardElement.querySelector('.video-thumbnail-container');
+            const loadingPlaceholder = container.querySelector('.video-loading-placeholder');
+            const videoElement = container.querySelector('.video-preview');
+            const errorPlaceholder = container.querySelector('.video-error-placeholder');
+            const playOverlay = container.querySelector('.video-play-overlay');
+            
+            console.log(`🎥 Loading video thumbnail for: ${file.original_filename}`);
+            
+            try {
+                // Show loading state
+                loadingPlaceholder.style.display = 'flex';
+                videoElement.style.display = 'none';
+                errorPlaceholder.style.display = 'none';
+                playOverlay.style.display = 'none';
+                
+                // Fetch the video with preview parameter
+                const videoUrl = `${createFileURL(file._key)}?preview=true`;
+                console.log(`📡 Fetching video: ${videoUrl}`);
+                
+                const response = await fetch(videoUrl, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                console.log(`📡 Video response status: ${response.status} ${response.statusText}`);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`❌ HTTP ${response.status}: ${errorText}`);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                // Create blob URL and set it
+                const blob = await response.blob();
+                console.log(`📦 Video blob created, size: ${blob.size} bytes, type: ${blob.type}`);
+                
+                const blobUrl = URL.createObjectURL(blob);
+                console.log(`🔗 Video blob URL created: ${blobUrl}`);
+                
+                // Set up video load handlers
+                videoElement.onloadedmetadata = () => {
+                    console.log(`✅ Video metadata loaded successfully: ${file.original_filename}`);
+                    loadingPlaceholder.style.display = 'none';
+                    videoElement.style.display = 'block';
+                    playOverlay.style.display = 'flex';
+                    errorPlaceholder.style.display = 'none';
+                    
+                    // Seek to a frame to show as thumbnail (1 second in)
+                    videoElement.currentTime = Math.min(1, videoElement.duration * 0.1);
+                };
+                
+                videoElement.onerror = (event) => {
+                    console.error(`❌ Video load error for ${file.original_filename}:`, event);
+                    loadingPlaceholder.style.display = 'none';
+                    videoElement.style.display = 'none';
+                    errorPlaceholder.style.display = 'flex';
+                    playOverlay.style.display = 'none';
+                    URL.revokeObjectURL(blobUrl);
+                };
+                
+                // Set the video source
+                const source = videoElement.querySelector('source');
+                source.src = blobUrl;
+                source.type = file.mime_type;
+                videoElement.load();
+                
+                // Clean up blob URL after reasonable time
+                setTimeout(() => {
+                    if (videoElement.readyState >= 1) { // HAVE_METADATA
+                        console.log(`🧹 Keeping video blob URL for successfully loaded video: ${file.original_filename}`);
+                        // Clean up after 10 minutes for videos (larger files)
+                        setTimeout(() => {
+                            URL.revokeObjectURL(blobUrl);
+                            console.log(`🧹 Cleaned up video blob URL for: ${file.original_filename}`);
+                        }, 10 * 60 * 1000);
+                    } else {
+                        console.log(`🧹 Cleaning up video blob URL for failed video: ${file.original_filename}`);
+                        URL.revokeObjectURL(blobUrl);
+                    }
+                }, 3000);
+                
+            } catch (error) {
+                console.error(`❌ Failed to load video thumbnail for ${file.original_filename}:`, error);
+                
+                // Show error state
+                loadingPlaceholder.style.display = 'none';
+                videoElement.style.display = 'none';
+                errorPlaceholder.style.display = 'flex';
+                playOverlay.style.display = 'none';
+                
+                // Show user-friendly error message
+                showAlert(`Failed to load video thumbnail for ${file.original_filename}: ${error.message}`, 'warning');
+            }
+        }
+
+        // File Upload Functions
+        function showUploadModal() {
+            selectedFiles = [];
+            document.getElementById('selected-files').classList.add('hidden');
+            document.getElementById('upload-progress').classList.add('hidden');
+            document.getElementById('upload-btn').disabled = true;
+            document.getElementById('upload-modal').classList.add('active');
+        }
+
+        function triggerFileInput() {
+            document.getElementById('file-input').click();
+        }
+
+        function handleFileSelect(event) {
+            const files = Array.from(event.target.files);
+            addSelectedFiles(files);
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.currentTarget.classList.add('dragover');
+        }
+
+        function handleDragLeave(event) {
+            event.currentTarget.classList.remove('dragover');
+        }
+
+        function handleDrop(event) {
+            event.preventDefault();
+            event.currentTarget.classList.remove('dragover');
+            
+            const files = Array.from(event.dataTransfer.files);
+            addSelectedFiles(files);
+        }
+
+        function addSelectedFiles(files) {
+            selectedFiles = [...selectedFiles, ...files];
+            renderSelectedFiles();
+            
+            document.getElementById('upload-btn').disabled = selectedFiles.length === 0;
+        }
+
+        function renderSelectedFiles() {
+            const container = document.getElementById('selected-files');
+            
+            container.classList.remove('hidden');
+            container.innerHTML = '';
+
+            selectedFiles.forEach((file, index) => {
+                const div = document.createElement('div');
+                div.className = 'file-item';
+                
+                div.innerHTML = `
+                    <div class="file-info">
+                        <span class="file-icon">${getFileIcon(file.type)}</span>
+                        <div class="file-details">
+                            <div class="file-name">${escapeHtml(file.name)}</div>
+                            <div class="file-meta">${formatFileSize(file.size)}</div>
+                        </div>
+                    </div>
+                    <button class="btn btn-small btn-danger" onclick="removeSelectedFile(${index})">
+                        Remove
+                    </button>
+                `;
+                
+                container.appendChild(div);
+            });
+        }
+
+        function removeSelectedFile(index) {
+            selectedFiles.splice(index, 1);
+            renderSelectedFiles();
+            
+            if (selectedFiles.length === 0) {
+                document.getElementById('selected-files').classList.add('hidden');
+                document.getElementById('upload-btn').disabled = true;
+            }
+        }
+
+        async function uploadFiles() {
+            if (selectedFiles.length === 0) return;
+
+            const formData = new FormData();
+            selectedFiles.forEach(file => {
+                formData.append('files', file);
+            });
+
+            try {
+                document.getElementById('upload-progress').classList.remove('hidden');
+                document.getElementById('upload-btn').disabled = true;
+
+                const xhr = new XMLHttpRequest();
+                
+                // Progress tracking
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const percentComplete = (e.loaded / e.total) * 100;
+                        document.getElementById('progress-fill').style.width = percentComplete + '%';
+                        document.getElementById('upload-status').textContent = `Uploading... ${Math.round(percentComplete)}%`;
+                    }
+                });
+
+                // Handle completion
+                xhr.addEventListener('load', () => {
+                    try {
+                        const data = JSON.parse(xhr.responseText);
+                        
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            showAlert(`${data.files.length} file(s) uploaded successfully!`, 'success');
+                            closeModal('upload-modal');
+                            loadFiles(); // Refresh file list
+                        } else {
+                            throw new Error(data.error || `HTTP ${xhr.status}`);
+                        }
+                    } catch (error) {
+                        showAlert('Upload failed: ' + error.message, 'error');
+                    } finally {
+                        document.getElementById('upload-progress').classList.add('hidden');
+                        document.getElementById('upload-btn').disabled = false;
+                    }
+                });
+
+                // Handle errors
+                xhr.addEventListener('error', () => {
+                    showAlert('Upload failed: Network error', 'error');
+                    document.getElementById('upload-progress').classList.add('hidden');
+                    document.getElementById('upload-btn').disabled = false;
+                });
+
+                xhr.open('POST', `${API_BASE}/api/files/upload`);
+                xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
+                xhr.send(formData);
+                
+            } catch (error) {
+                showAlert('Upload failed: ' + error.message, 'error');
+                document.getElementById('upload-progress').classList.add('hidden');
+                document.getElementById('upload-btn').disabled = false;
+            }
+        }
+
+        // File Actions
+        async function downloadFile(fileId, filename) {
+            try {
+                const response = await fetch(createFileURL(fileId), {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Download failed');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+
+                showAlert('File downloaded successfully!', 'success');
+            } catch (error) {
+                showAlert('Download failed: ' + error.message, 'error');
+            }
+        }
+
+        function editFile(fileId) {
+            const file = files.find(f => f._key === fileId);
+            if (!file) return;
+
+            document.getElementById('file-modal-title').textContent = 'Edit File';
+            document.getElementById('file-id').value = fileId;
+            document.getElementById('file-description').value = file.description || '';
+            document.getElementById('file-tags').value = file.tags ? file.tags.join(', ') : '';
+            document.getElementById('file-public').checked = file.is_public || false;
+            
+            // Show share section if file has a share token
+            const shareSection = document.getElementById('file-share-section');
+            if (file.share_token) {
+                shareSection.classList.remove('hidden');
+                document.getElementById('share-link-input').value = `${API_BASE}/api/files/share/${file.share_token}`;
+            } else {
+                shareSection.classList.add('hidden');
+            }
+            
+            document.getElementById('file-modal').classList.add('active');
+        }
+
+        async function saveFileMetadata(event) {
+            event.preventDefault();
+            
+            const fileId = document.getElementById('file-id').value;
+            const description = document.getElementById('file-description').value;
+            const tagsString = document.getElementById('file-tags').value;
+            const isPublic = document.getElementById('file-public').checked;
+            
+            const tags = tagsString ? tagsString.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
+            
+            const updateData = {
+                description,
+                tags,
+                is_public: isPublic
+            };
+
+            try {
+                await apiCall(`/api/files/${fileId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(updateData)
+                });
+                
+                showAlert('File updated successfully!', 'success');
+                closeModal('file-modal');
+                loadFiles();
+            } catch (error) {
+                showAlert('Failed to update file: ' + error.message, 'error');
+            }
+        }
+
+        async function shareFile(fileId) {
+            try {
+                const data = await apiCall(`/api/files/${fileId}/share`, {
+                    method: 'POST'
+                });
+                
+                // Update the share section
+                const shareSection = document.getElementById('file-share-section');
+                shareSection.classList.remove('hidden');
+                document.getElementById('share-link-input').value = `${API_BASE}${data.share_url}`;
+                
+                showAlert('Share link created! Anyone with this link can download the file.', 'success');
+                editFile(fileId); // Reopen the file modal to show the share link
+            } catch (error) {
+                showAlert('Failed to create share link: ' + error.message, 'error');
+            }
+        }
+
+        function copyShareLink() {
+            const input = document.getElementById('share-link-input');
+            input.select();
+            input.setSelectionRange(0, 99999); // For mobile devices
+            
+            try {
+                document.execCommand('copy');
+                showAlert('Share link copied to clipboard!', 'success');
+            } catch (err) {
+                console.error('Failed to copy: ', err);
+                showAlert('Failed to copy link. Please copy manually.', 'warning');
+            }
+        }
+
+        async function revokeShare() {
+            const fileId = document.getElementById('file-id').value;
+            
+            try {
+                await apiCall(`/api/files/${fileId}/share`, {
+                    method: 'DELETE'
+                });
+                
+                document.getElementById('file-share-section').classList.add('hidden');
+                showAlert('Share link revoked successfully!', 'success');
+            } catch (error) {
+                showAlert('Failed to revoke share link: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteFile(fileId) {
+            if (!confirm('Are you sure you want to delete this file? This action cannot be undone.')) return;
+
+            try {
+                await apiCall(`/api/files/${fileId}`, {
+                    method: 'DELETE'
+                });
+                showAlert('File deleted successfully!', 'success');
+                loadFiles();
+            } catch (error) {
+                showAlert('Failed to delete file: ' + error.message, 'error');
+            }
+        }
+
+        // Posts Functions
+        async function loadPosts() {
+            showLoading('posts-loading');
+            
+            try {
+                const data = await apiCall('/api/posts');
+                posts = data.posts;
+                renderPosts();
+            } catch (error) {
+                showAlert('Failed to load posts: ' + error.message, 'error');
+            } finally {
+                hideLoading('posts-loading');
+            }
+        }
+
+        async function loadUserLikes() {
+            if (!currentUser) return;
+            
+            try {
+                const data = await apiCall('/api/posts/liked');
+                userLikes = new Set(data.liked_posts || []);
+            } catch (error) {
+                console.warn('Failed to load user likes:', error);
+                userLikes = new Set();
+            }
+        }
+
+        function renderPosts() {
+            const container = document.getElementById('posts-container');
+            container.innerHTML = '';
+
+            if (posts.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #666; grid-column: 1/-1;">No posts found. Create your first post!</p>';
+                return;
+            }
+
+            posts.forEach(post => {
+                const postElement = createPostElement(post);
+                container.appendChild(postElement);
+            });
+        }
+
+        function createPostElement(post) {
+            const div = document.createElement('div');
+            div.className = 'post-card';
+            
+            const isOwner = currentUser && post.author_id === currentUser.id;
+            const isLiked = userLikes.has(post._key);
+            const createdAt = new Date(post.created_at * 1000).toLocaleDateString();
+            
+            const likeButtonClass = isLiked ? 'btn btn-small btn-liked' : 'btn btn-small btn-secondary';
+            const likeButtonText = isLiked ? '❤️ Liked' : '👍 Like';
+            
+            // Render attached files
+            const attachmentsHtml = post.attached_files && post.attached_files.length > 0 ? `
+                <div class="post-attachments">
+                    <strong>Attachments:</strong>
+                    ${post.attached_files.map(fileId => {
+                        const file = files.find(f => f._key === fileId);
+                        return file ? `
+                            <div class="attachment-item">
+                                ${getFileIcon(file.mime_type)} ${escapeHtml(file.original_filename)}
+                                <button class="btn btn-small btn-secondary" onclick="downloadFile('${file._key}', '${escapeJsString(file.original_filename)}')" style="margin-left: 0.5rem; padding: 2px 6px;">
+                                    📥
+                                </button>
+                            </div>
+                        ` : `<div class="attachment-item">📁 File not found</div>`;
+                    }).join('')}
+                </div>
+            ` : '';
+            
+            div.innerHTML = `
+                <div class="post-title">${escapeHtml(post.title)}</div>
+                <div class="post-meta">
+                    By ${escapeHtml(post.author_username)} • ${createdAt} • ${post.views || 0} views • ${post.likes || 0} likes
+                </div>
+                <div class="post-content">${escapeHtml(post.content).substring(0, 200)}${post.content.length > 200 ? '...' : ''}</div>
+                ${post.tags && post.tags.length > 0 ? `
+                    <div class="post-tags">
+                        ${post.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
+                    </div>
+                ` : ''}
+                ${attachmentsHtml}
+                <div class="post-actions">
+                    <button class="${likeButtonClass}" onclick="toggleLikePost('${post._key}')" ${isLiked ? 'title="Click to unlike"' : 'title="Click to like"'}>
+                        ${likeButtonText} (${post.likes || 0})
+                    </button>
+                    ${isOwner ? `
+                        <button class="btn btn-small btn-secondary" onclick="editPost('${post._key}')">
+                            ✏️ Edit
+                        </button>
+                        <button class="btn btn-small btn-danger" onclick="deletePost('${post._key}')">
+                            🗑️ Delete
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+            
+            return div;
+        }
+
+        function showCreatePost() {
+            document.getElementById('post-modal-title').textContent = 'Create Post';
+            document.getElementById('post-form').reset();
+            document.getElementById('post-id').value = '';
+            document.getElementById('post-published').checked = true;
+            renderPostFileAttachments([]);
+            document.getElementById('post-modal').classList.add('active');
+        }
+
+        function editPost(postId) {
+            const post = posts.find(p => p._key === postId);
+            if (!post) return;
+
+            document.getElementById('post-modal-title').textContent = 'Edit Post';
+            document.getElementById('post-id').value = postId;
+            document.getElementById('post-title').value = post.title;
+            document.getElementById('post-content').value = post.content;
+            document.getElementById('post-tags').value = post.tags ? post.tags.join(', ') : '';
+            document.getElementById('post-published').checked = post.is_published;
+            renderPostFileAttachments(post.attached_files || []);
+            document.getElementById('post-modal').classList.add('active');
+        }
+
+        function renderPostFileAttachments(attachedFileIds) {
+            const container = document.getElementById('post-file-attachments');
+            
+            const userFiles = files.filter(f => f.owner_id === currentUser.id);
+            
+            if (userFiles.length === 0) {
+                container.innerHTML = '<p style="font-size: 0.875rem; color: #666;">No files available to attach. Upload files first.</p>';
+                return;
+            }
+            
+            container.innerHTML = userFiles.map(file => `
+                <label style="display: flex; align-items: center; margin-bottom: 0.5rem; padding: 0.5rem; border: 1px solid #e1e5e9; border-radius: 4px;">
+                    <input type="checkbox" value="${file._key}" ${attachedFileIds.includes(file._key) ? 'checked' : ''} style="margin-right: 0.5rem;">
+                    ${getFileIcon(file.mime_type)} ${escapeHtml(file.original_filename)} (${formatFileSize(file.file_size)})
+                </label>
+            `).join('');
+        }
+
+        async function savePost(event) {
+            event.preventDefault();
+            
+            const postId = document.getElementById('post-id').value;
+            const title = document.getElementById('post-title').value;
+            const content = document.getElementById('post-content').value;
+            const tagsString = document.getElementById('post-tags').value;
+            const isPublished = document.getElementById('post-published').checked;
+            
+            // Get selected file attachments
+            const attachmentCheckboxes = document.querySelectorAll('#post-file-attachments input[type="checkbox"]:checked');
+            const attachedFiles = Array.from(attachmentCheckboxes).map(cb => cb.value);
+            
+            const tags = tagsString ? tagsString.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
+            
+            const postData = {
+                title,
+                content,
+                tags,
+                is_published: isPublished,
+                attached_files: attachedFiles
+            };
+
+            try {
+                if (postId) {
+                    await apiCall(`/api/posts/${postId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(postData)
+                    });
+                    showAlert('Post updated successfully!', 'success');
+                } else {
+                    await apiCall('/api/posts', {
+                        method: 'POST',
+                        body: JSON.stringify(postData)
+                    });
+                    showAlert('Post created successfully!', 'success');
+                }
+                
+                closeModal('post-modal');
+                loadPosts();
+            } catch (error) {
+                showAlert('Failed to save post: ' + error.message, 'error');
+            }
+        }
+
+        async function deletePost(postId) {
+            if (!confirm('Are you sure you want to delete this post?')) return;
+
+            try {
+                await apiCall(`/api/posts/${postId}`, {
+                    method: 'DELETE'
+                });
+                showAlert('Post deleted successfully!', 'success');
+                loadPosts();
+            } catch (error) {
+                showAlert('Failed to delete post: ' + error.message, 'error');
+            }
+        }
+
+        async function toggleLikePost(postId) {
+            const isLiked = userLikes.has(postId);
+            const action = isLiked ? 'unlike' : 'like';
+            
+            try {
+                const result = await apiCall(`/api/posts/${postId}/${action}`, {
+                    method: 'POST'
+                });
+                
+                if (isLiked) {
+                    userLikes.delete(postId);
+                } else {
+                    userLikes.add(postId);
+                }
+                
+                loadPosts();
+                showAlert(result.message, 'success');
+            } catch (error) {
+                showAlert(`Failed to ${action} post: ` + error.message, 'error');
+            }
+        }
+
+        // Profile Functions
+        async function loadCurrentUser() {
+            try {
+                const data = await apiCall('/api/auth/profile');
+                currentUser = { ...currentUser, ...data };
+            } catch (error) {
+                console.error('Failed to load user profile:', error);
+            }
+        }
+
+        async function loadProfile() {
+            showLoading('profile-loading');
+            
+            try {
+                const [profileData] = await Promise.all([
+                    apiCall('/api/auth/profile')
+                ]);
+
+                renderProfile(profileData);
+            } catch (error) {
+                showAlert('Failed to load profile: ' + error.message, 'error');
+            } finally {
+                hideLoading('profile-loading');
+            }
+        }
+
+        function renderProfile(profile) {
+            const container = document.getElementById('profile-content');
+            const userPosts = posts.filter(post => post.author_id === profile._key);
+            const userFiles = files.filter(file => file.owner_id === profile._key);
+            const joinDate = new Date(profile.created_at * 1000).toLocaleDateString();
+            const lastLogin = profile.last_login ? new Date(profile.last_login * 1000).toLocaleDateString() : 'Never';
+
+            const totalFileSize = userFiles.reduce((sum, file) => sum + file.file_size, 0);
+            const totalDownloads = userFiles.reduce((sum, file) => sum + (file.downloads || 0), 0);
+            const totalViews = userFiles.reduce((sum, file) => sum + (file.views || 0), 0);
+
+            container.innerHTML = `
+                <div class="profile-info">
+                    <div class="profile-stat">
+                        <div class="profile-stat-value">${userPosts.length}</div>
+                        <div class="profile-stat-label">Posts Created</div>
+                    </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-value">${userFiles.length}</div>
+                        <div class="profile-stat-label">Files Uploaded</div>
+                    </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-value">${formatFileSize(totalFileSize)}</div>
+                        <div class="profile-stat-label">Storage Used</div>
+                    </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-value">${totalDownloads}</div>
+                        <div class="profile-stat-label">Total Downloads</div>
+                    </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-value">${totalViews}</div>
+                        <div class="profile-stat-label">Total Views</div>
+                    </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-value">${userPosts.reduce((sum, post) => sum + (post.likes || 0), 0)}</div>
+                        <div class="profile-stat-label">Post Likes</div>
+                    </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-value">${userLikes.size}</div>
+                        <div class="profile-stat-label">Posts Liked</div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input type="text" class="form-input" value="${escapeHtml(profile.username)}" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" value="${escapeHtml(profile.email)}" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Member Since</label>
+                    <input type="text" class="form-input" value="${joinDate}" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Last Login</label>
+                    <input type="text" class="form-input" value="${lastLogin}" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Account Status</label>
+                    <input type="text" class="form-input" value="${profile.is_active ? 'Active' : 'Inactive'}" readonly>
+                </div>
+            `;
+        }
+
+        // Modal Functions
+        function closeModal(modalId) {
+            document.getElementById(modalId || 'post-modal').classList.remove('active');
+        }
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+
+            // Navigation links
+            document.querySelectorAll('[data-view]').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    showView(this.dataset.view);
+                });
+            });
+
+            // Search input event listeners
+            const searchInput = document.getElementById('search-input');
+            const searchClear = document.getElementById('search-clear');
+
+            searchInput.addEventListener('input', function(e) {
+                const query = e.target.value.trim();
+                
+                // Show/hide clear button
+                if (query) {
+                    searchClear.classList.add('visible');
+                } else {
+                    searchClear.classList.remove('visible');
+                }
+
+                // Clear existing timeout
+                if (searchTimeout) clearTimeout(searchTimeout);
+
+                // Real-time search as you type
+                searchTimeout = setTimeout(() => {
+                    performSearch(query);
+                }, 300); // Debounce search with 300ms delay
+            });
+
+            searchInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    this.blur();
+                    if (currentView === 'search' && !this.value.trim()) {
+                        // If in search view with empty search, go back to files view
+                        showView('files');
+                    }
+                }
+            });
+
+            searchInput.addEventListener('focus', function() {
+                const query = this.value.trim();
+                if (query) {
+                    // If there's already a query, switch to search view
+                    if (currentView !== 'search') {
+                        showView('search');
+                    }
+                }
+            });
+
+            // Modal close on outside click
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closeModal(this.id);
+                    }
+                });
+            });
+
+            // Media modal close on click
+            document.getElementById('media-modal').addEventListener('click', closeMediaModal);
+
+            // Global keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    document.querySelectorAll('.modal.active').forEach(modal => {
+                        closeModal(modal.id);
+                    });
+                    closeMediaModal();
+                }
+
+                // Ctrl/Cmd + K to focus search
+                if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                    e.preventDefault();
+                    if (currentUser) {
+                        searchInput.focus();
+                    }
+                }
+            });
+
+            // Click outside to hide suggestions - This is not required for now in the design.
+            /*
+            document.addEventListener('click', function(e) {
+                if (!document.getElementById('search-container').contains(e.target)) {
+                    hideSuggestions();
+                }
+            });
+            */
+        });
+
+        // Health check on load
+        (async function healthCheck() {
+            try {
+                const response = await apiCall('/api/health');
+                console.log('✅ API connection successful - Advanced search ready!');
+                
+                if (response.features && response.features.search_enabled) {
+                    console.log('🔍 Advanced search engine is enabled and ready');
+                } else {
+                    console.warn('⚠️ Search engine might not be fully initialized');
+                }
+            } catch (error) {
+                console.error('❌ API connection failed:', error.message);
+                showAlert('❌ Cannot connect to API server: ' + error.message, 'error');
+            }
+        })();
+    </script>
+</body>
+</html>
