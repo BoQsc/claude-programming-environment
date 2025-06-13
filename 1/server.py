@@ -17,5 +17,4 @@ app = web.Application()
 for name, handler in list(globals().items()):
     if (route := name.removeprefix("route_")) != name:
         app.router.add_get(f"/{route}", handler)
-
 web.run_app(app)
