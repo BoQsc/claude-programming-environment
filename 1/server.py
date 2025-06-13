@@ -1,6 +1,3 @@
-import os, sys, time, threading, hashlib
-
-
 from aiohttp import web
 async def get_hello(request):
     return web.Response(text="Hello from GET /hello")
@@ -15,7 +12,8 @@ async def delete_users(request):
     
     
     
-    
+
+import os, sys, time, threading, hashlib
 def watch_file():
     original_hash = hashlib.md5(open(__file__, 'rb').read()).hexdigest()
     while True: 
@@ -25,6 +23,7 @@ def watch_file():
             os.execv(sys.executable, ['python'] + sys.argv)
 
 threading.Thread(target=watch_file, daemon=True).start()
+
 app = web.Application()
 for name, handler in list(globals().items()):
     for method in ['get', 'post', 'put', 'delete', 'patch']:
