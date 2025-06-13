@@ -1,20 +1,23 @@
 from aiohttp import web
 
+async def get_hello(request):
+    return web.Response(text="Hello from GET /hello")
 
+async def post_hello(request):
+    return web.Response(text="Created hello")
 
-async def zzz(request):
-    return web.Response(text="Hello from /zzz")
+async def get_test(request):
+    return web.Response(text="Hello from GET /test")
 
-async def route_hello(request):
-    return web.Response(text="Hello from /hello")
-
-async def route_test(request):
-    return web.Response(text="Hello from /test")
-
-
+async def delete_users(request):
+    return web.Response(text="Deleted users")
 
 app = web.Application()
 for name, handler in list(globals().items()):
-    if (route := name.removeprefix("route_")) != name:
-        app.router.add_get(f"/{route}", handler)
+    for method in ['get', 'post', 'put', 'delete', 'patch']:
+        if name.startswith(f"{method}_"):
+            route = name[len(method)+1:]  # Remove "method_" prefix
+            app.router.add_route(method.upper(), f"/{route}", handler)
+            break
+
 web.run_app(app)
