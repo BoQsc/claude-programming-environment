@@ -21,7 +21,6 @@ def watch_file():
         current_hash = hashlib.md5(open(__file__, 'rb').read()).hexdigest()
         if current_hash != original_hash:
             os.execv(sys.executable, ['python'] + sys.argv)
-
 threading.Thread(target=watch_file, daemon=True).start()
 
 app = web.Application()
