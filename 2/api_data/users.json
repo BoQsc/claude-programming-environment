@@ -1,0 +1,8 @@
+{
+  "deletetest": {
+    "username": "deletetest",
+    "salt": "ce8c36a132cc0664df588e7662804499c0e807b7b8a10f13d973847eb6129846",
+    "password_hash": "f1cde29aea69b10f982b1a8e94a99cbf0d4fafaa4d68dd5af5a7557d3d4d7d5e",
+    "created_at": 1749962997.7627952
+  }
+}
