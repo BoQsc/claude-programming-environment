@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Comprehensive API Test Client
-Tests all endpoints, authentication, and rate limiting
+Tests all endpoints, authentication, and rate limiting with careful resource management
 """
 
 import asyncio
@@ -16,7 +16,7 @@ from dataclasses import dataclass
 @dataclass
 class TestResult:
     name: str
-    passed: bool
+    correct: bool
     message: str
     duration: float = 0.0
 
@@ -25,6 +25,11 @@ class APITestClient:
         self.base_url = base_url
         self.session: Optional[aiohttp.ClientSession] = None
         self.results: List[TestResult] = []
+        
+        # Rate limit tracking to avoid exceeding limits during functional tests
+        self.registration_count = 0
+        self.login_count = 0
+        self.deletion_count = 0
         
     async def __aenter__(self):
         self.session = aiohttp.ClientSession()
@@ -55,13 +60,36 @@ class APITestClient:
         except Exception as e:
             return 0, {"error": str(e)}
     
-    def log_test(self, name: str, passed: bool, message: str, duration: float = 0.0):
+    def log_test(self, name: str, correct: bool, message: str, duration: float = 0.0):
         """Log test result"""
-        result = TestResult(name, passed, message, duration)
+        result = TestResult(name, correct, message, duration)
         self.results.append(result)
-        status = "✅ PASS" if passed else "❌ FAIL"
+        status = "✅ CORRECT" if correct else "❌ INCORRECT"
         duration_str = f" ({duration:.2f}s)" if duration > 0 else ""
         print(f"{status} {name}: {message}{duration_str}")
+    
+    async def safe_register_user(self) -> tuple[str, str, str]:
+        """Safely register a user without hitting rate limits"""
+        if self.registration_count >= 4:  # Stay under limit of 5
+            raise Exception("Registration limit would be exceeded")
+        
+        username = self.random_username()
+        password = self.random_password()
+        
+        status, data = await self.request("POST", "/register",
+                                         headers={"Content-Type": "application/json"},
+                                         json={"username": username, "password": password})
+        
+        if status == 200:
+            self.registration_count += 1
+            # Login to get token
+            _, login_data = await self.request("POST", "/login",
+                                              headers={"Content-Type": "application/json"},
+                                              json={"username": username, "password": password})
+            token = login_data.get("token", "")
+            return username, password, token
+        else:
+            raise Exception(f"Registration failed: {status} - {data}")
     
     async def test_basic_endpoints(self):
         """Test basic endpoint accessibility"""
@@ -79,7 +107,7 @@ class APITestClient:
                                          headers={"Content-Type": "application/json"},
                                          data="invalid json")
         duration = time.time() - start
-        self.log_test("Invalid JSON", status == 400, f"Status: {status}", duration)
+        self.log_test("Invalid JSON Handling", status == 400, f"Status: {status}", duration)
     
     async def test_user_registration(self) -> tuple[str, str]:
         """Test user registration and return username, password"""
@@ -97,13 +125,16 @@ class APITestClient:
         self.log_test("Valid Registration", status == 200, 
                      f"User: {username}", duration)
         
+        if status == 200:
+            self.registration_count += 1
+        
         # Duplicate registration
         start = time.time()
         status, data = await self.request("POST", "/register",
                                          headers={"Content-Type": "application/json"},
                                          json={"username": username, "password": password})
         duration = time.time() - start
-        self.log_test("Duplicate Registration", status == 400, 
+        self.log_test("Duplicate Registration Rejection", status == 400, 
                      "Correctly rejected duplicate", duration)
         
         # Missing fields
@@ -112,7 +143,7 @@ class APITestClient:
                                          headers={"Content-Type": "application/json"},
                                          json={"username": username})
         duration = time.time() - start
-        self.log_test("Missing Password", status == 400, 
+        self.log_test("Missing Password Rejection", status == 400, 
                      "Correctly rejected incomplete data", duration)
         
         return username, password
@@ -120,13 +151,6 @@ class APITestClient:
     async def test_authentication(self, username: str, password: str) -> str:
         """Test login and return token"""
         print("\n🔐 Testing Authentication")
-        
-        # Skip if dummy credentials (from rate limited registration)
-        if username == "dummy_user":
-            self.log_test("Valid Login", False, "Skipped due to registration rate limit")
-            self.log_test("Invalid Password", False, "Skipped due to registration rate limit") 
-            self.log_test("Non-existent User", False, "Skipped due to registration rate limit")
-            return None
         
         # Valid login
         start = time.time()
@@ -148,16 +172,16 @@ class APITestClient:
                                          headers={"Content-Type": "application/json"},
                                          json={"username": username, "password": "wrongpassword"})
         duration = time.time() - start
-        self.log_test("Invalid Password", status == 401, 
+        self.log_test("Invalid Password Rejection", status == 401, 
                      "Correctly rejected bad password", duration)
         
-        # Non-existent user
+        # Non-existent user  
         start = time.time()
         status, data = await self.request("POST", "/login",
                                          headers={"Content-Type": "application/json"},
-                                         json={"username": "nonexistent", "password": password})
+                                         json={"username": "nonexistent_user_xyz", "password": password})
         duration = time.time() - start
-        self.log_test("Non-existent User", status == 401, 
+        self.log_test("Non-existent User Rejection", status == 401, 
                      "Correctly rejected missing user", duration)
         
         return token
@@ -181,7 +205,7 @@ class APITestClient:
         status, data = await self.request("GET", "/users", headers=headers)
         duration = time.time() - start
         users_ok = status == 200 and "users" in data
-        self.log_test("Users List", users_ok, 
+        self.log_test("Users List Access", users_ok, 
                      f"Status: {status}, Count: {len(data.get('users', []))}", duration)
         
         # Specific user
@@ -189,7 +213,7 @@ class APITestClient:
         status, data = await self.request("GET", f"/users/{username}", headers=headers)
         duration = time.time() - start
         user_ok = status == 200 and data.get("username") == username
-        self.log_test("Specific User", user_ok, 
+        self.log_test("Specific User Access", user_ok, 
                      f"Status: {status}, User: {data.get('username')}", duration)
         
         # Admin stats
@@ -197,22 +221,22 @@ class APITestClient:
         status, data = await self.request("GET", "/admin/stats", headers=headers)
         duration = time.time() - start
         stats_ok = status == 200 and "total_users" in data
-        self.log_test("Admin Stats", stats_ok, 
+        self.log_test("Admin Stats Access", stats_ok, 
                      f"Status: {status}, Users: {data.get('total_users')}", duration)
         
         # Unauthorized access
         start = time.time()
         status, data = await self.request("GET", "/profile")
         duration = time.time() - start
-        self.log_test("No Auth Header", status == 401, 
+        self.log_test("Missing Auth Rejection", status == 401, 
                      "Correctly rejected missing auth", duration)
         
         # Invalid token
         start = time.time()
         status, data = await self.request("GET", "/profile", 
-                                         headers={"Authorization": "Bearer invalid_token"})
+                                         headers={"Authorization": "Bearer invalid_token_xyz"})
         duration = time.time() - start
-        self.log_test("Invalid Token", status == 401, 
+        self.log_test("Invalid Token Rejection", status == 401, 
                      "Correctly rejected invalid token", duration)
     
     async def test_logout(self, token: str):
@@ -225,25 +249,99 @@ class APITestClient:
         start = time.time()
         status, data = await self.request("POST", "/logout", headers=headers)
         duration = time.time() - start
-        self.log_test("Logout", status == 200, 
+        self.log_test("Logout Success", status == 200, 
                      f"Status: {status}", duration)
         
         # Try using token after logout
         start = time.time()
         status, data = await self.request("GET", "/profile", headers=headers)
         duration = time.time() - start
-        self.log_test("Token After Logout", status == 401, 
-                     "Token correctly invalidated", duration)
+        self.log_test("Token Invalidation", status == 401, 
+                     "Token correctly invalidated after logout", duration)
+    
+    async def test_user_deletion(self):
+        """Test user deletion with proper setup"""
+        print("\n🗑️  Testing User Deletion")
+        
+        try:
+            # Create dedicated test user for deletion
+            username, password, token = await self.safe_register_user()
+            headers = {"Authorization": f"Bearer {token}"}
+            
+            # Verify user exists first
+            start = time.time()
+            status, data = await self.request("GET", f"/users/{username}", headers=headers)
+            duration = time.time() - start
+            self.log_test("Pre-deletion User Exists", status == 200 and data.get("username") == username,
+                         f"User {username} exists before deletion", duration)
+            
+            # Delete the user
+            start = time.time()
+            status, data = await self.request("DELETE", f"/users/{username}", headers=headers)
+            duration = time.time() - start
+            
+            deletion_success = status == 200 and "deleted" in data.get("message", "").lower()
+            self.log_test("User Deletion", deletion_success, 
+                         f"Status: {status}, Message: {data.get('message')}", duration)
+            
+            if deletion_success:
+                self.deletion_count += 1
+            
+            # Try to access profile after deletion (should fail)
+            start = time.time()
+            status, data = await self.request("GET", "/profile", headers=headers)
+            duration = time.time() - start
+            self.log_test("Post-deletion Access Block", status == 401, 
+                         "Profile access correctly blocked after deletion", duration)
+            
+        except Exception as e:
+            self.log_test("User Deletion Setup", False, f"Setup failed: {str(e)}")
+    
+    async def test_concurrent_access(self):
+        """Test concurrent access with limited registrations"""
+        print("\n⚡ Testing Concurrent Access")
+        
+        # Only do 2 concurrent registrations to stay under rate limit
+        remaining_registrations = 4 - self.registration_count
+        if remaining_registrations < 2:
+            self.log_test("Concurrent Access", False, 
+                         f"Skipped - only {remaining_registrations} registrations remaining")
+            return
+        
+        async def register_user():
+            username = self.random_username()
+            password = self.random_password()
+            
+            status, data = await self.request("POST", "/register",
+                                             headers={"Content-Type": "application/json"},
+                                             json={"username": username, "password": password})
+            return status == 200
+        
+        # Create 2 users concurrently
+        start = time.time()
+        tasks = [register_user() for _ in range(2)]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        duration = time.time() - start
+        
+        successful = sum(1 for r in results if r is True)
+        self.registration_count += successful
+        
+        self.log_test("Concurrent Registration", 
+                     successful >= 1,  # At least one should succeed
+                     f"Successful: {successful}/2 in {duration:.2f}s", duration)
     
     async def test_rate_limiting_registration(self):
         """Test registration rate limiting (5 per 5 minutes per IP)"""
         print("\n🚦 Testing Registration Rate Limiting")
-        print("Note: May already be rate limited from previous tests")
+        print("Note: This will consume remaining rate limit budget")
         
         successful_registrations = 0
         rate_limited = False
         
-        for i in range(7):  # Try 7 registrations (limit is 5)
+        # Try enough registrations to hit the limit (we may have used some already)
+        remaining_attempts = 7 - self.registration_count
+        
+        for i in range(remaining_attempts):
             username = self.random_username()
             password = self.random_password()
             
@@ -263,37 +361,25 @@ class APITestClient:
             else:
                 print(f"  Registration {i+1}: ❓ Unexpected status {status}")
         
-        # Rate limiting is working if we get 429 status
+        total_registrations = self.registration_count + successful_registrations
+        
         self.log_test("Registration Rate Limit", 
-                     rate_limited or successful_registrations == 0,
-                     f"Rate limited: {rate_limited}, New registrations: {successful_registrations}")
+                     total_registrations <= 5 and rate_limited,
+                     f"Total registrations: {total_registrations}, Rate limited: {rate_limited}")
     
     async def test_rate_limiting_login(self):
         """Test login rate limiting (10 per 5 minutes per IP)"""
         print("\n🚦 Testing Login Rate Limiting")
-        print("Note: May already be rate limited from previous tests")
-        
-        # Try to create a test user (might fail due to rate limiting)
-        username = self.random_username()
-        password = self.random_password()
-        
-        reg_status, _ = await self.request("POST", "/register",
-                                          headers={"Content-Type": "application/json"},
-                                          json={"username": username, "password": password})
-        
-        if reg_status != 200:
-            print(f"  Cannot create test user (rate limited), testing with wrong credentials")
-            username = "nonexistent"
-            password = "wrongpassword"
         
         login_attempts = 0
         rate_limited = False
         
+        # Use a known bad username to avoid lockout issues
         for i in range(12):  # Try 12 logins (limit is 10)
             start = time.time()
             status, data = await self.request("POST", "/login",
                                              headers={"Content-Type": "application/json"},
-                                             json={"username": username, "password": "wrongpassword"})
+                                             json={"username": "baduser", "password": "wrongpassword"})
             duration = time.time() - start
             
             if status == 401:  # Invalid credentials (normal)
@@ -307,168 +393,106 @@ class APITestClient:
                 print(f"  Login {i+1}: ❓ Unexpected status {status}")
         
         self.log_test("Login Rate Limit", 
-                     rate_limited or login_attempts == 0,
-                     f"Rate limited: {rate_limited}, Login attempts: {login_attempts}")
+                     login_attempts <= 10 and rate_limited,
+                     f"Attempts: {login_attempts}, Rate limited: {rate_limited}")
     
     async def test_rate_limiting_protected(self):
         """Test rate limiting on protected endpoints"""
         print("\n🚦 Testing Protected Endpoint Rate Limiting")
         
-        # Try to create user and get token (might fail due to rate limiting)
-        username = self.random_username()
-        password = self.random_password()
-        
-        reg_status, _ = await self.request("POST", "/register",
-                                          headers={"Content-Type": "application/json"},
-                                          json={"username": username, "password": password})
-        
-        if reg_status != 200:
-            print("  Cannot create test user due to rate limiting, skipping protected endpoint rate limit test")
-            self.log_test("Protected Rate Limit Setup", False, "Registration rate limited")
-            return
-        
-        login_status, login_data = await self.request("POST", "/login",
-                                                     headers={"Content-Type": "application/json"},
-                                                     json={"username": username, "password": password})
-        
-        if login_status != 200:
-            print("  Cannot login due to rate limiting, skipping protected endpoint rate limit test")
-            self.log_test("Protected Rate Limit Setup", False, "Login rate limited")
-            return
-        
-        token = login_data.get("token")
-        if not token:
-            self.log_test("Protected Rate Limit Setup", False, "Failed to get token")
-            return
-        
-        headers = {"Authorization": f"Bearer {token}"}
-        
-        # Test profile endpoint (200 per minute limit)
-        successful_requests = 0
-        rate_limited = False
-        
-        # Make rapid requests to test rate limiting
-        start_time = time.time()
-        for i in range(25):  # Quick burst test
-            status, data = await self.request("GET", "/profile", headers=headers)
+        try:
+            # Create a fresh user for this test
+            username, password, token = await self.safe_register_user()
+            headers = {"Authorization": f"Bearer {token}"}
             
-            if status == 200:
-                successful_requests += 1
-            elif status == 429:
-                rate_limited = True
-                print(f"  Profile request {i+1}: 🚫 Rate limited after {successful_requests} requests")
-                break
+            # Test profile endpoint (200 per minute limit)
+            successful_requests = 0
+            rate_limited = False
             
-            # Small delay to avoid overwhelming
-            await asyncio.sleep(0.01)
-        
-        total_time = time.time() - start_time
-        
-        self.log_test("Profile Rate Limit", 
-                     successful_requests > 0,  # Should allow some requests
-                     f"Successful: {successful_requests} in {total_time:.2f}s")
-    
-    async def test_user_deletion(self, token: str, username: str):
-        """Test user deletion using existing authenticated user"""
-        print("\n🗑️  Testing User Deletion")
-        
-        headers = {"Authorization": f"Bearer {token}"}
-        
-        # Delete own account using existing user
-        start = time.time()
-        status, data = await self.request("DELETE", f"/users/{username}", headers=headers)
-        duration = time.time() - start
-        self.log_test("Self Deletion", status == 200, 
-                     f"Status: {status}", duration)
-        
-        # Try to access profile after deletion
-        start = time.time()
-        status, data = await self.request("GET", "/profile", headers=headers)
-        duration = time.time() - start
-        self.log_test("Access After Deletion", status == 401, 
-                     "Token correctly invalidated", duration)
-    
-    async def test_concurrent_access(self):
-        """Test concurrent access to the API"""
-        print("\n⚡ Testing Concurrent Access")
-        
-        async def register_user():
-            username = self.random_username()
-            password = self.random_password()
+            # Make rapid requests to test rate limiting
+            start_time = time.time()
+            for i in range(25):  # Quick burst test
+                start = time.time()
+                status, data = await self.request("GET", "/profile", headers=headers)
+                duration = time.time() - start
+                
+                if status == 200:
+                    successful_requests += 1
+                elif status == 429:
+                    rate_limited = True
+                    print(f"  Profile request {i+1}: 🚫 Rate limited after {successful_requests} requests")
+                    break
+                
+                # Small delay to avoid overwhelming
+                await asyncio.sleep(0.01)
             
-            status, data = await self.request("POST", "/register",
-                                             headers={"Content-Type": "application/json"},
-                                             json={"username": username, "password": password})
-            return status == 200
-        
-        # Create 10 users concurrently
-        start = time.time()
-        tasks = [register_user() for _ in range(10)]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        duration = time.time() - start
-        
-        successful = sum(1 for r in results if r is True)
-        
-        self.log_test("Concurrent Registration", 
-                     successful >= 5,  # At least half should succeed
-                     f"Successful: {successful}/10 in {duration:.2f}s", duration)
+            total_time = time.time() - start_time
+            
+            self.log_test("Profile Rate Limit", 
+                         successful_requests > 0,  # Should allow some requests
+                         f"Successful: {successful_requests} in {total_time:.2f}s")
+            
+        except Exception as e:
+            self.log_test("Protected Rate Limit Setup", False, f"Setup failed: {str(e)}")
     
     def print_summary(self):
         """Print test summary"""
         total = len(self.results)
-        passed = sum(1 for r in self.results if r.passed)
-        failed = total - passed
+        correct = sum(1 for r in self.results if r.correct)
+        incorrect = total - correct
         
         print("\n" + "="*60)
         print(f"📊 TEST SUMMARY")
         print("="*60)
         print(f"Total Tests: {total}")
-        print(f"✅ Passed: {passed}")
-        print(f"❌ Failed: {failed}")
-        print(f"Success Rate: {passed/total*100:.1f}%")
+        print(f"✅ Correct: {correct}")
+        print(f"❌ Incorrect: {incorrect}")
+        print(f"Success Rate: {correct/total*100:.1f}%")
         
-        if failed > 0:
-            print(f"\n❌ Failed Tests:")
+        print(f"\n📈 Resource Usage:")
+        print(f"  Registrations: {self.registration_count}/5 (rate limit)")
+        print(f"  Deletions: {self.deletion_count}/5 (rate limit)")
+        
+        if incorrect > 0:
+            print(f"\n❌ Incorrect Behaviors:")
             for result in self.results:
-                if not result.passed:
+                if not result.correct:
                     print(f"  - {result.name}: {result.message}")
         
         print("="*60)
 
 async def main():
-    """Run all tests"""
+    """Run all tests in the correct order"""
     print("🧪 Starting Comprehensive API Tests")
     print("Make sure your API server is running on localhost:8080")
     print("="*60)
     
     async with APITestClient() as client:
-        # Basic functionality tests
+        # Core functionality tests (careful with rate limits)
         await client.test_basic_endpoints()
         
-        # User management flow
+        # User management flow (uses 1 registration)
         username, password = await client.test_user_registration()
         token = await client.test_authentication(username, password)
         
         if token:
             await client.test_protected_endpoints(token, username)
-            
-            # Test user deletion with current user
-            await client.test_user_deletion(token, username)
+            await client.test_logout(token)
         
-        # Test logout with a fresh user (if we can create one)
-        username2, password2 = await client.test_user_registration()
-        token2 = await client.test_authentication(username2, password2)
-        if token2:
-            await client.test_logout(token2)
+        # Additional functional tests (uses 1 more registration + 1 deletion)
+        await client.test_user_deletion()
         
-        # Rate limiting tests LAST (these consume rate limit budget)
-        print("\n🚨 Starting Rate Limiting Tests (may affect subsequent API usage)")
+        # Concurrent test (uses 2 more registrations, total = 4)
+        await client.test_concurrent_access()
+        
+        print("\n" + "="*60)
+        print("🚨 RATE LIMITING TESTS - Will consume remaining rate limits")
+        print("="*60)
+        
+        # Rate limiting tests (will exhaust limits - must be last!)
         await client.test_rate_limiting_registration()
         await client.test_rate_limiting_login()
         await client.test_rate_limiting_protected()
-        
-        # Concurrent access test AFTER rate limiting (creates many users)
-        await client.test_concurrent_access()
         
         # Print summary
         client.print_summary()
