@@ -1,0 +1,12 @@
+{
+  "test_counter_1750054113": {
+    "value": 1,
+    "version": 15,
+    "updated_at": 1750054113.175575
+  },
+  "stress_counter": {
+    "value": 1,
+    "version": 10,
+    "updated_at": 1750054130.151851
+  }
+}

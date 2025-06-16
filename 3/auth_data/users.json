@@ -1,0 +1,177 @@
+{
+  "testuser_1750054109": {
+    "value": {
+      "username": "testuser_1750054109",
+      "salt": "cff167c9a7b1d5c50802d17cf41d816c0e9593e478400bf5a46890e0535d14e4",
+      "password_hash": "3fca4089f86af12a1cc858b1c70b83742ec35ce3e5fff98eaabfeec314f16c39",
+      "created_at": 1750054109.8161373,
+      "last_login": 1750054110.4301045
+    },
+    "version": 2,
+    "updated_at": 1750054110.430138
+  },
+  "duplicate_test_1750054111": {
+    "value": {
+      "username": "duplicate_test_1750054111",
+      "salt": "58e151947610d0fe73daaa8276c103be2fdf726bef084c509cb60388cd3f6a9c",
+      "password_hash": "c67b12099c3b7b15db181a9cf8e9f1b5a1a797e249a77b3c3c312d839dfc3f0d",
+      "created_at": 1750054111.7531092
+    },
+    "version": 1,
+    "updated_at": 1750054111.7638626
+  },
+  "counter_test_1750054111": {
+    "value": {
+      "username": "counter_test_1750054111",
+      "salt": "faa8fdd1ac10bc482551d83500f8e9cdc310ea526fda2fafcb2a4daa1f0dac27",
+      "password_hash": "0076cb50344fb03a20af34b784c60d683ea220409ccdc69f4be708534f8a9a48",
+      "created_at": 1750054112.3785496,
+      "last_login": 1750054113.0429058
+    },
+    "version": 2,
+    "updated_at": 1750054113.0429366
+  },
+  "delete_test_1750054113": {
+    "value": {
+      "username": "delete_test_1750054113",
+      "salt": "d368e603c6182b129b86e075ae5134443eeb77ef6c58e1d9b282277d96e93bf5",
+      "password_hash": "84741358093f1b877a521d6715ac8725b3f0d941f56ac7124bf778d9df5691f0",
+      "created_at": 1750054113.8001158,
+      "last_login": 1750054114.4387252
+    },
+    "version": 2,
+    "updated_at": 1750054114.4387636
+  },
+  "cleanup_test_1750054114": {
+    "value": {
+      "username": "cleanup_test_1750054114",
+      "salt": "00c994be9c7dc5129bf5bf1cfdbd00d650591772ad7c587e10fa3e9d66f42c4d",
+      "password_hash": "851aa3b46bb31bc7a01bc4cad13e5b091475db8c43730f1a1d94306d1260969d",
+      "created_at": 1750054115.1117046,
+      "last_login": 1750054115.738576
+    },
+    "version": 2,
+    "updated_at": 1750054115.7386124
+  },
+  "stats_test_1750054115": {
+    "value": {
+      "username": "stats_test_1750054115",
+      "salt": "35c0c1906e5901f7a4e7c228f91c4fb89667953612124cebbf48a785b701b383",
+      "password_hash": "bb07b4e667201c9a73d5a1d6625449772fbddd1916b2febba908e30efa7a1d8b",
+      "created_at": 1750054116.399558,
+      "last_login": 1750054117.010113
+    },
+    "version": 2,
+    "updated_at": 1750054117.010137
+  },
+  "stress_user_0_1750054117": {
+    "value": {
+      "username": "stress_user_0_1750054117",
+      "salt": "4df8aab895dba0f0e6a1aec643ddb1f60443f04ceffdd66b46dacc61eedfe6d5",
+      "password_hash": "52e6f61693dd8a06ccef830791fd2df5f13ce33d784b4cbcae1db2b6a9d5dc7f",
+      "created_at": 1750054117.6790025,
+      "last_login": 1750054124.3180652
+    },
+    "version": 2,
+    "updated_at": 1750054124.3180907
+  },
+  "stress_user_1_1750054117": {
+    "value": {
+      "username": "stress_user_1_1750054117",
+      "salt": "dfd27ed8b64147d957be43a10988adf4983d5c18c3bc04aa3bd41fa411bc5a9b",
+      "password_hash": "4ecc5554d8efda01096dca849ec59e0184cc30111492436a5d5d2a89e365cbfc",
+      "created_at": 1750054118.284684,
+      "last_login": 1750054125.017906
+    },
+    "version": 2,
+    "updated_at": 1750054125.017929
+  },
+  "stress_user_2_1750054117": {
+    "value": {
+      "username": "stress_user_2_1750054117",
+      "salt": "f7691094244aff7300d4791d21faf76f39bbfcdcbf5c7b066c4ece5aff90a12c",
+      "password_hash": "f82129202c20c23e9223ddd80dee4dc74959a0556bf72dc25a9e8bcebba5e9d1",
+      "created_at": 1750054118.949988,
+      "last_login": 1750054125.7128873
+    },
+    "version": 2,
+    "updated_at": 1750054125.7129116
+  },
+  "stress_user_3_1750054117": {
+    "value": {
+      "username": "stress_user_3_1750054117",
+      "salt": "f5dbc2a8608ae5f77ec84b98b49e8966455eb2f64527f6fcb260d6065fcf6829",
+      "password_hash": "aaed58999b8f6519ba5127c6ef319ed9d628caa611dbe5fc8ed331e3bf8a66e7",
+      "created_at": 1750054119.5919871,
+      "last_login": 1750054126.3190987
+    },
+    "version": 2,
+    "updated_at": 1750054126.3191206
+  },
+  "stress_user_4_1750054117": {
+    "value": {
+      "username": "stress_user_4_1750054117",
+      "salt": "926c3f8c4b8b95390bfe85f835b1092f819b9b0547ca823ca8e4a9b31d22e1e3",
+      "password_hash": "9613bd15f86fd1d1c9d49871850f2c534ddc008b9fd15cb90fbe99c4436d01c7",
+      "created_at": 1750054120.236671,
+      "last_login": 1750054126.9311094
+    },
+    "version": 2,
+    "updated_at": 1750054126.931134
+  },
+  "stress_user_5_1750054117": {
+    "value": {
+      "username": "stress_user_5_1750054117",
+      "salt": "78179d2fb4276c1f3cb96b85854841bca4f03183bc83caa5fee48de36801fea9",
+      "password_hash": "7f35aba4e0da9ac3531c6f88af2d03633d5917b8a5ddb8d69e441691eca0180c",
+      "created_at": 1750054120.8975499,
+      "last_login": 1750054127.524888
+    },
+    "version": 2,
+    "updated_at": 1750054127.5249116
+  },
+  "stress_user_6_1750054117": {
+    "value": {
+      "username": "stress_user_6_1750054117",
+      "salt": "6951aba02a19ffa93683ac23cb8e6523d7221e5d399750a3f9b6e56f838d8d95",
+      "password_hash": "0ec2ef043765725e088c9630b2a54a0439a027b5c09fdf83b591cf113495254a",
+      "created_at": 1750054121.593388,
+      "last_login": 1750054128.293396
+    },
+    "version": 2,
+    "updated_at": 1750054128.2934194
+  },
+  "stress_user_7_1750054117": {
+    "value": {
+      "username": "stress_user_7_1750054117",
+      "salt": "c6a0596fbf647094cf480607f1372840766ed717fe24bb306ed2ff2be7dc4e5e",
+      "password_hash": "16e64b1b28a1b266390e3109a23e159b22e292807f010bf546866f44cd52e64a",
+      "created_at": 1750054122.310127,
+      "last_login": 1750054128.8727598
+    },
+    "version": 2,
+    "updated_at": 1750054128.87278
+  },
+  "stress_user_8_1750054117": {
+    "value": {
+      "username": "stress_user_8_1750054117",
+      "salt": "fbaa61d706304cbdd5e41a9f469729dae50705f9835c9ef9fa05ae715446ec68",
+      "password_hash": "d65384eb3723aa382050c5d28a7da813a655c5e5e76d1ef02365c8958be32821",
+      "created_at": 1750054122.9682984,
+      "last_login": 1750054129.4375823
+    },
+    "version": 2,
+    "updated_at": 1750054129.4376025
+  },
+  "stress_user_9_1750054117": {
+    "value": {
+      "username": "stress_user_9_1750054117",
+      "salt": "cf98c8170491151c3c603c00851afa4735c4a094a4665e6c06dffe353c777fc3",
+      "password_hash": "8ab8e87b5ff9f7c43a065acb18640bba6b8859f8a7ad137296f895ec9bc619b5",
+      "created_at": 1750054123.6674373,
+      "last_login": 1750054130.0075014
+    },
+    "version": 2,
+    "updated_at": 1750054130.0075226
+  }
+}

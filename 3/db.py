@@ -1,4 +1,4 @@
-# enhanced_safe_db.py - Full featured database built on reliable foundation
+# enhanced_safe_db_v2.py - Concurrency-safe with optimistic locking
 
 import json
 import asyncio
@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List, Callable, Union, Set
 from contextlib import asynccontextmanager
 from enum import Enum
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -23,33 +24,62 @@ class TransactionError(DatabaseError):
     """Transaction-specific exception"""
     pass
 
+class ConcurrencyError(TransactionError):
+    """Concurrency conflict exception"""
+    pass
+
 class TransactionState(Enum):
     ACTIVE = "active"
     COMMITTED = "committed"
     ABORTED = "aborted"
 
+@dataclass
+class VersionedValue:
+    """Wrapper for values with version tracking"""
+    value: Any
+    version: int
+    updated_at: float
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "value": self.value,
+            "version": self.version,
+            "updated_at": self.updated_at
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'VersionedValue':
+        return cls(
+            value=data.get("value"),
+            version=data.get("version", 1),
+            updated_at=data.get("updated_at", time.time())
+        )
+
 class Operation:
     """Represents a single database operation in a transaction"""
     
     def __init__(self, op_type: str, collection: str, key: str, 
-                 old_value: Any = None, new_value: Any = None):
+                 old_value: Any = None, new_value: Any = None, 
+                 old_version: int = None, new_version: int = None):
         self.op_type = op_type  # 'set', 'delete', 'update', 'increment'
         self.collection = collection
         self.key = key
         self.old_value = old_value
         self.new_value = new_value
+        self.old_version = old_version
+        self.new_version = new_version
         self.timestamp = time.time()
 
 class SafeTransaction:
-    """Enhanced transaction with operation logging"""
+    """Enhanced transaction with optimistic locking"""
     
     def __init__(self, tx_id: str, db: 'EnhancedSafeDB'):
         self.tx_id = tx_id
         self.db = db
         self.state = TransactionState.ACTIVE
         self.operations: List[Operation] = []
-        self.changes: Dict[str, Dict[str, Any]] = {}  # collection -> {key: value}
-        self.original_data: Dict[str, Dict[str, Any]] = {}  # for rollback
+        self.changes: Dict[str, Dict[str, VersionedValue]] = {}  # collection -> {key: versioned_value}
+        self.read_versions: Dict[str, Dict[str, int]] = {}  # collection -> {key: version_when_read}
         self.created_at = time.time()
     
     async def get(self, collection_name: str, key: str) -> Optional[Any]:
@@ -60,23 +90,59 @@ class SafeTransaction:
         # Check staged changes first
         if collection_name in self.changes and key in self.changes[collection_name]:
             staged_value = self.changes[collection_name][key]
-            return None if staged_value == "___DELETED___" else staged_value
+            return None if staged_value.value == "___DELETED___" else staged_value.value
         
         # Get from actual collection
         collection = await self.db.get_collection(collection_name)
-        return await collection.get(key)
+        versioned_value = await collection._get_versioned(key)
+        
+        if versioned_value is None:
+            return None
+        
+        # Track the version we read for conflict detection
+        if collection_name not in self.read_versions:
+            self.read_versions[collection_name] = {}
+        self.read_versions[collection_name][key] = versioned_value.version
+        
+        return versioned_value.value
     
     async def set(self, collection_name: str, key: str, value: Any):
         """Set value within transaction"""
         if self.state != TransactionState.ACTIVE:
             raise TransactionError(f"Transaction {self.tx_id} is not active")
         
-        await self._prepare_change(collection_name, key)
-        self.changes[collection_name][key] = value
+        # Get current version if exists
+        old_version = None
+        old_value = None
+        if collection_name in self.read_versions and key in self.read_versions[collection_name]:
+            old_version = self.read_versions[collection_name][key]
+        else:
+            # Read current state to get version
+            collection = await self.db.get_collection(collection_name)
+            current = await collection._get_versioned(key)
+            if current:
+                old_version = current.version
+                old_value = current.value
+                # Track this read
+                if collection_name not in self.read_versions:
+                    self.read_versions[collection_name] = {}
+                self.read_versions[collection_name][key] = old_version
+        
+        # Create new versioned value
+        new_version = (old_version or 0) + 1
+        versioned_value = VersionedValue(
+            value=value,
+            version=new_version,
+            updated_at=time.time()
+        )
+        
+        # Stage the change
+        if collection_name not in self.changes:
+            self.changes[collection_name] = {}
+        self.changes[collection_name][key] = versioned_value
         
         # Log operation
-        op = Operation('set', collection_name, key, 
-                      self.original_data[collection_name].get(key), value)
+        op = Operation('set', collection_name, key, old_value, value, old_version, new_version)
         self.operations.append(op)
     
     async def delete(self, collection_name: str, key: str) -> bool:
@@ -89,11 +155,23 @@ class SafeTransaction:
         if current_value is None:
             return False
         
-        await self._prepare_change(collection_name, key)
-        self.changes[collection_name][key] = "___DELETED___"
+        # Get current version
+        old_version = self.read_versions[collection_name][key]
+        new_version = old_version + 1
+        
+        # Create deletion marker
+        versioned_value = VersionedValue(
+            value="___DELETED___",
+            version=new_version,
+            updated_at=time.time()
+        )
+        
+        if collection_name not in self.changes:
+            self.changes[collection_name] = {}
+        self.changes[collection_name][key] = versioned_value
         
         # Log operation
-        op = Operation('delete', collection_name, key, current_value, None)
+        op = Operation('delete', collection_name, key, current_value, None, old_version, new_version)
         self.operations.append(op)
         return True
     
@@ -146,41 +224,54 @@ class SafeTransaction:
         value = await self.get(collection_name, key)
         return value is not None
     
-    async def _prepare_change(self, collection_name: str, key: str):
-        """Prepare for a change by storing original value"""
-        if collection_name not in self.changes:
-            self.changes[collection_name] = {}
-        if collection_name not in self.original_data:
-            self.original_data[collection_name] = {}
-        
-        # Store original value if we haven't already
-        if key not in self.original_data[collection_name]:
-            collection = await self.db.get_collection(collection_name)
-            original = await collection.get(key)
-            self.original_data[collection_name][key] = original
-    
     async def commit(self):
-        """Commit all changes"""
+        """Commit all changes with conflict detection"""
         if self.state != TransactionState.ACTIVE:
             raise TransactionError(f"Transaction {self.tx_id} is not active")
         
         try:
+            # Check for conflicts before committing
+            await self._check_conflicts()
+            
             # Apply all changes atomically
             for collection_name, changes in self.changes.items():
                 collection = await self.db.get_collection(collection_name)
                 
-                for key, value in changes.items():
-                    if value == "___DELETED___":
-                        await collection.delete(key)
+                for key, versioned_value in changes.items():
+                    if versioned_value.value == "___DELETED___":
+                        await collection._delete_versioned(key, versioned_value.version)
                     else:
-                        await collection.set(key, value)
+                        await collection._set_versioned(key, versioned_value)
             
             self.state = TransactionState.COMMITTED
             logger.info(f"✅ Transaction {self.tx_id} committed with {len(self.operations)} operations")
             
+        except ConcurrencyError as e:
+            await self.rollback()
+            raise e
         except Exception as e:
             await self.rollback()
             raise TransactionError(f"Commit failed: {e}")
+    
+    async def _check_conflicts(self):
+        """Check for version conflicts"""
+        for collection_name, read_versions in self.read_versions.items():
+            collection = await self.db.get_collection(collection_name)
+            
+            for key, expected_version in read_versions.items():
+                # Skip if we're going to modify this key anyway
+                if (collection_name in self.changes and 
+                    key in self.changes[collection_name]):
+                    continue
+                
+                current = await collection._get_versioned(key)
+                current_version = current.version if current else 0
+                
+                if current_version != expected_version:
+                    raise ConcurrencyError(
+                        f"Conflict detected on {collection_name}.{key}: "
+                        f"expected version {expected_version}, found {current_version}"
+                    )
     
     async def rollback(self):
         """Rollback the transaction"""
@@ -189,6 +280,7 @@ class SafeTransaction:
         
         self.state = TransactionState.ABORTED
         self.changes.clear()
+        self.read_versions.clear()
         logger.info(f"🔄 Transaction {self.tx_id} rolled back")
     
     def get_info(self) -> Dict[str, Any]:
@@ -198,19 +290,22 @@ class SafeTransaction:
             "state": self.state.value,
             "operations": len(self.operations),
             "collections": list(self.changes.keys()),
+            "reads": {coll: list(keys.keys()) for coll, keys in self.read_versions.items()},
             "age_seconds": time.time() - self.created_at,
             "operation_details": [
                 {
                     "type": op.op_type,
                     "collection": op.collection,
                     "key": op.key,
+                    "old_version": op.old_version,
+                    "new_version": op.new_version,
                     "timestamp": op.timestamp
                 } for op in self.operations
             ]
         }
 
 class EnhancedCollection:
-    """Enhanced collection with caching and advanced features"""
+    """Enhanced collection with versioning and concurrency control"""
     
     def __init__(self, name: str, db_path: str, cache_ttl: float = 1.0):
         self.name = name
@@ -228,8 +323,8 @@ class EnhancedCollection:
             with open(self.file_path, 'w') as f:
                 json.dump({}, f)
     
-    async def _read_data(self) -> Dict[str, Any]:
-        """Read data with caching"""
+    async def _read_data(self) -> Dict[str, Dict[str, Any]]:
+        """Read versioned data with caching"""
         current_time = time.time()
         
         # Return cached data if still valid
@@ -240,18 +335,32 @@ class EnhancedCollection:
         # Read from file
         try:
             with open(self.file_path, 'r') as f:
-                data = json.load(f)
+                raw_data = json.load(f)
+            
+            # Convert to versioned format if needed
+            versioned_data = {}
+            for key, value in raw_data.items():
+                if isinstance(value, dict) and "version" in value and "updated_at" in value:
+                    # Already versioned
+                    versioned_data[key] = value
+                else:
+                    # Legacy data, add version info
+                    versioned_data[key] = {
+                        "value": value,
+                        "version": 1,
+                        "updated_at": time.time()
+                    }
             
             # Update cache
-            self._data_cache = data.copy()
+            self._data_cache = versioned_data.copy()
             self._cache_time = current_time
             
-            return data
+            return versioned_data
         except (json.JSONDecodeError, FileNotFoundError):
             return {}
     
-    async def _write_data(self, data: Dict[str, Any], max_retries: int = 3):
-        """Write data with retry mechanism"""
+    async def _write_data(self, data: Dict[str, Dict[str, Any]], max_retries: int = 3):
+        """Write versioned data with retry mechanism"""
         for attempt in range(max_retries):
             try:
                 # Atomic write using temp file
@@ -278,31 +387,65 @@ class EnhancedCollection:
                 
                 await asyncio.sleep(0.1 * (2 ** attempt))  # Exponential backoff
     
-    async def get(self, key: str) -> Optional[Any]:
-        """Get value by key"""
+    async def _get_versioned(self, key: str) -> Optional[VersionedValue]:
+        """Get versioned value by key"""
         data = await self._read_data()
-        return data.get(key)
+        raw_value = data.get(key)
+        if raw_value is None:
+            return None
+        return VersionedValue.from_dict(raw_value)
     
-    async def set(self, key: str, value: Any) -> bool:
-        """Set value by key"""
+    async def _set_versioned(self, key: str, versioned_value: VersionedValue):
+        """Set versioned value by key"""
         data = await self._read_data()
-        data[key] = value
+        data[key] = versioned_value.to_dict()
         await self._write_data(data)
-        return True
     
-    async def delete(self, key: str) -> bool:
-        """Delete value by key"""
+    async def _delete_versioned(self, key: str, expected_version: int) -> bool:
+        """Delete versioned value with version check"""
         data = await self._read_data()
         if key in data:
+            current_version = data[key].get("version", 1)
+            if current_version != expected_version:
+                raise ConcurrencyError(f"Version mismatch during delete: expected {expected_version}, found {current_version}")
             del data[key]
             await self._write_data(data)
             return True
         return False
     
+    # Public API (backwards compatible)
+    async def get(self, key: str) -> Optional[Any]:
+        """Get value by key"""
+        versioned = await self._get_versioned(key)
+        return versioned.value if versioned else None
+    
+    async def set(self, key: str, value: Any) -> bool:
+        """Set value by key"""
+        # Get current version or start at 1
+        current = await self._get_versioned(key)
+        new_version = (current.version if current else 0) + 1
+        
+        versioned_value = VersionedValue(
+            value=value,
+            version=new_version,
+            updated_at=time.time()
+        )
+        
+        await self._set_versioned(key, versioned_value)
+        return True
+    
+    async def delete(self, key: str) -> bool:
+        """Delete value by key"""
+        current = await self._get_versioned(key)
+        if current:
+            await self._delete_versioned(key, current.version)
+            return True
+        return False
+    
     async def exists(self, key: str) -> bool:
         """Check if key exists"""
-        data = await self._read_data()
-        return key in data
+        versioned = await self._get_versioned(key)
+        return versioned is not None
     
     async def count(self) -> int:
         """Count items"""
@@ -317,12 +460,12 @@ class EnhancedCollection:
     async def values(self) -> List[Any]:
         """Get all values"""
         data = await self._read_data()
-        return list(data.values())
+        return [VersionedValue.from_dict(v).value for v in data.values()]
     
     async def items(self) -> List[tuple]:
         """Get all key-value pairs"""
         data = await self._read_data()
-        return list(data.items())
+        return [(k, VersionedValue.from_dict(v).value) for k, v in data.items()]
     
     async def clear(self) -> bool:
         """Clear all data"""
@@ -335,7 +478,9 @@ class EnhancedCollection:
         data = await self._read_data()
         
         results = []
-        for key, value in data.items():
+        for key, versioned_data in data.items():
+            value = VersionedValue.from_dict(versioned_data).value
+            
             # Create item with metadata
             if isinstance(value, dict):
                 item = {'_key': key, **value}
@@ -350,43 +495,10 @@ class EnhancedCollection:
                     break
         
         return results
-    
-    async def update(self, key: str, updates: Dict[str, Any]) -> bool:
-        """Update specific fields of a record"""
-        data = await self._read_data()
-        
-        if key not in data:
-            return False
-        
-        if isinstance(data[key], dict):
-            data[key].update(updates)
-        else:
-            data[key] = updates
-        
-        await self._write_data(data)
-        return True
-    
-    async def increment(self, key: str, field: str = 'value', 
-                       amount: Union[int, float] = 1) -> Union[int, float]:
-        """Increment a numeric field"""
-        data = await self._read_data()
-        
-        if key not in data:
-            data[key] = {field: 0} if field != 'value' else 0
-        
-        if isinstance(data[key], dict):
-            current_value = data[key].get(field, 0)
-            data[key][field] = current_value + amount
-            result = data[key][field]
-        else:
-            data[key] = data[key] + amount
-            result = data[key]
-        
-        await self._write_data(data)
-        return result
 
+# Rest of the classes remain the same...
 class EnhancedSafeDB:
-    """Enhanced database with all features restored safely"""
+    """Enhanced database with optimistic locking"""
     
     def __init__(self, db_path: str = "./enhanced_data", cache_ttl: float = 1.0):
         self.db_path = Path(db_path)
@@ -402,29 +514,45 @@ class EnhancedSafeDB:
         return self.collections[name]
     
     @asynccontextmanager
-    async def transaction(self):
-        """Create transaction context manager"""
-        self.tx_counter += 1
-        tx_id = f"tx_{self.tx_counter}_{int(time.time() * 1000) % 10000}"
-        
-        transaction = SafeTransaction(tx_id, self)
-        self._active_transactions[tx_id] = transaction
-        
-        try:
-            yield transaction
-            # Auto-commit if no exception
-            if transaction.state == TransactionState.ACTIVE:
-                await transaction.commit()
-        except Exception as e:
-            # Auto-rollback on exception
-            if transaction.state == TransactionState.ACTIVE:
-                await transaction.rollback()
-            raise
-        finally:
-            # Cleanup
-            if tx_id in self._active_transactions:
-                del self._active_transactions[tx_id]
+    async def transaction(self, max_retries: int = 3):
+        """Create transaction context manager with automatic retry on conflicts"""
+        for attempt in range(max_retries):
+            self.tx_counter += 1
+            tx_id = f"tx_{self.tx_counter}_{int(time.time() * 1000) % 10000}"
+            
+            transaction = SafeTransaction(tx_id, self)
+            self._active_transactions[tx_id] = transaction
+            
+            try:
+                yield transaction
+                # Auto-commit if no exception
+                if transaction.state == TransactionState.ACTIVE:
+                    await transaction.commit()
+                break  # Success, exit retry loop
+                
+            except ConcurrencyError as e:
+                if transaction.state == TransactionState.ACTIVE:
+                    await transaction.rollback()
+                
+                if attempt < max_retries - 1:
+                    logger.info(f"🔄 Retrying transaction due to conflict (attempt {attempt + 1}/{max_retries})")
+                    await asyncio.sleep(0.01 * (2 ** attempt))  # Exponential backoff
+                    continue
+                else:
+                    logger.error(f"❌ Transaction failed after {max_retries} attempts: {e}")
+                    raise
+                    
+            except Exception as e:
+                # Auto-rollback on exception
+                if transaction.state == TransactionState.ACTIVE:
+                    await transaction.rollback()
+                raise
+            finally:
+                # Cleanup
+                if tx_id in self._active_transactions:
+                    del self._active_transactions[tx_id]
     
+    # ... rest of the methods remain the same
     async def get_transaction_info(self) -> Dict[str, Any]:
         """Get information about active transactions"""
         return {
@@ -468,7 +596,7 @@ class EnhancedSafeDB:
                 "backup_timestamp": time.time(),
                 "source_path": str(self.db_path),
                 "collections": await self.list_collections(),
-                "version": "enhanced_safe_db_v1.0"
+                "version": "enhanced_safe_db_v2.0"
             }
             
             with open(backup_dir / "backup_metadata.json", 'w') as f:
@@ -525,11 +653,19 @@ class EnhancedSafeDB:
         }
         
         for collection_name in collections:
-            collection = await self.get_collection(collection_name)
-            stats["collections"][collection_name] = {
-                "count": await collection.count(),
-                "file_size": collection.file_path.stat().st_size if collection.file_path.exists() else 0
-            }
+            try:
+                collection = await self.get_collection(collection_name)
+                stats["collections"][collection_name] = {
+                    "count": await collection.count(),
+                    "file_size": collection.file_path.stat().st_size if collection.file_path.exists() else 0
+                }
+            except Exception as e:
+                logger.error(f"Error getting stats for collection {collection_name}: {e}")
+                stats["collections"][collection_name] = {
+                    "count": 0,
+                    "file_size": 0,
+                    "error": str(e)
+                }
         
         return stats
     
@@ -543,147 +679,7 @@ class EnhancedSafeDB:
         self.collections.clear()
         self._active_transactions.clear()
 
-# Convenience functions
-async def create_unique_id() -> str:
-    """Generate a unique ID"""
-    return str(uuid.uuid4())
-
-async def create_timestamp() -> float:
-    """Get current timestamp"""
-    return time.time()
-
-class Document:
-    """Helper class for document-style operations"""
-    
-    def __init__(self, collection: EnhancedCollection, doc_id: str):
-        self.collection = collection
-        self.doc_id = doc_id
-    
-    async def save(self, data: Dict[str, Any]) -> bool:
-        """Save document data"""
-        # Add metadata
-        data['_id'] = self.doc_id
-        data['_updated'] = await create_timestamp()
-        
-        return await self.collection.set(self.doc_id, data)
-    
-    async def load(self) -> Optional[Dict[str, Any]]:
-        """Load document data"""
-        return await self.collection.get(self.doc_id)
-    
-    async def delete(self) -> bool:
-        """Delete the document"""
-        return await self.collection.delete(self.doc_id)
-    
-    async def update_fields(self, updates: Dict[str, Any]) -> bool:
-        """Update specific fields"""
-        updates['_updated'] = await create_timestamp()
-        return await self.collection.update(self.doc_id, updates)
-    
-    async def exists(self) -> bool:
-        """Check if document exists"""
-        return await self.collection.exists(self.doc_id)
-
 # Factory function
 def create_database(db_path: str = './enhanced_data', cache_ttl: float = 1.0) -> EnhancedSafeDB:
     """Factory function to create a database instance"""
     return EnhancedSafeDB(db_path, cache_ttl)
-
-# Demo function
-async def demo_enhanced_features():
-    """Demo all the enhanced features"""
-    print("🚀 Enhanced Safe Database Demo")
-    print("=" * 50)
-    
-    db = create_database()
-    
-    # Setup test data
-    print("Setting up test data...")
-    users = await db.get_collection("users")
-    products = await db.get_collection("products")
-    
-    await users.set("user1", {"name": "Alice", "balance": 1000.0, "level": 5})
-    await users.set("user2", {"name": "Bob", "balance": 500.0, "level": 3})
-    await products.set("prod1", {"name": "Laptop", "price": 800.0, "stock": 3})
-    
-    # Test enhanced collection features
-    print("\n📊 Testing enhanced collection features:")
-    
-    # Find with filter
-    rich_users = await users.find(lambda u: u.get('balance', 0) > 700)
-    print(f"Rich users (>$700): {[u['name'] for u in rich_users]}")
-    
-    # Increment operation
-    new_level = await users.increment("user1", "level", 2)
-    print(f"User1 new level after increment: {new_level}")
-    
-    # Update operation
-    await users.update("user2", {"last_login": time.time(), "status": "active"})
-    user2 = await users.get("user2")
-    print(f"Updated user2: {user2}")
-    
-    # Test transaction with enhanced features
-    print("\n💳 Testing enhanced transaction features:")
-    
-    try:
-        async with db.transaction() as tx:
-            # Complex transaction with multiple operations
-            user = await tx.get("users", "user1")
-            product = await tx.get("products", "prod1")
-            
-            print(f"Before: User balance=${user['balance']}, Product stock={product['stock']}")
-            
-            # Validate
-            if user["balance"] < product["price"]:
-                raise Exception("Insufficient funds")
-            
-            # Use enhanced transaction methods
-            await tx.update("users", "user1", {
-                "balance": user["balance"] - product["price"],
-                "last_purchase": product["name"]
-            })
-            
-            await tx.increment("products", "prod1", "stock", -1)
-            
-            # Create order with Document helper
-            order_id = await create_unique_id()
-            await tx.set("orders", order_id, {
-                "user_id": "user1",
-                "product_id": "prod1",
-                "amount": product["price"],
-                "timestamp": await create_timestamp()
-            })
-            
-            print("✅ Enhanced transaction completed!")
-    
-    except Exception as e:
-        print(f"❌ Transaction failed: {e}")
-    
-    # Show final state
-    user1 = await users.get("user1")
-    prod1 = await products.get("prod1")
-    orders = await db.get_collection("orders")
-    order_count = await orders.count()
-    
-    print(f"\nFinal state:")
-    print(f"  User1 balance: ${user1['balance']}")
-    print(f"  Product stock: {prod1['stock']}")
-    print(f"  Orders created: {order_count}")
-    
-    # Test backup/restore
-    print("\n💾 Testing backup/restore:")
-    backup_success = await db.backup("./test_backup")
-    print(f"Backup created: {backup_success}")
-    
-    # Show database stats
-    stats = await db.get_stats()
-    print(f"\n📈 Database stats: {stats}")
-    
-    # Show transaction info
-    tx_info = await db.get_transaction_info()
-    print(f"Transaction info: {tx_info}")
-    
-    print("\n🎉 All enhanced features working!")
-
-if __name__ == "__main__":
-    asyncio.run(demo_enhanced_features())

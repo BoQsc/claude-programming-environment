@@ -1,0 +1,38 @@
+{
+  "N3vjdpIaZDE3_W9C7vb7eNSLbLreG0ly_Som9d1aJp0": {
+    "value": {
+      "username": "counter_test_1750054111",
+      "created_at": 1750054113.0425715,
+      "expires_at": 1750057713.0425715
+    },
+    "version": 1,
+    "updated_at": 1750054113.0428805
+  },
+  "GYKILJejCXzM_C2EBkv1iRVDH0NaUV1c5L9iUJWoMKs": {
+    "value": {
+      "username": "delete_test_1750054113",
+      "created_at": 1750054114.4310377,
+      "expires_at": 1750057714.431038
+    },
+    "version": 1,
+    "updated_at": 1750054114.4387186
+  },
+  "zkLNSz1CjiOCWhe-X__z_mYkGFdVCqU-TlbwYI3qmOw": {
+    "value": {
+      "username": "cleanup_test_1750054114",
+      "created_at": 1750054115.7309506,
+      "expires_at": 1750057715.7309506
+    },
+    "version": 1,
+    "updated_at": 1750054115.7385702
+  },
+  "B81GaU0Jew6gJ_ZpI3ktWtWQqh6U41hOHwxkbsNtOKs": {
+    "value": {
+      "username": "stats_test_1750054115",
+      "created_at": 1750054117.0025184,
+      "expires_at": 1750057717.0025184
+    },
+    "version": 1,
+    "updated_at": 1750054117.0101066
+  }
+}
