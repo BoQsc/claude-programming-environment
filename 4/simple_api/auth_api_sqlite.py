@@ -135,7 +135,7 @@ async def post_register(request):
     except (KeyError, json.JSONDecodeError):
         return web.json_response({'error': 'Invalid request'}, status=400)
 
-async def get_check_username(request):
+async def get_checkusername(request):
     username = request.query.get('username')
     if not username:
         return web.json_response({'error': 'Username required'}, status=400)
@@ -143,7 +143,7 @@ async def get_check_username(request):
     return web.json_response({'available': not exists})
 
 @require_auth
-async def put_change_password(request):
+async def put_changepassword(request):
     try:
         data = await request.json()
         current_password, new_password = data['current_password'], data['new_password']
@@ -240,27 +240,46 @@ async def init_app():
 
 app.on_startup.append(lambda app: init_app())
 
+# First, explicitly register the problematic routes
+app.router.add_route('GET', '/users/{id}', get_users_id)
+app.router.add_route('DELETE', '/users/{id}', delete_users_id)
+print(f"Registered: GET /users/{{id}}")
+print(f"Registered: DELETE /users/{{id}}")
+
+# Then auto-register the rest
 for name, handler in list(globals().items()):
+    # Skip the ones we manually registered
+    if name in ['get_users_id', 'delete_users_id']:
+        continue
+        
     for method in ['get', 'post', 'put', 'delete', 'patch']:
         if name.startswith(f"{method}_"):
             route_parts = name[len(method)+1:].split('_')
             source = inspect.getsource(handler)
             params = re.findall(r"request\.match_info\['(\w+)'\]", source)
             
+            # Create route with parameters
+            route_with_params = route_parts[:]
             for param in params:
-                param_parts = param.split('_')
-                for i in range(len(route_parts) - len(param_parts) + 1):
-                    if route_parts[i:i+len(param_parts)] == param_parts:
-                        route_parts[i:i+len(param_parts)] = [f'{{{param}}}']
-                        break
+                # Look for the parameter in route parts and replace with {param}
+                if param in route_parts:
+                    param_index = route_parts.index(param)
+                    route_with_params[param_index] = f'{{{param}}}'
+                elif param == 'id' and len(route_parts) > 1:
+                    # Special handling for 'id' parameter - replace last part
+                    route_with_params[-1] = f'{{{param}}}'
             
-            route = '/' + '/'.join(route_parts)
+            route = '/' + '/'.join(route_with_params)
             app.router.add_route(method.upper(), route, handler)
             print(f"Registered: {method.upper()} {route}")
             break
 
 if __name__ == '__main__':
     print("🔐 Auth API with SQLite")
+    print("\nRegistered routes:")
+    for resource in app.router.resources():
+        print(f"  {resource}")
+    print("\nAPI Commands:")
     print("curl -X POST http://localhost:8080/register -H 'Content-Type: application/json' -d '{\"username\":\"alice\",\"password\":\"secret123\"}'")
     print("curl -X POST http://localhost:8080/login -H 'Content-Type: application/json' -d '{\"username\":\"alice\",\"password\":\"secret123\"}'")
     print("curl -H 'Authorization: Bearer YOUR_TOKEN' http://localhost:8080/profile")
