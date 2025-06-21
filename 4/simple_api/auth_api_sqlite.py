@@ -78,15 +78,12 @@ class DB:
     async def cleanup_sessions():
         await DB._execute("DELETE FROM sessions WHERE expires_at < ?", (time.time(),))
 
-def hash_password(password: str) -> tuple[str, str]:
-    salt = secrets.token_bytes(32)
-    hash_bytes = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 600_000)
-    return salt.hex(), hash_bytes.hex()
+# Async password functions - single line implementations
+async def hash_password(password: str) -> tuple[str, str]:
+    return await asyncio.get_event_loop().run_in_executor(None, lambda: (lambda s: (s.hex(), hashlib.pbkdf2_hmac('sha256', password.encode(), s, 600_000).hex()))(secrets.token_bytes(32)))
 
-def verify_password(password: str, salt_hex: str, hash_hex: str) -> bool:
-    salt = bytes.fromhex(salt_hex)
-    hash_bytes = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 600_000)
-    return secrets.compare_digest(hash_bytes.hex(), hash_hex)
+async def verify_password(password: str, salt_hex: str, hash_hex: str) -> bool:
+    return await asyncio.get_event_loop().run_in_executor(None, lambda: secrets.compare_digest(hashlib.pbkdf2_hmac('sha256', password.encode(), bytes.fromhex(salt_hex), 600_000).hex(), hash_hex))
 
 def generate_token() -> str:
     return secrets.token_urlsafe(32)
@@ -131,7 +128,7 @@ async def post_register(request):
         if await DB.user_exists(username):
             return web.json_response({'error': 'User exists'}, status=400)
         
-        salt, hash_val = hash_password(password)
+        salt, hash_val = await hash_password(password)
         await DB.create_user(username, salt, hash_val)
         return web.json_response({'message': 'User created'})
     
@@ -152,13 +149,13 @@ async def put_changepassword(request):
         current_password, new_password = data['current_password'], data['new_password']
         
         user = request['user']
-        if not verify_password(current_password, user['salt'], user['password_hash']):
+        if not await verify_password(current_password, user['salt'], user['password_hash']):
             return web.json_response({'error': 'Current password incorrect'}, status=400)
         
         if len(new_password) < 6:
             return web.json_response({'error': 'New password min 6 chars'}, status=400)
         
-        salt, hash_val = hash_password(new_password)
+        salt, hash_val = await hash_password(new_password)
         await DB._execute("UPDATE users SET salt = ?, password_hash = ? WHERE username = ?", (salt, hash_val, user['username']))
         return web.json_response({'message': 'Password changed'})
     
@@ -171,7 +168,7 @@ async def post_login(request):
         username, password = data['username'], data['password']
         
         user = await DB.get_user(username)
-        if not user or not verify_password(password, user['salt'], user['password_hash']):
+        if not user or not await verify_password(password, user['salt'], user['password_hash']):
             return web.json_response({'error': 'Invalid credentials'}, status=401)
         
         token = generate_token()
@@ -290,7 +287,7 @@ for name, handler in list(globals().items()):
             break
 
 if __name__ == '__main__':
-    print("🔐 Auth API with SQLite - HARD DELETE VERSION")
+    print("🔐 Auth API with SQLite - ASYNC PASSWORD HASHING VERSION")
     print("\nRegistered routes:")
     for resource in app.router.resources():
         print(f"  {resource}")
