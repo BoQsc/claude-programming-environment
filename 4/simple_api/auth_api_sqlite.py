@@ -26,7 +26,7 @@ class DB:
     
     @staticmethod
     async def init():
-        await DB._execute("CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, salt TEXT, password_hash TEXT, created_at REAL, is_active BOOLEAN DEFAULT 1, last_login REAL)")
+        await DB._execute("CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, salt TEXT, password_hash TEXT, created_at REAL, last_login REAL)")
         await DB._execute("CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, username TEXT, created_at REAL, expires_at REAL, ip_address TEXT, user_agent TEXT)")
     
     @staticmethod
@@ -35,7 +35,7 @@ class DB:
     
     @staticmethod
     async def get_user(username):
-        return await DB._execute("SELECT * FROM users WHERE username = ? AND is_active = 1", (username,), 'one')
+        return await DB._execute("SELECT * FROM users WHERE username = ?", (username,), 'one')
     
     @staticmethod
     async def user_exists(username):
@@ -49,7 +49,7 @@ class DB:
     
     @staticmethod
     async def get_user_by_token(token):
-        return await DB._execute("SELECT u.* FROM users u JOIN sessions s ON u.username = s.username WHERE s.token = ? AND s.expires_at > ? AND u.is_active = 1", 
+        return await DB._execute("SELECT u.* FROM users u JOIN sessions s ON u.username = s.username WHERE s.token = ? AND s.expires_at > ?", 
                                 (token, time.time()), 'one')
     
     @staticmethod
@@ -62,13 +62,16 @@ class DB:
     
     @staticmethod
     async def get_all_users():
-        return await DB._execute("SELECT username, created_at, last_login FROM users WHERE is_active = 1", fetch='all')
+        return await DB._execute("SELECT username, created_at, last_login FROM users", fetch='all')
     
     @staticmethod
     async def delete_user(username):
+        """Hard delete user and all their sessions"""
         async with aiosqlite.connect(DB_PATH) as db:
-            await db.execute("UPDATE users SET is_active = 0 WHERE username = ?", (username,))
+            # Delete all user sessions first
             await db.execute("DELETE FROM sessions WHERE username = ?", (username,))
+            # Delete the user record
+            await db.execute("DELETE FROM users WHERE username = ?", (username,))
             await db.commit()
     
     @staticmethod
@@ -208,16 +211,22 @@ async def delete_users_id(request):
     current_user = request['user']
     username = request.match_info['id']
     
+    print(f"🗑️  Delete request: current_user={current_user['username']}, target={username}")
+    
     # First check if the user to be deleted exists
     user_to_delete = await DB.get_user(username)
     if not user_to_delete:
+        print(f"❌ User {username} not found")
         return web.json_response({'error': 'User not found'}, status=404)
     
     # Then check if the current user is trying to delete themselves
     if current_user['username'] != username:
+        print(f"❌ User {current_user['username']} cannot delete {username}")
         return web.json_response({'error': 'Forbidden'}, status=403)
     
+    print(f"✅ Deleting user {username}")
     await DB.delete_user(username)
+    print(f"✅ User {username} deleted successfully")
     return web.json_response({'message': 'User deleted'})
 
 async def cleanup_task():
@@ -281,7 +290,7 @@ for name, handler in list(globals().items()):
             break
 
 if __name__ == '__main__':
-    print("🔐 Auth API with SQLite")
+    print("🔐 Auth API with SQLite - HARD DELETE VERSION")
     print("\nRegistered routes:")
     for resource in app.router.resources():
         print(f"  {resource}")
