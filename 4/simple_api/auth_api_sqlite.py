@@ -88,6 +88,19 @@ def verify_password(password: str, salt_hex: str, hash_hex: str) -> bool:
 def generate_token() -> str:
     return secrets.token_urlsafe(32)
 
+@web.middleware
+async def cors_middleware(request, handler):
+    if request.method == 'OPTIONS':
+        response = web.Response()
+    else:
+        response = await handler(request)
+    
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    response.headers['Access-Control-Max-Age'] = '3600'
+    return response
+
 def require_auth(handler):
     async def wrapper(request):
         auth_header = request.headers.get('Authorization')
@@ -118,6 +131,33 @@ async def post_register(request):
         salt, hash_val = hash_password(password)
         await DB.create_user(username, salt, hash_val)
         return web.json_response({'message': 'User created'})
+    
+    except (KeyError, json.JSONDecodeError):
+        return web.json_response({'error': 'Invalid request'}, status=400)
+
+async def get_check_username(request):
+    username = request.query.get('username')
+    if not username:
+        return web.json_response({'error': 'Username required'}, status=400)
+    exists = await DB.user_exists(username)
+    return web.json_response({'available': not exists})
+
+@require_auth
+async def put_change_password(request):
+    try:
+        data = await request.json()
+        current_password, new_password = data['current_password'], data['new_password']
+        
+        user = request['user']
+        if not verify_password(current_password, user['salt'], user['password_hash']):
+            return web.json_response({'error': 'Current password incorrect'}, status=400)
+        
+        if len(new_password) < 6:
+            return web.json_response({'error': 'New password min 6 chars'}, status=400)
+        
+        salt, hash_val = hash_password(new_password)
+        await DB._execute("UPDATE users SET salt = ?, password_hash = ? WHERE username = ?", (salt, hash_val, user['username']))
+        return web.json_response({'message': 'Password changed'})
     
     except (KeyError, json.JSONDecodeError):
         return web.json_response({'error': 'Invalid request'}, status=400)
@@ -192,7 +232,7 @@ threading.Thread(target=watch_file, daemon=True).start()
 
 # Auto-routing
 import re, inspect
-app = web.Application()
+app = web.Application(middlewares=[cors_middleware])
 
 async def init_app():
     await DB.init()
