@@ -208,6 +208,12 @@ async def delete_users_id(request):
     current_user = request['user']
     username = request.match_info['id']
     
+    # First check if the user to be deleted exists
+    user_to_delete = await DB.get_user(username)
+    if not user_to_delete:
+        return web.json_response({'error': 'User not found'}, status=404)
+    
+    # Then check if the current user is trying to delete themselves
     if current_user['username'] != username:
         return web.json_response({'error': 'Forbidden'}, status=403)
     
