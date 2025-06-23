@@ -5,6 +5,8 @@ import secrets
 import time
 import json
 import asyncio
+import os
+import ssl
 
 DB_PATH = "auth.db"
 
@@ -31,8 +33,11 @@ class DB:
     
     @staticmethod
     async def create_user(username, salt, password_hash):
-        cursor = await DB._execute("INSERT INTO users (username, salt, password_hash, created_at) VALUES (?, ?, ?, ?)", (username, salt, password_hash, time.time()))
-        return cursor.lastrowid if hasattr(cursor, 'lastrowid') else None
+        async with aiosqlite.connect(DB_PATH) as db:
+            cursor = await db.execute("INSERT INTO users (username, salt, password_hash, created_at) VALUES (?, ?, ?, ?)", 
+                                    (username, salt, password_hash, time.time()))
+            await db.commit()
+            return cursor.lastrowid
     
     @staticmethod
     async def get_user_by_id(user_id):
@@ -97,6 +102,28 @@ async def verify_password(password: str, salt_hex: str, hash_hex: str) -> bool:
 
 def generate_token() -> str:
     return secrets.token_urlsafe(32)
+
+def check_ssl_certificates():
+    """Check if SSL certificates exist in current directory"""
+    cert_file = 'cert.pem'
+    key_file = 'key.pem'
+    
+    if os.path.exists(cert_file) and os.path.exists(key_file):
+        return cert_file, key_file
+    
+    # Also check for common certificate names
+    common_names = [
+        ('server.crt', 'server.key'),
+        ('localhost.pem', 'localhost-key.pem'),
+        ('ssl_cert.pem', 'ssl_key.pem'),
+        ('certificate.pem', 'private_key.pem')
+    ]
+    
+    for cert_name, key_name in common_names:
+        if os.path.exists(cert_name) and os.path.exists(key_name):
+            return cert_name, key_name
+    
+    return None, None
 
 @web.middleware
 async def cors_middleware(request, handler):
@@ -270,8 +297,10 @@ async def cleanup_task():
         await asyncio.sleep(300)
         await DB.cleanup_sessions()
 
-# File watching
-import os, sys, threading
+# File watching for development
+import sys
+import threading
+
 def watch_file():
     original_hash = hashlib.md5(open(__file__, 'rb').read()).hexdigest()
     while True: 
@@ -279,10 +308,11 @@ def watch_file():
         current_hash = hashlib.md5(open(__file__, 'rb').read()).hexdigest()
         if current_hash != original_hash:
             os.execv(sys.executable, ['python'] + sys.argv)
-threading.Thread(target=watch_file, daemon=True).start()
 
-# Auto-routing
-import re, inspect
+# Auto-routing system
+import re
+import inspect
+
 app = web.Application(middlewares=[cors_middleware])
 
 async def init_app():
@@ -291,50 +321,101 @@ async def init_app():
 
 app.on_startup.append(lambda app: init_app())
 
-# First, explicitly register the problematic routes
+# Manually register parameterized routes first
 app.router.add_route('GET', '/users/{id}', get_users_id)
 app.router.add_route('DELETE', '/users/{id}', delete_users_id)
-print(f"Registered: GET /users/{{id}}")
-print(f"Registered: DELETE /users/{{id}}")
 
-# Then auto-register the rest
+# Auto-register other routes
 for name, handler in list(globals().items()):
-    # Skip the ones we manually registered
+    # Skip manually registered routes
     if name in ['get_users_id', 'delete_users_id']:
         continue
         
     for method in ['get', 'post', 'put', 'delete', 'patch']:
         if name.startswith(f"{method}_"):
             route_parts = name[len(method)+1:].split('_')
-            source = inspect.getsource(handler)
-            params = re.findall(r"request\.match_info\['(\w+)'\]", source)
-            
-            # Create route with parameters
-            route_with_params = route_parts[:]
-            for param in params:
-                # Look for the parameter in route parts and replace with {param}
-                if param in route_parts:
-                    param_index = route_parts.index(param)
-                    route_with_params[param_index] = f'{{{param}}}'
-                elif param == 'id' and len(route_parts) > 1:
-                    # Special handling for 'id' parameter - replace last part
-                    route_with_params[-1] = f'{{{param}}}'
-            
-            route = '/' + '/'.join(route_with_params)
+            route = '/' + '/'.join(route_parts)
             app.router.add_route(method.upper(), route, handler)
-            print(f"Registered: {method.upper()} {route}")
             break
 
 if __name__ == '__main__':
-    print("🔐 Auth API with SQLite - ASYNC PASSWORD HASHING VERSION WITH UNIQUE IDS")
-    print("\nRegistered routes:")
-    for resource in app.router.resources():
-        print(f"  {resource}")
-    print("\nAPI Commands:")
-    print("curl -X POST http://localhost:8080/register -H 'Content-Type: application/json' -d '{\"username\":\"alice\",\"password\":\"secret123\"}'")
-    print("curl -X POST http://localhost:8080/login -H 'Content-Type: application/json' -d '{\"username\":\"alice\",\"password\":\"secret123\"}'")
-    print("curl -H 'Authorization: Bearer YOUR_TOKEN' http://localhost:8080/profile")
-    print("curl -H 'Authorization: Bearer YOUR_TOKEN' http://localhost:8080/users")
-    print("curl -H 'Authorization: Bearer YOUR_TOKEN' http://localhost:8080/users/1")
-    print("curl -X DELETE -H 'Authorization: Bearer YOUR_TOKEN' http://localhost:8080/users/1")
-    web.run_app(app, host='localhost', port=8080)
+    print("🔐 Auth API with SQLite - Production Ready with SSL Auto-Detection")
+    print("=" * 70)
+    
+    # Start file watcher for development
+    threading.Thread(target=watch_file, daemon=True).start()
+    
+    # Check for SSL certificates
+    cert_file, key_file = check_ssl_certificates()
+    
+    if cert_file and key_file:
+        # HTTPS Production Mode
+        ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        ssl_context.load_cert_chain(cert_file, key_file)
+        
+        host = '0.0.0.0'  # Accept connections from any IP
+        port = 8447
+        protocol = 'https'
+        
+        print(f"🔒 SSL certificates found ({cert_file}, {key_file})")
+        print(f"🚀 Starting HTTPS API server on {protocol}://{host}:{port}")
+        print(f"🌍 Production ready! Accessible from external hosts")
+        
+    else:
+        # HTTP Development Mode
+        host = 'localhost'
+        port = 8080
+        protocol = 'http'
+        
+        print("⚠️  No SSL certificates found - running in HTTP development mode")
+        print("💡 To enable HTTPS production mode:")
+        print("   • Place cert.pem and key.pem in current directory")
+        print("   • Or generate self-signed: openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes")
+        print(f"🚀 Starting HTTP server on {protocol}://{host}:{port}")
+    
+    print(f"\n📋 Available API endpoints:")
+    print(f"  POST   /register       - Create new user account")
+    print(f"  GET    /checkusername  - Check username availability")
+    print(f"  POST   /login          - Authenticate and get token")
+    print(f"  POST   /logout         - Invalidate session token")
+    print(f"  GET    /profile        - Get current user profile")
+    print(f"  PUT    /changepassword - Change user password")
+    print(f"  GET    /users          - List all users (authenticated)")
+    print(f"  GET    /users/{{id}}     - Get specific user by ID")
+    print(f"  DELETE /users/{{id}}     - Delete user account (own only)")
+    
+    print(f"\n🔧 Example API usage:")
+    base_url = f"{protocol}://{host}:{port}"
+    print(f"# Register new user:")
+    print(f"curl -X POST {base_url}/register -H 'Content-Type: application/json' \\")
+    print(f"  -d '{{\"username\":\"alice\",\"password\":\"secret123\"}}'")
+    print(f"\n# Login:")
+    print(f"curl -X POST {base_url}/login -H 'Content-Type: application/json' \\")
+    print(f"  -d '{{\"username\":\"alice\",\"password\":\"secret123\"}}'")
+    print(f"\n# Get profile (replace YOUR_TOKEN):")
+    print(f"curl -H 'Authorization: Bearer YOUR_TOKEN' {base_url}/profile")
+    print(f"\n# List users:")
+    print(f"curl -H 'Authorization: Bearer YOUR_TOKEN' {base_url}/users")
+    
+    if protocol == 'https':
+        print(f"\n🌐 Production Architecture:")
+        print(f"  • Auth API (this): {base_url}")
+        print(f"  • Frontend Web Server: https://yourdomain.com:443")
+        print(f"  • Frontend makes API calls to: {base_url}")
+        print(f"\n🔒 Security: HTTPS enabled, ready for production!")
+    else:
+        print(f"\n🔧 Development mode - add SSL certificates for production deployment")
+    
+    print("=" * 70)
+    
+    # Start the server
+    try:
+        if cert_file and key_file:
+            web.run_app(app, host=host, port=port, ssl_context=ssl_context)
+        else:
+            web.run_app(app, host=host, port=port)
+    except KeyboardInterrupt:
+        print("\n👋 Server stopped")
+    except Exception as e:
+        print(f"\n❌ Server error: {e}")
+        sys.exit(1)
