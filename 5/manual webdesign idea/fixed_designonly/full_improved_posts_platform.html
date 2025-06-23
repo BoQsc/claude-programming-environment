@@ -1577,11 +1577,1319 @@ notification.warning {
 <!-- Script Fragment -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
 <script>
-	// Application JavaScript will go here
-	console.log('🎉 Posts Platform fragments loaded successfully!');
-</script>
+// ===== POSTS PLATFORM - COMPLETE JAVASCRIPT IMPLEMENTATION =====
+// Full-featured blogging platform with all API integration
 
+// ===== CONFIGURATION =====
+const API_BASE = 'http://localhost:8080';
+const DEFAULT_AVATAR = '👤';
+
+// ===== GLOBAL STATE =====
+let currentUser = null;
+let currentToken = null;
+let currentPage = 1;
+let postsPerPage = 10;
+let currentFilter = 'all';
+let currentEditingPost = null;
+let isEditorInSplitView = false;
+let searchQuery = '';
+
+// ===== UTILITY FUNCTIONS =====
+function formatDate(timestamp) {
+    return new Date(timestamp * 1000).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function formatDistanceToNow(timestamp) {
+    const now = Date.now();
+    const then = timestamp * 1000;
+    const diff = now - then;
+    
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    
+    if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
+    if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    return 'just now';
+}
+
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('notification');
+    notification.className = `notification ${type} show`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 300);
+    }, 4000);
+}
+
+function showLoading(text = 'Loading...') {
+    const overlay = document.getElementById('loading-overlay');
+    const content = overlay.querySelector('loading_content');
+    content.innerHTML = `<spinner></spinner>${text}`;
+    overlay.classList.add('visible');
+}
+
+function hideLoading() {
+    document.getElementById('loading-overlay').classList.remove('visible');
+}
+
+function sanitizeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function truncateText(text, maxLength = 300) {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+}
+
+// ===== API HELPER FUNCTIONS =====
+async function apiRequest(endpoint, options = {}) {
+    const url = `${API_BASE}${endpoint}`;
+    const defaultHeaders = {
+        'Content-Type': 'application/json',
+    };
+    
+    if (currentToken) {
+        defaultHeaders['Authorization'] = `Bearer ${currentToken}`;
+    }
+    
+    const config = {
+        ...options,
+        headers: {
+            ...defaultHeaders,
+            ...options.headers,
+        },
+    };
+    
+    try {
+        const response = await fetch(url, config);
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || `HTTP ${response.status}`);
+        }
+        
+        return data;
+    } catch (error) {
+        console.error('API Request failed:', error);
+        throw error;
+    }
+}
+
+async function apiUpload(endpoint, formData) {
+    const url = `${API_BASE}${endpoint}`;
+    const config = {
+        method: 'POST',
+        body: formData,
+        headers: {}
+    };
+    
+    if (currentToken) {
+        config.headers['Authorization'] = `Bearer ${currentToken}`;
+    }
+    
+    try {
+        const response = await fetch(url, config);
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || `HTTP ${response.status}`);
+        }
+        
+        return data;
+    } catch (error) {
+        console.error('Upload failed:', error);
+        throw error;
+    }
+}
+
+// ===== AUTHENTICATION =====
+function initAuth() {
+    const savedToken = localStorage.getItem('auth_token');
+    const savedUser = localStorage.getItem('current_user');
+    
+    if (savedToken && savedUser) {
+        currentToken = savedToken;
+        currentUser = JSON.parse(savedUser);
+        updateAuthUI();
+    }
+}
+
+async function login(username, password) {
+    try {
+        const data = await apiRequest('/login', {
+            method: 'POST',
+            body: JSON.stringify({ username, password })
+        });
+        
+        currentToken = data.token;
+        currentUser = {
+            id: data.user_id,
+            username: data.username
+        };
+        
+        localStorage.setItem('auth_token', currentToken);
+        localStorage.setItem('current_user', JSON.stringify(currentUser));
+        
+        updateAuthUI();
+        closeModal('login-modal');
+        showNotification(`Welcome back, ${username}!`, 'success');
+        loadPosts();
+        
+    } catch (error) {
+        showNotification(error.message, 'error');
+        throw error;
+    }
+}
+
+async function register(username, password) {
+    try {
+        await apiRequest('/register', {
+            method: 'POST',
+            body: JSON.stringify({ username, password })
+        });
+        
+        showNotification('Account created! Please log in.', 'success');
+        toggleAuthMode(); // Switch to login mode
+        
+    } catch (error) {
+        showNotification(error.message, 'error');
+        throw error;
+    }
+}
+
+async function logout() {
+    try {
+        if (currentToken) {
+            await apiRequest('/logout', { method: 'POST' });
+        }
+    } catch (error) {
+        console.error('Logout error:', error);
+    } finally {
+        currentToken = null;
+        currentUser = null;
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('current_user');
+        updateAuthUI();
+        showNotification('Logged out successfully', 'info');
+        loadPosts();
+    }
+}
+
+function updateAuthUI() {
+    const loginBtn = document.getElementById('login-btn');
+    const userInfo = document.getElementById('user-info');
+    const newPostBtn = document.getElementById('new-post-btn');
+    const username = document.getElementById('username');
+    
+    if (currentUser) {
+        loginBtn.style.display = 'none';
+        userInfo.style.display = 'flex';
+        newPostBtn.style.display = 'inline-flex';
+        username.textContent = currentUser.username;
+    } else {
+        loginBtn.style.display = 'inline-flex';
+        userInfo.style.display = 'none';
+        newPostBtn.style.display = 'none';
+    }
+}
+
+// ===== MODAL MANAGEMENT =====
+function showLoginModal() {
+    document.getElementById('login-modal').classList.add('visible');
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('visible');
+}
+
+function toggleAuthMode() {
+    const modalTitle = document.getElementById('modal-title');
+    const submitBtn = document.getElementById('submit-btn');
+    const toggleBtn = document.getElementById('toggle-btn');
+    
+    const isLogin = modalTitle.textContent.includes('Login');
+    
+    if (isLogin) {
+        modalTitle.textContent = '📝 Register';
+        submitBtn.textContent = 'Register';
+        toggleBtn.textContent = 'Login instead';
+    } else {
+        modalTitle.textContent = '👤 Login';
+        submitBtn.textContent = 'Login';
+        toggleBtn.textContent = 'Register instead';
+    }
+}
+
+// ===== POSTS MANAGEMENT =====
+async function loadPosts() {
+    try {
+        showLoading('Loading posts...');
+        
+        let endpoint = '/posts';
+        const params = new URLSearchParams({
+            limit: postsPerPage,
+            offset: (currentPage - 1) * postsPerPage
+        });
+        
+        if (currentFilter === 'my' && currentUser) {
+            endpoint = '/posts/my';
+        } else if (searchQuery) {
+            endpoint = '/search';
+            params.set('q', searchQuery);
+        }
+        
+        const data = await apiRequest(`${endpoint}?${params}`);
+        renderPosts(data.posts, data.pagination);
+        updatePagination(data.pagination);
+        
+    } catch (error) {
+        console.error('Failed to load posts:', error);
+        showNotification('Failed to load posts', 'error');
+        document.getElementById('posts-container').innerHTML = '<loading>Failed to load posts</loading>';
+    } finally {
+        hideLoading();
+    }
+}
+
+function renderPosts(posts, pagination) {
+    const container = document.getElementById('posts-container');
+    
+    if (!posts || posts.length === 0) {
+        container.innerHTML = '<loading>No posts found</loading>';
+        return;
+    }
+    
+    container.innerHTML = posts.map(post => renderPost(post)).join('');
+    
+    // Highlight code blocks
+    setTimeout(() => Prism.highlightAll(), 100);
+}
+
+function renderPost(post) {
+    const tags = post.tags ? post.tags.map(tag => 
+        `<tag onclick="searchByTag('${tag.name}')">${tag.name}</tag>`
+    ).join('') : '';
+    
+    const isOwner = currentUser && currentUser.id === post.user_id;
+    const actions = isOwner ? `
+        <button onclick="editPost(${post.id})" class="small">✏️</button>
+        <button onclick="deletePost(${post.id})" class="small danger">🗑️</button>
+    ` : `
+        <button onclick="showProposalModal(${post.id})" class="small">💡</button>
+    `;
+    
+    // Process content for markdown
+    const processedContent = marked.parse(truncateText(post.content));
+    
+    return `
+        <post data-post-id="${post.id}">
+            <post_header>
+                <post_meta>
+                    <author>${DEFAULT_AVATAR} ${post.username}</author>
+                    <date>📅 ${formatDistanceToNow(post.created_at)}</date>
+                </post_meta>
+                <post_actions>
+                    ${actions}
+                </post_actions>
+            </post_header>
+            
+            <post_title>${sanitizeHtml(post.title)}</post_title>
+            <post_content>${processedContent}</post_content>
+            
+            <post_tags>
+                ${tags}
+            </post_tags>
+            
+            <post_footer>
+                <post_stats>
+                    <stat>💬 Comments</stat>
+                </post_stats>
+                <post_interactions>
+                    <button onclick="toggleComments(${post.id})" class="small">💬 Comments</button>
+                    ${isOwner ? `<button onclick="loadProposals(${post.id})" class="small">📝 Proposals</button>` : ''}
+                </post_interactions>
+            </post_footer>
+            
+            <comments_section id="comments-${post.id}">
+            </comments_section>
+            
+            <proposals_section id="proposals-${post.id}">
+            </proposals_section>
+        </post>
+    `;
+}
+
+async function createPost(title, content, tags) {
+    try {
+        const tagArray = tags ? tags.split(',').map(t => t.trim()).filter(t => t) : [];
+        
+        const data = await apiRequest('/posts', {
+            method: 'POST',
+            body: JSON.stringify({
+                title,
+                content,
+                tags: tagArray
+            })
+        });
+        
+        showNotification('Post created successfully!', 'success');
+        closeEditor();
+        loadPosts();
+        
+    } catch (error) {
+        showNotification(error.message, 'error');
+        throw error;
+    }
+}
+
+async function updatePost(postId, title, content, tags) {
+    try {
+        const tagArray = tags ? tags.split(',').map(t => t.trim()).filter(t => t) : [];
+        
+        await apiRequest(`/posts/${postId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                title,
+                content,
+                tags: tagArray
+            })
+        });
+        
+        showNotification('Post updated successfully!', 'success');
+        closeEditor();
+        loadPosts();
+        
+    } catch (error) {
+        showNotification(error.message, 'error');
+        throw error;
+    }
+}
+
+async function deletePost(postId) {
+    if (!confirm('Are you sure you want to delete this post?')) return;
+    
+    try {
+        await apiRequest(`/posts/${postId}`, { method: 'DELETE' });
+        showNotification('Post deleted successfully!', 'success');
+        loadPosts();
+        
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
+}
+
+async function editPost(postId) {
+    try {
+        const data = await apiRequest(`/posts/${postId}`);
+        const post = data.post;
+        
+        currentEditingPost = post;
+        
+        document.getElementById('editor-title').textContent = '✏️ Edit Post';
+        document.getElementById('post-title').value = post.title;
+        document.getElementById('post-content').value = post.content;
+        document.getElementById('post-tags').value = post.tags ? post.tags.map(t => t.name).join(', ') : '';
+        document.getElementById('save-btn').innerHTML = `
+            <spinner id="save-spinner" style="display: none;"></spinner>
+            ✨ Update Post
+        `;
+        
+        showEditor();
+        
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
+}
+
+// ===== EDITOR FUNCTIONALITY =====
+function showEditor() {
+    document.getElementById('editor-container').style.display = 'flex';
+    
+    // Reset form if not editing
+    if (!currentEditingPost) {
+        document.getElementById('post-title').value = '';
+        document.getElementById('post-content').value = '';
+        document.getElementById('post-tags').value = '';
+        document.getElementById('editor-title').textContent = '✏️ Create New Post';
+        document.getElementById('save-btn').innerHTML = `
+            <spinner id="save-spinner" style="display: none;"></spinner>
+            ✨ Publish Post
+        `;
+    }
+}
+
+function closeEditor() {
+    document.getElementById('editor-container').style.display = 'none';
+    currentEditingPost = null;
+    isEditorInSplitView = false;
+    document.getElementById('editor-content-container').classList.remove('split-view');
+}
+
+async function savePost() {
+    const title = document.getElementById('post-title').value.trim();
+    const content = document.getElementById('post-content').value.trim();
+    const tags = document.getElementById('post-tags').value.trim();
+    
+    if (!title || !content) {
+        showNotification('Title and content are required', 'error');
+        return;
+    }
+    
+    const spinner = document.getElementById('save-spinner');
+    spinner.style.display = 'inline-block';
+    
+    try {
+        if (currentEditingPost) {
+            await updatePost(currentEditingPost.id, title, content, tags);
+        } else {
+            await createPost(title, content, tags);
+        }
+    } finally {
+        spinner.style.display = 'none';
+    }
+}
+
+function insertMarkdown(before, after) {
+    const textarea = document.getElementById('post-content');
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    const selectedText = text.substring(start, end);
+    
+    const newText = text.substring(0, start) + before + selectedText + after + text.substring(end);
+    textarea.value = newText;
+    
+    // Set cursor position
+    const newCursorPos = start + before.length + selectedText.length + after.length;
+    textarea.setSelectionRange(newCursorPos, newCursorPos);
+    textarea.focus();
+    
+    updatePreview();
+}
+
+function togglePreview() {
+    const container = document.getElementById('editor-content-container');
+    const preview = document.getElementById('post-preview');
+    
+    if (isEditorInSplitView) {
+        // Switch to preview only
+        container.classList.remove('split-view');
+        preview.classList.add('visible');
+        document.getElementById('preview-btn').textContent = '✏️ Edit';
+    } else if (preview.classList.contains('visible')) {
+        // Switch back to edit only
+        preview.classList.remove('visible');
+        document.getElementById('preview-btn').textContent = '👁️ Preview';
+    } else {
+        // Show preview
+        preview.classList.add('visible');
+        document.getElementById('preview-btn').textContent = '✏️ Edit';
+    }
+    
+    updatePreview();
+}
+
+function toggleSplitView() {
+    const container = document.getElementById('editor-content-container');
+    const preview = document.getElementById('post-preview');
+    
+    isEditorInSplitView = !isEditorInSplitView;
+    
+    if (isEditorInSplitView) {
+        container.classList.add('split-view');
+        preview.classList.add('visible');
+        document.getElementById('split-btn').textContent = '📝 Single';
+    } else {
+        container.classList.remove('split-view');
+        preview.classList.remove('visible');
+        document.getElementById('split-btn').textContent = '🔄 Split';
+    }
+    
+    updatePreview();
+}
+
+function updatePreview() {
+    const content = document.getElementById('post-content').value;
+    const preview = document.getElementById('post-preview');
+    
+    if (preview.classList.contains('visible')) {
+        preview.innerHTML = marked.parse(content);
+        setTimeout(() => Prism.highlightAll(), 100);
+    }
+}
+
+// ===== COMMENTS SYSTEM =====
+async function toggleComments(postId) {
+    const commentsSection = document.getElementById(`comments-${postId}`);
+    
+    if (commentsSection.classList.contains('visible')) {
+        commentsSection.classList.remove('visible');
+        return;
+    }
+    
+    try {
+        const data = await apiRequest(`/posts/${postId}/comments`);
+        renderComments(postId, data.comments);
+        commentsSection.classList.add('visible');
+        
+    } catch (error) {
+        showNotification('Failed to load comments', 'error');
+    }
+}
+
+function renderComments(postId, comments) {
+    const commentsSection = document.getElementById(`comments-${postId}`);
+    
+    const commentsHtml = comments.map(comment => renderComment(comment, postId)).join('');
+    
+    commentsSection.innerHTML = `
+        <comments_header>
+            <strong>💬 ${comments.length} Comment${comments.length !== 1 ? 's' : ''}</strong>
+        </comments_header>
+        <comments_list>
+            ${commentsHtml}
+        </comments_list>
+        ${currentUser ? `
+            <comment_form onsubmit="addComment(event, ${postId})">
+                <textarea placeholder="💭 Share your thoughts..." required maxlength="5000"></textarea>
+                <comment_submit>
+                    <button type="submit">💬 Comment</button>
+                </comment_submit>
+            </comment_form>
+        ` : '<p>Please log in to comment.</p>'}
+    `;
+}
+
+function renderComment(comment, postId, isReply = false) {
+    const isOwner = currentUser && currentUser.id === comment.user_id;
+    const deleteButton = isOwner ? `
+        <button onclick="deleteComment(${comment.id}, ${postId})" class="small danger">🗑️</button>
+    ` : '';
+    
+    const replyButton = currentUser && !isReply ? `
+        <button onclick="showReplyForm(${comment.id}, ${postId})" class="small">↩️ Reply</button>
+    ` : '';
+    
+    const replies = comment.replies ? comment.replies.map(reply => 
+        renderComment(reply, postId, true)
+    ).join('') : '';
+    
+    return `
+        <comment style="margin-left: ${isReply ? '2rem' : '0'}">
+            <comment_header>
+                <comment_meta>
+                    <author>${DEFAULT_AVATAR} ${comment.username}</author>
+                    <date>📅 ${formatDistanceToNow(comment.created_at)}</date>
+                </comment_meta>
+                <comment_actions>
+                    ${deleteButton}
+                </comment_actions>
+            </comment_header>
+            <comment_content>${sanitizeHtml(comment.content)}</comment_content>
+            <comment_actions>
+                ${replyButton}
+            </comment_actions>
+            <reply_form id="reply-form-${comment.id}">
+                <form onsubmit="addComment(event, ${postId}, ${comment.id})">
+                    <textarea placeholder="💭 Reply..." required maxlength="5000"></textarea>
+                    <reply_actions>
+                        <button type="button" onclick="hideReplyForm(${comment.id})">❌ Cancel</button>
+                        <button type="submit">↩️ Reply</button>
+                    </reply_actions>
+                </form>
+            </reply_form>
+            ${replies}
+        </comment>
+    `;
+}
+
+async function addComment(event, postId, parentId = null) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const textarea = form.querySelector('textarea');
+    const content = textarea.value.trim();
+    
+    if (!content) return;
+    
+    try {
+        const body = { content };
+        if (parentId) {
+            body.parent_comment_id = parentId;
+        }
+        
+        await apiRequest(`/posts/${postId}/comments`, {
+            method: 'POST',
+            body: JSON.stringify(body)
+        });
+        
+        textarea.value = '';
+        if (parentId) {
+            hideReplyForm(parentId);
+        }
+        
+        // Reload comments
+        const data = await apiRequest(`/posts/${postId}/comments`);
+        renderComments(postId, data.comments);
+        
+        showNotification('Comment added!', 'success');
+        
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
+}
+
+async function deleteComment(commentId, postId) {
+    if (!confirm('Delete this comment?')) return;
+    
+    try {
+        await apiRequest(`/comments/${commentId}`, { method: 'DELETE' });
+        
+        // Reload comments
+        const data = await apiRequest(`/posts/${postId}/comments`);
+        renderComments(postId, data.comments);
+        
+        showNotification('Comment deleted', 'success');
+        
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
+}
+
+function showReplyForm(commentId, postId) {
+    const replyForm = document.getElementById(`reply-form-${commentId}`);
+    replyForm.classList.add('visible');
+    replyForm.querySelector('textarea').focus();
+}
+
+function hideReplyForm(commentId) {
+    const replyForm = document.getElementById(`reply-form-${commentId}`);
+    replyForm.classList.remove('visible');
+    replyForm.querySelector('textarea').value = '';
+}
+
+// ===== PROPOSALS SYSTEM =====
+function showProposalModal(postId) {
+    document.getElementById('proposal-modal').classList.add('visible');
+    document.getElementById('proposal-form').dataset.postId = postId;
+    
+    // Load current post data to pre-fill form
+    loadPostForProposal(postId);
+}
+
+async function loadPostForProposal(postId) {
+    try {
+        const data = await apiRequest(`/posts/${postId}`);
+        const post = data.post;
+        
+        document.getElementById('proposal-title').value = post.title;
+        document.getElementById('proposal-content').value = post.content;
+        
+    } catch (error) {
+        console.error('Failed to load post for proposal:', error);
+    }
+}
+
+async function submitProposal() {
+    const form = document.getElementById('proposal-form');
+    const postId = form.dataset.postId;
+    
+    const proposerName = document.getElementById('proposer-name').value.trim();
+    const proposerEmail = document.getElementById('proposer-email').value.trim();
+    const title = document.getElementById('proposal-title').value.trim();
+    const content = document.getElementById('proposal-content').value.trim();
+    const reason = document.getElementById('proposal-reason').value.trim();
+    
+    if (!proposerName || !proposerEmail || !title || !content) {
+        showNotification('Please fill in all required fields', 'error');
+        return;
+    }
+    
+    const spinner = document.getElementById('proposal-spinner');
+    spinner.style.display = 'inline-block';
+    
+    try {
+        await apiRequest(`/posts/${postId}/proposals`, {
+            method: 'POST',
+            body: JSON.stringify({
+                proposer_name: proposerName,
+                proposer_email: proposerEmail,
+                title,
+                content,
+                reason
+            })
+        });
+        
+        showNotification('Edit proposal submitted!', 'success');
+        closeModal('proposal-modal');
+        
+        // Reset form
+        form.reset();
+        
+    } catch (error) {
+        showNotification(error.message, 'error');
+    } finally {
+        spinner.style.display = 'none';
+    }
+}
+
+async function loadProposals(postId) {
+    const proposalsSection = document.getElementById(`proposals-${postId}`);
+    
+    if (proposalsSection.classList.contains('visible')) {
+        proposalsSection.classList.remove('visible');
+        return;
+    }
+    
+    try {
+        const data = await apiRequest(`/posts/${postId}/proposals`);
+        renderProposals(postId, data.proposals);
+        proposalsSection.classList.add('visible');
+        
+    } catch (error) {
+        showNotification('Failed to load proposals', 'error');
+    }
+}
+
+function renderProposals(postId, proposals) {
+    const proposalsSection = document.getElementById(`proposals-${postId}`);
+    
+    if (!proposals || proposals.length === 0) {
+        proposalsSection.innerHTML = `
+            <proposals_header>
+                <strong>📝 No proposals yet</strong>
+            </proposals_header>
+        `;
+        return;
+    }
+    
+    const proposalsHtml = proposals.map(proposal => `
+        <proposal>
+            <proposal_header>
+                <proposal_meta>
+                    <strong>${DEFAULT_AVATAR} ${proposal.proposer_name}</strong>
+                    <span>📧 ${proposal.proposer_email}</span>
+                    <span>📅 ${formatDistanceToNow(proposal.created_at)}</span>
+                    <span>Status: ${proposal.status}</span>
+                </proposal_meta>
+                ${proposal.status === 'pending' ? `
+                    <proposal_actions>
+                        <button onclick="approveProposal(${proposal.id}, ${postId})" class="success small">✅ Approve</button>
+                        <button onclick="rejectProposal(${proposal.id}, ${postId})" class="danger small">❌ Reject</button>
+                    </proposal_actions>
+                ` : ''}
+            </proposal_header>
+            <proposal_details>
+                <p><strong>📝 Proposed Title:</strong> ${sanitizeHtml(proposal.title)}</p>
+                ${proposal.reason ? `<p><strong>💭 Reason:</strong> ${sanitizeHtml(proposal.reason)}</p>` : ''}
+            </proposal_details>
+            <proposal_content>
+                <details>
+                    <summary>👁️ View proposed content</summary>
+                    <content_preview>${marked.parse(proposal.content)}</content_preview>
+                </details>
+            </proposal_content>
+        </proposal>
+    `).join('');
+    
+    proposalsSection.innerHTML = `
+        <proposals_header>
+            <strong>📝 ${proposals.length} Proposal${proposals.length !== 1 ? 's' : ''}</strong>
+        </proposals_header>
+        <proposals_list>
+            ${proposalsHtml}
+        </proposals_list>
+    `;
+}
+
+async function approveProposal(proposalId, postId) {
+    if (!confirm('Approve this edit proposal?')) return;
+    
+    try {
+        await apiRequest(`/proposals/${proposalId}/approve`, { method: 'PUT' });
+        showNotification('Proposal approved and applied!', 'success');
+        
+        // Reload proposals and posts
+        loadProposals(postId);
+        loadPosts();
+        
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
+}
+
+async function rejectProposal(proposalId, postId) {
+    if (!confirm('Reject this edit proposal?')) return;
+    
+    try {
+        await apiRequest(`/proposals/${proposalId}/reject`, { method: 'PUT' });
+        showNotification('Proposal rejected', 'success');
+        
+        // Reload proposals
+        loadProposals(postId);
+        
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
+}
+
+// ===== FILE UPLOAD SYSTEM =====
+function showFileUpload() {
+    const uploadArea = document.getElementById('file-upload-area');
+    uploadArea.classList.toggle('visible');
+}
+
+function setupFileUpload() {
+    const uploadArea = document.getElementById('file-upload-area');
+    const fileInput = document.getElementById('file-input');
+    
+    // Drag and drop handlers
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+    
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+    });
+    
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        
+        const files = Array.from(e.dataTransfer.files);
+        handleFileUpload(files);
+    });
+    
+    fileInput.addEventListener('change', (e) => {
+        const files = Array.from(e.target.files);
+        handleFileUpload(files);
+    });
+}
+
+async function handleFileUpload(files) {
+    if (!currentUser) {
+        showNotification('Please log in to upload files', 'error');
+        return;
+    }
+    
+    const uploadedFiles = document.getElementById('uploaded-files');
+    uploadedFiles.classList.add('visible');
+    
+    for (const file of files) {
+        if (file.size > 50 * 1024 * 1024) { // 50MB limit
+            showNotification(`File ${file.name} is too large (max 50MB)`, 'error');
+            continue;
+        }
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        try {
+            showLoading(`Uploading ${file.name}...`);
+            const data = await apiUpload('/files', formData);
+            
+            // Add to uploaded files list
+            const fileElement = document.createElement('div');
+            fileElement.innerHTML = `
+                <p>✅ ${file.name} - <a href="${API_BASE}/files/${data.file_id}" target="_blank">View</a></p>
+            `;
+            uploadedFiles.appendChild(fileElement);
+            
+            // Insert markdown link into editor
+            const textarea = document.getElementById('post-content');
+            const isImage = file.type.startsWith('image/');
+            const markdownLink = isImage 
+                ? `![${file.name}](${API_BASE}/files/${data.file_id})\n`
+                : `[${file.name}](${API_BASE}/files/${data.file_id})\n`;
+            
+            textarea.value += markdownLink;
+            updatePreview();
+            
+            showNotification(`${file.name} uploaded successfully!`, 'success');
+            
+        } catch (error) {
+            showNotification(`Failed to upload ${file.name}: ${error.message}`, 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+}
+
+// ===== SEARCH FUNCTIONALITY =====
+async function performSearch() {
+    const searchInput = document.getElementById('search-input');
+    const query = searchInput.value.trim();
+    
+    if (!query) {
+        searchQuery = '';
+        loadPosts();
+        return;
+    }
+    
+    searchQuery = query;
+    currentPage = 1;
+    
+    document.getElementById('page-title').textContent = `🔍 Search: "${query}"`;
+    loadPosts();
+}
+
+function searchByTag(tagName) {
+    searchQuery = tagName;
+    currentPage = 1;
+    document.getElementById('search-input').value = tagName;
+    document.getElementById('page-title').textContent = `🏷️ Tag: "${tagName}"`;
+    loadPosts();
+}
+
+// ===== TAGS MANAGEMENT =====
+async function loadTags() {
+    try {
+        const data = await apiRequest('/tags');
+        renderTags(data.tags);
+        
+    } catch (error) {
+        console.error('Failed to load tags:', error);
+    }
+}
+
+function renderTags(tags) {
+    const tagsContainer = document.getElementById('popular-tags');
+    
+    if (!tags || tags.length === 0) {
+        tagsContainer.innerHTML = '<loading>No tags yet</loading>';
+        return;
+    }
+    
+    tagsContainer.innerHTML = tags.slice(0, 10).map(tag => `
+        <archive_item onclick="searchByTag('${tag.name}')">
+            🏷️ ${tag.name}
+        </archive_item>
+    `).join('');
+}
+
+async function setupTagSuggestions() {
+    const tagInput = document.getElementById('post-tags');
+    const suggestions = document.getElementById('tag-suggestions');
+    
+    let allTags = [];
+    
+    try {
+        const data = await apiRequest('/tags');
+        allTags = data.tags.map(tag => tag.name);
+    } catch (error) {
+        console.error('Failed to load tags for suggestions:', error);
+    }
+    
+    tagInput.addEventListener('input', () => {
+        const value = tagInput.value;
+        const lastComma = value.lastIndexOf(',');
+        const currentTag = lastComma >= 0 ? value.slice(lastComma + 1).trim() : value.trim();
+        
+        if (currentTag.length < 2) {
+            suggestions.classList.remove('visible');
+            return;
+        }
+        
+        const matches = allTags.filter(tag => 
+            tag.toLowerCase().includes(currentTag.toLowerCase())
+        ).slice(0, 5);
+        
+        if (matches.length > 0) {
+            suggestions.innerHTML = matches.map(tag => `
+                <div onclick="selectTag('${tag}')" style="padding: 0.5rem; cursor: pointer; border-bottom: 1px solid #eee;">
+                    ${tag}
+                </div>
+            `).join('');
+            suggestions.classList.add('visible');
+        } else {
+            suggestions.classList.remove('visible');
+        }
+    });
+    
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#tag-input-container')) {
+            suggestions.classList.remove('visible');
+        }
+    });
+}
+
+function selectTag(tagName) {
+    const tagInput = document.getElementById('post-tags');
+    const suggestions = document.getElementById('tag-suggestions');
+    
+    const value = tagInput.value;
+    const lastComma = value.lastIndexOf(',');
+    
+    if (lastComma >= 0) {
+        tagInput.value = value.slice(0, lastComma + 1) + ' ' + tagName;
+    } else {
+        tagInput.value = tagName;
+    }
+    
+    suggestions.classList.remove('visible');
+    tagInput.focus();
+}
+
+// ===== PAGINATION =====
+function updatePagination(pagination) {
+    if (!pagination) return;
+    
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const pageInfo = document.getElementById('pagination-info');
+    const gotoInput = document.getElementById('goto-page');
+    
+    const totalPages = Math.ceil(pagination.total / pagination.limit);
+    
+    prevBtn.disabled = currentPage <= 1;
+    nextBtn.disabled = !pagination.has_more;
+    
+    pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+    gotoInput.max = totalPages;
+    gotoInput.placeholder = currentPage;
+    
+    // Update total count in sidebar
+    document.getElementById('total-count').textContent = pagination.total;
+}
+
+function previousPage() {
+    if (currentPage > 1) {
+        currentPage--;
+        loadPosts();
+    }
+}
+
+function nextPage() {
+    currentPage++;
+    loadPosts();
+}
+
+function gotoPage() {
+    const input = document.getElementById('goto-page');
+    const page = parseInt(input.value);
+    
+    if (page && page >= 1) {
+        currentPage = page;
+        loadPosts();
+        input.value = '';
+    }
+}
+
+// ===== FILTERS =====
+function setFilter(filter) {
+    if (filter === 'my' && !currentUser) {
+        showNotification('Please log in to view your posts', 'error');
+        return;
+    }
+    
+    currentFilter = filter;
+    currentPage = 1;
+    searchQuery = '';
+    document.getElementById('search-input').value = '';
+    
+    // Update filter chips
+    document.querySelectorAll('filter_chip').forEach(chip => {
+        chip.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    // Update page title
+    const titles = {
+        'all': '✨ Latest Posts',
+        'my': '📝 My Posts',
+        'recent': '🕐 Recent Posts'
+    };
+    document.getElementById('page-title').textContent = titles[filter] || '✨ Latest Posts';
+    
+    loadPosts();
+}
+
+function changePostsPerPage() {
+    const select = document.getElementById('posts-per-page');
+    postsPerPage = parseInt(select.value);
+    currentPage = 1;
+    loadPosts();
+}
+
+// ===== NAVIGATION =====
+function goHome() {
+    currentFilter = 'all';
+    currentPage = 1;
+    searchQuery = '';
+    document.getElementById('search-input').value = '';
+    document.getElementById('page-title').textContent = '✨ Latest Posts';
+    
+    // Reset filter chips
+    document.querySelectorAll('filter_chip').forEach(chip => {
+        chip.classList.remove('active');
+    });
+    document.querySelector('filter_chip').classList.add('active');
+    
+    loadPosts();
+}
+
+// ===== EVENT LISTENERS =====
+function setupEventListeners() {
+    // Auth form submission
+    document.getElementById('auth-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const username = document.getElementById('auth-username').value.trim();
+        const password = document.getElementById('auth-password').value.trim();
+        const isLogin = document.getElementById('modal-title').textContent.includes('Login');
+        
+        if (!username || !password) {
+            showNotification('Please fill in all fields', 'error');
+            return;
+        }
+        
+        const spinner = document.getElementById('auth-spinner');
+        spinner.style.display = 'inline-block';
+        
+        try {
+            if (isLogin) {
+                await login(username, password);
+            } else {
+                await register(username, password);
+            }
+        } catch (error) {
+            // Error already shown in login/register functions
+        } finally {
+            spinner.style.display = 'none';
+        }
+    });
+    
+    // Proposal form submission
+    document.getElementById('proposal-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        submitProposal();
+    });
+    
+    // Search input
+    const searchInput = document.getElementById('search-input');
+    let searchTimeout;
+    searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(performSearch, 500);
+    });
+    
+    searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            clearTimeout(searchTimeout);
+            performSearch();
+        }
+    });
+    
+    // Content preview update
+    document.getElementById('post-content').addEventListener('input', updatePreview);
+    
+    // Modal close on background click
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('modal') || e.target.classList.contains('editor_modal')) {
+            const modalId = e.target.id;
+            if (modalId === 'editor-container') {
+                // Don't close editor on background click
+                return;
+            }
+            closeModal(modalId);
+        }
+    });
+    
+    // Escape key to close modals
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            // Close any visible modals
+            document.querySelectorAll('.modal.visible, .editor_modal').forEach(modal => {
+                if (modal.id === 'editor-container' && modal.style.display === 'flex') {
+                    closeEditor();
+                } else {
+                    closeModal(modal.id);
+                }
+            });
+        }
+    });
+}
+
+// ===== INITIALIZATION =====
+async function initializeApp() {
+    console.log('🎉 Posts Platform initializing...');
+    
+    // Initialize authentication
+    initAuth();
+    
+    // Setup event listeners
+    setupEventListeners();
+    
+    // Setup file upload
+    setupFileUpload();
+    
+    // Setup tag suggestions
+    await setupTagSuggestions();
+    
+    // Load initial data
+    await Promise.all([
+        loadPosts(),
+        loadTags()
+    ]);
+    
+    console.log('✅ Posts Platform ready!');
+}
+
+// Start the application when the page loads
+document.addEventListener('DOMContentLoaded', initializeApp);
+
+// Export functions for global access
+window.showLoginModal = showLoginModal;
+window.closeModal = closeModal;
+window.toggleAuthMode = toggleAuthMode;
+window.logout = logout;
+window.showEditor = showEditor;
+window.closeEditor = closeEditor;
+window.savePost = savePost;
+window.editPost = editPost;
+window.deletePost = deletePost;
+window.insertMarkdown = insertMarkdown;
+window.togglePreview = togglePreview;
+window.toggleSplitView = toggleSplitView;
+window.showFileUpload = showFileUpload;
+window.toggleComments = toggleComments;
+window.addComment = addComment;
+window.deleteComment = deleteComment;
+window.showReplyForm = showReplyForm;
+window.hideReplyForm = hideReplyForm;
+window.showProposalModal = showProposalModal;
+window.loadProposals = loadProposals;
+window.approveProposal = approveProposal;
+window.rejectProposal = rejectProposal;
+window.searchByTag = searchByTag;
+window.selectTag = selectTag;
+window.setFilter = setFilter;
+window.changePostsPerPage = changePostsPerPage;
+window.previousPage = previousPage;
+window.nextPage = nextPage;
+window.gotoPage = gotoPage;
+window.goHome = goHome;
+
+console.log('🎉 Posts Platform JavaScript loaded successfully!');
+</script>
 <!-- Document Close Fragment -->
 </body>
 </html>
