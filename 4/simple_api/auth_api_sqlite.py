@@ -26,15 +26,20 @@ class DB:
     
     @staticmethod
     async def init():
-        await DB._execute("CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, salt TEXT, password_hash TEXT, created_at REAL, last_login REAL)")
-        await DB._execute("CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, username TEXT, created_at REAL, expires_at REAL, ip_address TEXT, user_agent TEXT)")
+        await DB._execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, salt TEXT, password_hash TEXT, created_at REAL, last_login REAL)")
+        await DB._execute("CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, user_id INTEGER, created_at REAL, expires_at REAL, ip_address TEXT, user_agent TEXT, FOREIGN KEY (user_id) REFERENCES users (id))")
     
     @staticmethod
     async def create_user(username, salt, password_hash):
-        await DB._execute("INSERT INTO users (username, salt, password_hash, created_at) VALUES (?, ?, ?, ?)", (username, salt, password_hash, time.time()))
+        cursor = await DB._execute("INSERT INTO users (username, salt, password_hash, created_at) VALUES (?, ?, ?, ?)", (username, salt, password_hash, time.time()))
+        return cursor.lastrowid if hasattr(cursor, 'lastrowid') else None
     
     @staticmethod
-    async def get_user(username):
+    async def get_user_by_id(user_id):
+        return await DB._execute("SELECT * FROM users WHERE id = ?", (user_id,), 'one')
+    
+    @staticmethod
+    async def get_user_by_username(username):
         return await DB._execute("SELECT * FROM users WHERE username = ?", (username,), 'one')
     
     @staticmethod
@@ -43,13 +48,13 @@ class DB:
         return result is not None
     
     @staticmethod
-    async def create_session(token, username, expires_at, ip=None, agent=None):
-        await DB._execute("INSERT INTO sessions (token, username, created_at, expires_at, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)", 
-                         (token, username, time.time(), expires_at, ip, agent))
+    async def create_session(token, user_id, expires_at, ip=None, agent=None):
+        await DB._execute("INSERT INTO sessions (token, user_id, created_at, expires_at, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)", 
+                         (token, user_id, time.time(), expires_at, ip, agent))
     
     @staticmethod
     async def get_user_by_token(token):
-        return await DB._execute("SELECT u.* FROM users u JOIN sessions s ON u.username = s.username WHERE s.token = ? AND s.expires_at > ?", 
+        return await DB._execute("SELECT u.* FROM users u JOIN sessions s ON u.id = s.user_id WHERE s.token = ? AND s.expires_at > ?", 
                                 (token, time.time()), 'one')
     
     @staticmethod
@@ -57,22 +62,27 @@ class DB:
         await DB._execute("DELETE FROM sessions WHERE token = ?", (token,))
     
     @staticmethod
-    async def update_last_login(username):
-        await DB._execute("UPDATE users SET last_login = ? WHERE username = ?", (time.time(), username))
+    async def update_last_login(user_id):
+        await DB._execute("UPDATE users SET last_login = ? WHERE id = ?", (time.time(), user_id))
     
     @staticmethod
     async def get_all_users():
-        return await DB._execute("SELECT username, created_at, last_login FROM users", fetch='all')
+        return await DB._execute("SELECT id, username, created_at, last_login FROM users ORDER BY id", fetch='all')
     
     @staticmethod
-    async def delete_user(username):
+    async def delete_user(user_id):
         """Hard delete user and all their sessions"""
         async with aiosqlite.connect(DB_PATH) as db:
             # Delete all user sessions first
-            await db.execute("DELETE FROM sessions WHERE username = ?", (username,))
+            await db.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
             # Delete the user record
-            await db.execute("DELETE FROM users WHERE username = ?", (username,))
+            result = await db.execute("DELETE FROM users WHERE id = ?", (user_id,))
             await db.commit()
+            return result.rowcount > 0
+    
+    @staticmethod
+    async def update_user_password(user_id, salt, password_hash):
+        await DB._execute("UPDATE users SET salt = ?, password_hash = ? WHERE id = ?", (salt, password_hash, user_id))
     
     @staticmethod
     async def cleanup_sessions():
@@ -129,8 +139,13 @@ async def post_register(request):
             return web.json_response({'error': 'User exists'}, status=400)
         
         salt, hash_val = await hash_password(password)
-        await DB.create_user(username, salt, hash_val)
-        return web.json_response({'message': 'User created'})
+        user_id = await DB.create_user(username, salt, hash_val)
+        
+        return web.json_response({
+            'message': 'User created',
+            'user_id': user_id,
+            'username': username
+        })
     
     except (KeyError, json.JSONDecodeError):
         return web.json_response({'error': 'Invalid request'}, status=400)
@@ -156,7 +171,7 @@ async def put_changepassword(request):
             return web.json_response({'error': 'New password min 6 chars'}, status=400)
         
         salt, hash_val = await hash_password(new_password)
-        await DB._execute("UPDATE users SET salt = ?, password_hash = ? WHERE username = ?", (salt, hash_val, user['username']))
+        await DB.update_user_password(user['id'], salt, hash_val)
         return web.json_response({'message': 'Password changed'})
     
     except (KeyError, json.JSONDecodeError):
@@ -167,15 +182,20 @@ async def post_login(request):
         data = await request.json()
         username, password = data['username'], data['password']
         
-        user = await DB.get_user(username)
+        user = await DB.get_user_by_username(username)
         if not user or not await verify_password(password, user['salt'], user['password_hash']):
             return web.json_response({'error': 'Invalid credentials'}, status=401)
         
         token = generate_token()
-        await DB.create_session(token, username, time.time() + 3600, request.remote, request.headers.get('User-Agent'))
-        await DB.update_last_login(username)
+        await DB.create_session(token, user['id'], time.time() + 3600, request.remote, request.headers.get('User-Agent'))
+        await DB.update_last_login(user['id'])
         
-        return web.json_response({'token': token, 'expires_in': 3600})
+        return web.json_response({
+            'token': token, 
+            'expires_in': 3600,
+            'user_id': user['id'],
+            'username': user['username']
+        })
     
     except (KeyError, json.JSONDecodeError):
         return web.json_response({'error': 'Invalid request'}, status=400)
@@ -189,7 +209,12 @@ async def post_logout(request):
 @require_auth
 async def get_profile(request):
     user = request['user']
-    return web.json_response({'username': user['username'], 'created_at': user['created_at'], 'last_login': user['last_login']})
+    return web.json_response({
+        'id': user['id'],
+        'username': user['username'], 
+        'created_at': user['created_at'], 
+        'last_login': user['last_login']
+    })
 
 @require_auth
 async def get_users(request):
@@ -198,32 +223,46 @@ async def get_users(request):
 
 @require_auth
 async def get_users_id(request):
-    user = await DB.get_user(request.match_info['id'])
+    try:
+        user_id = int(request.match_info['id'])
+    except ValueError:
+        return web.json_response({'error': 'Invalid user ID'}, status=400)
+    
+    user = await DB.get_user_by_id(user_id)
     if not user:
         return web.json_response({'error': 'User not found'}, status=404)
-    return web.json_response(dict(user))
+    
+    return web.json_response({
+        'id': user['id'],
+        'username': user['username'],
+        'created_at': user['created_at'],
+        'last_login': user['last_login']
+    })
 
 @require_auth
 async def delete_users_id(request):
     current_user = request['user']
-    username = request.match_info['id']
     
-    print(f"🗑️  Delete request: current_user={current_user['username']}, target={username}")
+    try:
+        user_id = int(request.match_info['id'])
+    except ValueError:
+        return web.json_response({'error': 'Invalid user ID'}, status=400)
     
-    # First check if the user to be deleted exists
-    user_to_delete = await DB.get_user(username)
-    if not user_to_delete:
-        print(f"❌ User {username} not found")
+    print(f"🗑️  Delete request: current_user_id={current_user['id']}, target_id={user_id}")
+    
+    # Check if the current user is trying to delete themselves
+    if current_user['id'] != user_id:
+        print(f"❌ User {current_user['id']} cannot delete user {user_id}")
+        return web.json_response({'error': 'Forbidden: Can only delete your own account'}, status=403)
+    
+    print(f"✅ Deleting user {user_id}")
+    deleted = await DB.delete_user(user_id)
+    
+    if not deleted:
+        print(f"❌ User {user_id} not found")
         return web.json_response({'error': 'User not found'}, status=404)
     
-    # Then check if the current user is trying to delete themselves
-    if current_user['username'] != username:
-        print(f"❌ User {current_user['username']} cannot delete {username}")
-        return web.json_response({'error': 'Forbidden'}, status=403)
-    
-    print(f"✅ Deleting user {username}")
-    await DB.delete_user(username)
-    print(f"✅ User {username} deleted successfully")
+    print(f"✅ User {user_id} deleted successfully")
     return web.json_response({'message': 'User deleted'})
 
 async def cleanup_task():
@@ -287,7 +326,7 @@ for name, handler in list(globals().items()):
             break
 
 if __name__ == '__main__':
-    print("🔐 Auth API with SQLite - ASYNC PASSWORD HASHING VERSION")
+    print("🔐 Auth API with SQLite - ASYNC PASSWORD HASHING VERSION WITH UNIQUE IDS")
     print("\nRegistered routes:")
     for resource in app.router.resources():
         print(f"  {resource}")
@@ -295,4 +334,7 @@ if __name__ == '__main__':
     print("curl -X POST http://localhost:8080/register -H 'Content-Type: application/json' -d '{\"username\":\"alice\",\"password\":\"secret123\"}'")
     print("curl -X POST http://localhost:8080/login -H 'Content-Type: application/json' -d '{\"username\":\"alice\",\"password\":\"secret123\"}'")
     print("curl -H 'Authorization: Bearer YOUR_TOKEN' http://localhost:8080/profile")
+    print("curl -H 'Authorization: Bearer YOUR_TOKEN' http://localhost:8080/users")
+    print("curl -H 'Authorization: Bearer YOUR_TOKEN' http://localhost:8080/users/1")
+    print("curl -X DELETE -H 'Authorization: Bearer YOUR_TOKEN' http://localhost:8080/users/1")
     web.run_app(app, host='localhost', port=8080)
