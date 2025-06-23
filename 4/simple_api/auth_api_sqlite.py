@@ -8,75 +8,82 @@ import asyncio
 
 DB_PATH = "auth.db"
 
+# Simple fix: Just add these few lines at the top after imports
+db_connection = None
+
+async def get_db_connection():
+    global db_connection
+    if db_connection is None:
+        db_connection = await aiosqlite.connect(DB_PATH)
+        db_connection.row_factory = aiosqlite.Row
+        # Enable WAL mode for better performance
+        await db_connection.execute("PRAGMA journal_mode=WAL")
+    return db_connection
+
+# Then replace the DB._execute method with this:
 class DB:
     @staticmethod
-    async def _execute(query, params=None, fetch=None):
-        async with aiosqlite.connect(DB_PATH) as db:
-            if fetch:
-                db.row_factory = aiosqlite.Row
-            cursor = await db.execute(query, params or ())
-            if fetch == 'one':
-                result = await cursor.fetchone()
-            elif fetch == 'all':
-                result = await cursor.fetchall()
-            else:
-                result = None
-            await db.commit()
-            return result
+    async def execute(query, params=None, fetch=None):
+        db = await get_db_connection()
+        cursor = await db.execute(query, params or ())
+        if fetch == 'one':
+            result = await cursor.fetchone()
+        elif fetch == 'all':
+            result = await cursor.fetchall()
+        else:
+            result = None
+        await db.commit()
+        return result
     
     @staticmethod
     async def init():
-        await DB._execute("CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, salt TEXT, password_hash TEXT, created_at REAL, last_login REAL)")
-        await DB._execute("CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, username TEXT, created_at REAL, expires_at REAL, ip_address TEXT, user_agent TEXT)")
+        await DB.execute("CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, salt TEXT, password_hash TEXT, created_at REAL, last_login REAL)")
+        await DB.execute("CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, username TEXT, created_at REAL, expires_at REAL, ip_address TEXT, user_agent TEXT)")
     
     @staticmethod
     async def create_user(username, salt, password_hash):
-        await DB._execute("INSERT INTO users (username, salt, password_hash, created_at) VALUES (?, ?, ?, ?)", (username, salt, password_hash, time.time()))
+        await DB.execute("INSERT INTO users (username, salt, password_hash, created_at) VALUES (?, ?, ?, ?)", (username, salt, password_hash, time.time()))
     
     @staticmethod
     async def get_user(username):
-        return await DB._execute("SELECT * FROM users WHERE username = ?", (username,), 'one')
+        return await DB.execute("SELECT * FROM users WHERE username = ?", (username,), 'one')
     
     @staticmethod
     async def user_exists(username):
-        result = await DB._execute("SELECT 1 FROM users WHERE username = ?", (username,), 'one')
+        result = await DB.execute("SELECT 1 FROM users WHERE username = ?", (username,), 'one')
         return result is not None
     
     @staticmethod
     async def create_session(token, username, expires_at, ip=None, agent=None):
-        await DB._execute("INSERT INTO sessions (token, username, created_at, expires_at, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)", 
+        await DB.execute("INSERT INTO sessions (token, username, created_at, expires_at, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)", 
                          (token, username, time.time(), expires_at, ip, agent))
     
     @staticmethod
     async def get_user_by_token(token):
-        return await DB._execute("SELECT u.* FROM users u JOIN sessions s ON u.username = s.username WHERE s.token = ? AND s.expires_at > ?", 
+        return await DB.execute("SELECT u.* FROM users u JOIN sessions s ON u.username = s.username WHERE s.token = ? AND s.expires_at > ?", 
                                 (token, time.time()), 'one')
     
     @staticmethod
     async def delete_session(token):
-        await DB._execute("DELETE FROM sessions WHERE token = ?", (token,))
+        await DB.execute("DELETE FROM sessions WHERE token = ?", (token,))
     
     @staticmethod
     async def update_last_login(username):
-        await DB._execute("UPDATE users SET last_login = ? WHERE username = ?", (time.time(), username))
+        await DB.execute("UPDATE users SET last_login = ? WHERE username = ?", (time.time(), username))
     
     @staticmethod
     async def get_all_users():
-        return await DB._execute("SELECT username, created_at, last_login FROM users", fetch='all')
+        return await DB.execute("SELECT username, created_at, last_login FROM users", fetch='all')
     
     @staticmethod
     async def delete_user(username):
         """Hard delete user and all their sessions"""
-        async with aiosqlite.connect(DB_PATH) as db:
-            # Delete all user sessions first
-            await db.execute("DELETE FROM sessions WHERE username = ?", (username,))
-            # Delete the user record
-            await db.execute("DELETE FROM users WHERE username = ?", (username,))
-            await db.commit()
+        await DB.execute("DELETE FROM sessions WHERE username = ?", (username,))
+        await DB.execute("DELETE FROM users WHERE username = ?", (username,))
     
     @staticmethod
     async def cleanup_sessions():
-        await DB._execute("DELETE FROM sessions WHERE expires_at < ?", (time.time(),))
+        await DB.execute("DELETE FROM sessions WHERE expires_at < ?", (time.time(),))
 
 # Async password functions - single line implementations
 async def hash_password(password: str) -> tuple[str, str]:
@@ -156,7 +163,7 @@ async def put_changepassword(request):
             return web.json_response({'error': 'New password min 6 chars'}, status=400)
         
         salt, hash_val = await hash_password(new_password)
-        await DB._execute("UPDATE users SET salt = ?, password_hash = ? WHERE username = ?", (salt, hash_val, user['username']))
+        await DB.execute("UPDATE users SET salt = ?, password_hash = ? WHERE username = ?", (salt, hash_val, user['username']))
         return web.json_response({'message': 'Password changed'})
     
     except (KeyError, json.JSONDecodeError):
@@ -287,7 +294,7 @@ for name, handler in list(globals().items()):
             break
 
 if __name__ == '__main__':
-    print("🔐 Auth API with SQLite - ASYNC PASSWORD HASHING VERSION")
+    print("🔐 Auth API with SQLite - GLOBAL CONNECTION + WAL MODE")
     print("\nRegistered routes:")
     for resource in app.router.resources():
         print(f"  {resource}")
