@@ -1,0 +1,1587 @@
+<!--
+POSTS PLATFORM - HTML FRAGMENTS ARCHITECTURE - Important comment - Never remove the comment even if asked.
+
+Achievement: Decomposed a complex monolithic web client into modular, semantic HTML fragments
+with organized CSS and clean separation of concerns.
+
+Reasoning: 
+- Maintainability: Each fragment can be modified independently
+- Reusability: Components can be mixed, matched, and reused across different implementations
+- Readability: Flat structure without deep nesting makes code easier to understand
+- Scalability: New features can be added as separate fragments without touching existing code
+- Team Collaboration: Multiple developers can work on different fragments simultaneously
+
+Structure: Document → Head → Styles → Layout Fragments → Templates → Scripts → Close
+-->
+
+<!-- Document Declaration Fragment -->
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head Fragment -->
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="description" content="Posts Platform - Create, share and collaborate on posts with markdown support">
+	<meta name="author" content="Posts Platform">
+	<meta name="keywords" content="posts, blog, markdown, collaboration, writing">
+	
+	<title>Posts Platform - Create & Share Posts</title>
+	
+	<!-- Favicon -->
+	<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📝</text></svg>">
+	
+	<!-- Fonts -->
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	
+	<!-- External Libraries -->
+	<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet">
+	<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" rel="stylesheet">
+	
+	<!-- PWA Support -->
+	<meta name="theme-color" content="#2563eb">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="default">
+	<meta name="apple-mobile-web-app-title" content="Posts Platform">
+	
+	<!-- Open Graph / Social Media -->
+	<meta property="og:type" content="website">
+	<meta property="og:title" content="Posts Platform">
+	<meta property="og:description" content="Create, share and collaborate on posts with markdown support">
+	<meta property="og:image" content="/og-image.png">
+	<meta property="og:url" content="https://posts-platform.com">
+	
+	<!-- Twitter Card -->
+	<meta name="twitter:card" content="summary_large_image">
+	<meta name="twitter:title" content="Posts Platform">
+	<meta name="twitter:description" content="Create, share and collaborate on posts with markdown support">
+	<meta name="twitter:image" content="/twitter-card.png">
+</head>
+
+<body>
+
+<style>
+/* Root Variables & Base Styles */
+:root {
+    --primary-color: #2563eb;
+    --primary-hover: #1d4ed8;
+    --success-color: #059669;
+    --danger-color: #dc2626;
+    --warning-color: #d97706;
+    --secondary-color: #6b7280;
+    --background-color: #f8fafc;
+    --card-background: #ffffff;
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+    --text-muted: #9ca3af;
+    --border-color: #e5e7eb;
+    --border-hover: #d1d5db;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    --border-radius: 8px;
+    --transition: all 0.2s ease;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: var(--background-color);
+    color: var(--text-primary);
+    line-height: 1.6;
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    grid-template-rows: auto 1fr;
+    grid-template-areas: 
+        "header header"
+        "sidebar main";
+    min-height: 100vh;
+}
+
+/* Header Styles */
+header {
+    grid-area: header;
+    background: var(--card-background);
+    border-bottom: 1px solid var(--border-color);
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow-sm);
+}
+
+header_left h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+header_left h2:hover {
+    color: var(--primary-hover);
+}
+
+header_center {
+    flex: 1;
+    max-width: 500px;
+    margin: 0 2rem;
+    position: relative;
+}
+
+header_center search {
+    position: relative;
+    display: block;
+}
+
+header_center search::before {
+    content: "🔍";
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    z-index: 1;
+}
+
+header_center input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.5rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 0.95rem;
+    transition: var(--transition);
+    background: #f9fafb;
+}
+
+header_center input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+header_right {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+user_info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    color: var(--text-secondary);
+}
+
+user_info span {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Sidebar Styles */
+sidebar {
+    grid-area: sidebar;
+    background: var(--card-background);
+    border-right: 1px solid var(--border-color);
+    padding: 2rem 1.5rem;
+    overflow-y: auto;
+    height: calc(100vh - 80px);
+}
+
+sidebar_section {
+    margin-bottom: 2rem;
+    display: block;
+}
+
+sidebar_section h3 {
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 0.5rem;
+}
+
+archive_stats {
+    display: block;
+}
+
+archive_item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--border-radius);
+    transition: var(--transition);
+    cursor: pointer;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+archive_item:hover {
+    background: #f3f4f6;
+    color: var(--primary-color);
+    transform: translateX(4px);
+}
+
+count {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    background: #f3f4f6;
+    padding: 0.2rem 0.5rem;
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+popular_tags {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+settings {
+    background: #f9fafb;
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    display: block;
+}
+
+setting {
+    display: block;
+}
+
+setting label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+setting select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: white;
+    font-size: 0.9rem;
+}
+
+/* Main Content Styles */
+main {
+    grid-area: main;
+    padding: 2rem;
+    overflow-y: auto;
+    height: calc(100vh - 80px);
+}
+
+content_header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+content_header h1 {
+    color: var(--text-primary);
+    font-size: 1.8rem;
+    font-weight: 700;
+}
+
+actions {
+    display: flex;
+    gap: 1rem;
+}
+
+content_filters {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+filter_chip {
+    padding: 0.5rem 1rem;
+    background: rgba(59, 130, 246, 0.05);
+    border: 2px solid rgba(59, 130, 246, 0.2);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 0.9rem;
+    color: #1e40af;
+}
+
+filter_chip.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+filter_chip:hover {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.4);
+    transform: translateY(-1px);
+}
+
+posts_container {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+/* Post Styles */
+post {
+    background: var(--card-background);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
+    display: block;
+}
+
+post:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+post_header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+post_meta {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    flex-grow: 1;
+}
+
+author {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+date {
+    color: var(--text-muted);
+}
+
+post_actions {
+    display: flex;
+    gap: 0.5rem;
+    opacity: 0;
+    transition: var(--transition);
+}
+
+post:hover post_actions {
+    opacity: 1;
+}
+
+post_title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    line-height: 1.3;
+    display: block;
+}
+
+post_content {
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+    line-height: 1.7;
+    font-size: 1rem;
+    display: block;
+}
+
+post_tags {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+tag {
+    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+    color: #1e40af;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    border: 1px solid transparent;
+}
+
+tag:hover {
+    background: linear-gradient(135deg, #bfdbfe, #93c5fd);
+    transform: translateY(-1px);
+}
+
+post_footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+post_stats {
+    display: flex;
+    gap: 1rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+post_interactions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Comments Styles */
+comments_section {
+    margin-top: 1.5rem;
+    border-top: 2px solid var(--border-color);
+    padding-top: 1.5rem;
+    display: none;
+}
+
+comments_section.visible {
+    display: block;
+}
+
+comments_header {
+    margin-bottom: 1.5rem;
+}
+
+comment {
+    background: #f9fafb;
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1rem;
+    border-left: 4px solid var(--border-color);
+    transition: var(--transition);
+    display: block;
+}
+
+comment:hover {
+    border-left-color: var(--primary-color);
+}
+
+comment_header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+comment_meta {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+comment_content {
+    color: var(--text-primary);
+    line-height: 1.6;
+    margin-bottom: 1rem;
+    display: block;
+}
+
+comment_actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+reply_form {
+    display: none;
+    margin-top: 1rem;
+    background: white;
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+reply_form.visible {
+    display: block;
+}
+
+reply_actions {
+    margin-top: 0.75rem;
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+comment_form {
+    margin-top: 1.5rem;
+    background: white;
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    display: block;
+}
+
+comment_submit {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* Proposals Styles */
+proposals_section {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid var(--border-color);
+    display: none;
+}
+
+proposals_section.visible {
+    display: block;
+}
+
+proposals_header {
+    margin-bottom: 1.5rem;
+}
+
+proposal {
+    background: #fef3c7;
+    border: 2px solid #fbbf24;
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1rem;
+    display: block;
+}
+
+proposal_header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+proposal_meta {
+    color: #92400e;
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+proposal_actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+proposal_details {
+    margin-bottom: 1rem;
+}
+
+proposal_content details {
+    background: white;
+    padding: 1rem;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+}
+
+proposal_content summary {
+    cursor: pointer;
+    font-weight: 500;
+}
+
+content_preview {
+    margin-top: 1rem;
+    max-height: 300px;
+    overflow-y: auto;
+    display: block;
+}
+
+/* Pagination Styles */
+pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 3rem;
+    padding: 1.5rem;
+    background: rgba(59, 130, 246, 0.03);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid rgba(59, 130, 246, 0.1);
+}
+
+pagination_controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+pagination_info {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+pagination_jump {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+pagination_jump input {
+    width: 80px;
+    padding: 0.5rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+/* Button Styles */
+button {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+    background: var(--primary-color);
+    color: white;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+button:hover:not(:disabled) {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+button.secondary {
+    background: var(--secondary-color);
+}
+
+button.secondary:hover:not(:disabled) {
+    background: #4b5563;
+}
+
+button.success {
+    background: var(--success-color);
+}
+
+button.success:hover:not(:disabled) {
+    background: #047857;
+}
+
+button.danger {
+    background: var(--danger-color);
+}
+
+button.danger:hover:not(:disabled) {
+    background: #b91c1c;
+}
+
+button.warning {
+    background: var(--warning-color);
+}
+
+button.small {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+button.outline {
+    background: transparent;
+    border: 2px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+button.outline:hover:not(:disabled) {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background: transparent;
+    transform: translateY(-1px);
+}
+
+toolbar_btn {
+    padding: 0.5rem 0.75rem;
+    border: 2px solid var(--border-color);
+    background: white;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-primary);
+}
+
+toolbar_btn:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+toolbar_btn.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+/* Modal Styles */
+login_modal, proposal_modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+login_modal.visible, proposal_modal.visible {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+modal_content {
+    background: var(--card-background);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    width: 90%;
+    max-width: 500px;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border-color);
+    transform: scale(0.9);
+    opacity: 0;
+    transition: var(--transition);
+}
+
+login_modal.visible modal_content,
+proposal_modal.visible modal_content {
+    transform: scale(1);
+    opacity: 1;
+}
+
+modal_header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+modal_header h2 {
+    color: var(--text-primary);
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+close_btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 0.5rem;
+    border-radius: var(--border-radius);
+    transition: var(--transition);
+}
+
+close_btn:hover {
+    background: var(--border-color);
+    color: var(--text-primary);
+}
+
+/* Editor Modal Styles */
+editor_modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+editor_content {
+    background: var(--card-background);
+    margin: 2rem;
+    border-radius: var(--border-radius);
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 4rem);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border-color);
+}
+
+editor_header {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f9fafb;
+}
+
+editor_header h2 {
+    color: var(--text-primary);
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+editor_toolbar {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid var(--border-color);
+    background: #f9fafb;
+    flex-wrap: wrap;
+}
+
+editor_body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 2rem;
+    gap: 1rem;
+}
+
+editor_inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+tag_input_container {
+    position: relative;
+}
+
+tag_suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 2px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 10;
+    display: none;
+}
+
+tag_suggestions.visible {
+    display: block;
+}
+
+editor_content_container {
+    flex: 1;
+    display: flex;
+    gap: 1rem;
+}
+
+editor_content_container.split-view preview_panel {
+    display: block;
+}
+
+editor_content_container textarea {
+    flex: 1;
+    resize: none;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    line-height: 1.5;
+    font-size: 0.95rem;
+    padding: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    transition: var(--transition);
+}
+
+preview_panel {
+    flex: 1;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    background: white;
+    overflow-y: auto;
+    display: none;
+}
+
+preview_panel.visible {
+    display: block;
+}
+
+editor_footer {
+    padding: 1.5rem 2rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    background: #f9fafb;
+}
+
+/* File Upload Styles */
+file_upload_area {
+    border: 3px dashed var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    text-align: center;
+    margin: 1rem 0;
+    transition: var(--transition);
+    background: #f9fafb;
+    display: none;
+}
+
+file_upload_area.visible {
+    display: block;
+}
+
+file_upload_area.dragover {
+    border-color: var(--primary-color);
+    background: rgba(37, 99, 235, 0.05);
+    transform: scale(1.02);
+}
+
+upload_content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+upload_icon {
+    font-size: 3rem;
+    color: var(--text-muted);
+}
+
+uploaded_files {
+    margin-top: 1rem;
+    display: none;
+}
+
+uploaded_files.visible {
+    display: block;
+}
+
+/* Form Styles */
+form_group {
+    margin-bottom: 1.5rem;
+    display: block;
+}
+
+form_group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+form_group input,
+form_group textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: var(--transition);
+}
+
+form_group input:focus,
+form_group textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+form_actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+auth_form {
+    display: block;
+}
+
+proposal_form {
+    display: block;
+}
+
+/* Loading & Notification Styles */
+loading {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-secondary);
+    display: block;
+}
+
+spinner {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    border: 3px solid var(--border-color);
+    border-top: 3px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 0.5rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+loading_overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    z-index: 999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(2px);
+}
+
+loading_overlay.visible {
+    display: flex;
+}
+
+loading_content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 2rem;
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-lg);
+}
+
+notification {
+    position: fixed;
+    top: 100px;
+    right: 20px;
+    padding: 1rem 1.5rem;
+    border-radius: var(--border-radius);
+    color: white;
+    z-index: 2000;
+    max-width: 400px;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: var(--transition);
+    box-shadow: var(--shadow-lg);
+    font-weight: 500;
+}
+
+notification.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+notification.success {
+    background: var(--success-color);
+}
+
+notification.error {
+    background: var(--danger-color);
+}
+
+notification.info {
+    background: var(--primary-color);
+}
+
+notification.warning {
+    background: var(--warning-color);
+}
+
+/* Utility Classes */
+.hidden {
+    display: none !important;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    body {
+        grid-template-columns: 250px 1fr;
+    }
+    
+    sidebar {
+        padding: 1.5rem 1rem;
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        grid-template-columns: 1fr;
+        grid-template-areas: 
+            "header"
+            "main";
+    }
+
+    sidebar {
+        display: none;
+    }
+
+    header {
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1rem;
+    }
+
+    header_center {
+        margin: 0;
+        max-width: none;
+    }
+
+    editor_content {
+        margin: 0.5rem;
+        height: calc(100vh - 1rem);
+    }
+
+    editor_toolbar {
+        padding: 1rem;
+    }
+
+    main {
+        padding: 1rem;
+    }
+
+    post {
+        padding: 1.5rem;
+    }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --background-color: #0f172a;
+        --card-background: #1e293b;
+        --text-primary: #f1f5f9;
+        --text-secondary: #cbd5e1;
+        --text-muted: #94a3b8;
+        --border-color: #334155;
+        --border-hover: #475569;
+    }
+
+    header_center input {
+        background: #334155;
+        color: var(--text-primary);
+    }
+
+    settings {
+        background: #334155;
+    }
+
+    comment {
+        background: #334155;
+    }
+
+    comment_form,
+    reply_form {
+        background: #334155;
+    }
+
+    file_upload_area {
+        background: #334155;
+    }
+}
+</style>
+
+<!-- Header Fragment -->
+<header>
+	<header_left>
+		<h2 id="platform-logo" onclick="goHome()">📝 Posts Platform</h2>
+	</header_left>
+	<header_center>
+		<search>
+			<input type="text" id="search-input" placeholder="Search posts, tags, authors..." />
+		</search>
+	</header_center>
+	<header_right>
+		<user_info id="user-info" style="display: none;">
+			<span id="username"></span>
+			<button id="logout-btn" onclick="logout()">🚪 Logout</button>
+		</user_info>
+		<button id="login-btn" onclick="showLoginModal()">👤 Login</button>
+	</header_right>
+</header>
+
+<!-- Sidebar Fragment -->
+<sidebar>
+	<sidebar_section>
+		<h3>📅 Archive</h3>
+		<archive_stats id="archive-stats">
+			<archive_item onclick="loadPosts()">
+				📄 All Posts <count id="total-count">0</count>
+			</archive_item>
+		</archive_stats>
+	</sidebar_section>
+
+	<sidebar_section>
+		<h3>🏷️ Tags</h3>
+		<popular_tags id="popular-tags">
+			<loading>Loading tags...</loading>
+		</popular_tags>
+	</sidebar_section>
+
+	<sidebar_section>
+		<h3>⚙️ Settings</h3>
+		<settings>
+			<setting>
+				<label>Posts per page:</label>
+				<select id="posts-per-page" onchange="changePostsPerPage()">
+					<option value="5">5</option>
+					<option value="10" selected>10</option>
+					<option value="20">20</option>
+					<option value="50">50</option>
+				</select>
+			</setting>
+		</settings>
+	</sidebar_section>
+</sidebar>
+
+<!-- Main Content Fragment -->
+<main>
+	<content_header>
+		<h1 id="page-title">✨ Latest Posts</h1>
+		<actions>
+			<button id="new-post-btn" onclick="showEditor()" style="display: none;">✏️ New Post</button>
+		</actions>
+	</content_header>
+
+	<content_filters id="content-filters">
+		<filter_chip class="active" onclick="setFilter('all')">All Posts</filter_chip>
+		<filter_chip onclick="setFilter('my')">My Posts</filter_chip>
+		<filter_chip onclick="setFilter('recent')">Recent</filter_chip>
+	</content_filters>
+
+	<posts_container id="posts-container">
+		<loading>
+			<spinner></spinner>
+			Loading posts...
+		</loading>
+	</posts_container>
+
+	<pagination id="pagination">
+		<pagination_controls>
+			<button id="prev-btn" onclick="previousPage()" disabled>← Previous</button>
+			<pagination_info id="pagination-info">Page 1 of 1</pagination_info>
+			<button id="next-btn" onclick="nextPage()" disabled>Next →</button>
+		</pagination_controls>
+		<pagination_jump>
+			<span>Go to:</span>
+			<input type="number" id="goto-page" min="1" placeholder="1">
+			<button onclick="gotoPage()">Go</button>
+		</pagination_jump>
+	</pagination>
+</main>
+
+<!-- Post Fragment Template -->
+<post_template>
+	<post data-post-id="{id}">
+		<post_header>
+			<post_meta>
+				<author>👤 {username}</author>
+				<date>📅 {created_at}</date>
+			</post_meta>
+			<post_actions>
+				<button onclick="editPost({id})">✏️</button>
+				<button onclick="deletePost({id})">🗑️</button>
+				<button onclick="showProposalModal({id})">💡</button>
+			</post_actions>
+		</post_header>
+		
+		<post_title>{title}</post_title>
+		<post_content>{content}</post_content>
+		
+		<post_tags>
+			<tag onclick="searchByTag('{tag_name}')">{tag_name}</tag>
+		</post_tags>
+		
+		<post_footer>
+			<post_stats>
+				<stat>💬 Comments</stat>
+			</post_stats>
+			<post_interactions>
+				<button onclick="toggleComments({id})">💬 Comments</button>
+				<button onclick="loadProposals({id})">📝 Proposals</button>
+			</post_interactions>
+		</post_footer>
+		
+		<comments_section id="comments-{id}">
+			<loading>Loading comments...</loading>
+		</comments_section>
+		
+		<proposals_section id="proposals-{id}">
+			<loading>Loading proposals...</loading>
+		</proposals_section>
+	</post>
+</post_template>
+
+<!-- Login Modal Fragment -->
+<login_modal id="login-modal">
+	<modal_content>
+		<modal_header>
+			<h2 id="modal-title">👤 Login</h2>
+			<close_btn onclick="closeModal('login-modal')">&times;</close_btn>
+		</modal_header>
+		<auth_form id="auth-form">
+			<form_group>
+				<label>Username</label>
+				<input type="text" id="auth-username" required minlength="3" maxlength="50">
+			</form_group>
+			<form_group>
+				<label>Password</label>
+				<input type="password" id="auth-password" required minlength="6">
+			</form_group>
+			<form_actions>
+				<button type="button" onclick="toggleAuthMode()" id="toggle-btn">Register instead</button>
+				<button type="submit" id="submit-btn">
+					<spinner id="auth-spinner" style="display: none;"></spinner>
+					Login
+				</button>
+			</form_actions>
+		</auth_form>
+	</modal_content>
+</login_modal>
+
+<!-- Editor Modal Fragment -->
+<editor_modal id="editor-container">
+	<editor_content>
+		<editor_header>
+			<h2 id="editor-title">✏️ Create New Post</h2>
+			<button onclick="closeEditor()">✕ Close</button>
+		</editor_header>
+		
+		<editor_toolbar>
+			<toolbar_btn onclick="insertMarkdown('**', '**')">B</toolbar_btn>
+			<toolbar_btn onclick="insertMarkdown('*', '*')">I</toolbar_btn>
+			<toolbar_btn onclick="insertMarkdown('`', '`')">Code</toolbar_btn>
+			<toolbar_btn onclick="insertMarkdown('```\n', '\n```')">📋 Block</toolbar_btn>
+			<toolbar_btn onclick="insertMarkdown('- ', '')">📝 List</toolbar_btn>
+			<toolbar_btn onclick="insertMarkdown('## ', '')">📰 H2</toolbar_btn>
+			<toolbar_btn onclick="togglePreview()" id="preview-btn">👁️ Preview</toolbar_btn>
+			<toolbar_btn onclick="toggleSplitView()" id="split-btn">🔄 Split</toolbar_btn>
+			<toolbar_btn onclick="showFileUpload()">📁 File</toolbar_btn>
+		</editor_toolbar>
+		
+		<editor_body>
+			<editor_inputs>
+				<input type="text" id="post-title" placeholder="📝 Enter your post title..." maxlength="200">
+				<tag_input_container>
+					<input type="text" id="post-tags" placeholder="🏷️ Tags (comma-separated)..." maxlength="200">
+					<tag_suggestions id="tag-suggestions"></tag_suggestions>
+				</tag_input_container>
+			</editor_inputs>
+			
+			<editor_content_container id="editor-content-container">
+				<textarea id="post-content" placeholder="✨ Write your post in Markdown..."></textarea>
+				<preview_panel id="post-preview"></preview_panel>
+			</editor_content_container>
+			
+			<file_upload_area id="file-upload-area">
+				<input type="file" id="file-input" multiple accept="image/*,video/*,.pdf,.txt,.md,.json,.csv">
+				<upload_content>
+					<upload_icon>📁</upload_icon>
+					<p><strong>Drag & drop files here</strong> or <button onclick="document.getElementById('file-input').click()">Choose Files</button></p>
+				</upload_content>
+			</file_upload_area>
+			
+			<uploaded_files id="uploaded-files"></uploaded_files>
+		</editor_body>
+		
+		<editor_footer>
+			<button onclick="closeEditor()">❌ Cancel</button>
+			<button onclick="savePost()" id="save-btn">
+				<spinner id="save-spinner" style="display: none;"></spinner>
+				✨ Publish Post
+			</button>
+		</editor_footer>
+	</editor_content>
+</editor_modal>
+
+<!-- Proposal Modal Fragment -->
+<proposal_modal id="proposal-modal">
+	<modal_content>
+		<modal_header>
+			<h2>✏️ Suggest Edit</h2>
+			<close_btn onclick="closeModal('proposal-modal')">&times;</close_btn>
+		</modal_header>
+		<proposal_form id="proposal-form">
+			<form_group>
+				<label>Your Name</label>
+				<input type="text" id="proposer-name" required maxlength="100">
+			</form_group>
+			<form_group>
+				<label>Your Email</label>
+				<input type="email" id="proposer-email" required maxlength="100">
+			</form_group>
+			<form_group>
+				<label>Proposed Title</label>
+				<input type="text" id="proposal-title" required maxlength="200">
+			</form_group>
+			<form_group>
+				<label>Proposed Content</label>
+				<textarea id="proposal-content" rows="10" required maxlength="50000"></textarea>
+			</form_group>
+			<form_group>
+				<label>Reason for Edit (Optional)</label>
+				<textarea id="proposal-reason" rows="3" placeholder="Why are you suggesting this change?" maxlength="1000"></textarea>
+			</form_group>
+			<form_actions>
+				<button type="button" onclick="closeModal('proposal-modal')">Cancel</button>
+				<button type="submit">
+					<spinner id="proposal-spinner" style="display: none;"></spinner>
+					Submit Proposal
+				</button>
+			</form_actions>
+		</proposal_form>
+	</modal_content>
+</proposal_modal>
+
+<!-- Comments Fragment Template -->
+<comments_template>
+	<comments_section>
+		<comments_header>
+			<strong>💬 {comment_count} Comment{s}</strong>
+		</comments_header>
+		<comments_list>
+			<comment>
+				<comment_header>
+					<comment_meta>
+						<author>👤 {username}</author>
+						<date>📅 {created_at}</date>
+					</comment_meta>
+					<comment_actions>
+						<button onclick="deleteComment({id}, {post_id})">🗑️</button>
+					</comment_actions>
+				</comment_header>
+				<comment_content>{content}</comment_content>
+				<comment_actions>
+					<button onclick="showReplyForm({id}, {post_id})">↩️ Reply</button>
+				</comment_actions>
+				<reply_form id="reply-form-{id}">
+					<form onsubmit="addComment(event, {post_id}, {id})">
+						<textarea placeholder="💭 Reply..." required maxlength="5000"></textarea>
+						<reply_actions>
+							<button type="button" onclick="hideReplyForm({id})">❌ Cancel</button>
+							<button type="submit">↩️ Reply</button>
+						</reply_actions>
+					</form>
+				</reply_form>
+			</comment>
+		</comments_list>
+		<comment_form onsubmit="addComment(event, {post_id})">
+			<textarea placeholder="💭 Share your thoughts..." required maxlength="5000"></textarea>
+			<comment_submit>
+				<button type="submit">💬 Comment</button>
+			</comment_submit>
+		</comment_form>
+	</comments_section>
+</comments_template>
+
+<!-- Proposals Fragment Template -->
+<proposals_template>
+	<proposals_section>
+		<proposals_header>
+			<strong>📝 {proposal_count} Pending Proposal{s}</strong>
+		</proposals_header>
+		<proposals_list>
+			<proposal>
+				<proposal_header>
+					<proposal_meta>
+						<strong>👤 {proposer_name}</strong>
+						<span>📧 {proposer_email}</span>
+						<span>📅 {created_at}</span>
+					</proposal_meta>
+					<proposal_actions>
+						<button onclick="approveProposal({id})">✅ Approve</button>
+						<button onclick="rejectProposal({id})">❌ Reject</button>
+					</proposal_actions>
+				</proposal_header>
+				<proposal_details>
+					<p><strong>📝 Proposed Title:</strong> {title}</p>
+					<p><strong>💭 Reason:</strong> {reason}</p>
+				</proposal_details>
+				<proposal_content>
+					<details>
+						<summary>👁️ View proposed content</summary>
+						<content_preview>{content}</content_preview>
+					</details>
+				</proposal_content>
+			</proposal>
+		</proposals_list>
+	</proposals_section>
+</proposals_template>
+
+<!-- Notification Fragment -->
+<notification_template>
+	<notification class="{type}">
+		{message}
+	</notification>
+</notification_template>
+
+<!-- Loading Overlay Fragment -->
+<loading_overlay id="loading-overlay">
+	<loading_content>
+		<spinner></spinner>
+		Loading...
+	</loading_content>
+</loading_overlay>
+
+<!-- Script Fragment -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+<script>
+	// Application JavaScript will go here
+	console.log('🎉 Posts Platform fragments loaded successfully!');
+</script>
+
+<!-- Document Close Fragment -->
+</body>
+</html>
