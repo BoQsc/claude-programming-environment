@@ -210,17 +210,22 @@ class DB:
     async def create_post(user_id, title, content):
         """Create a new post for the specified user"""
         async with aiosqlite.connect(DB_PATH) as db:
+            db.row_factory = aiosqlite.Row
             cursor = await db.execute(
                 "INSERT INTO posts (user_id, title, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?)", 
                 (user_id, title, content, time.time(), time.time())
             )
-            await db.commit()
             post_id = cursor.lastrowid
+            
+            # Get username for FTS index
+            user_result = await db.execute("SELECT username FROM users WHERE id = ?", (user_id,))
+            user_row = await user_result.fetchone()
+            username = user_row['username'] if user_row else ''
             
             # Update FTS index
             await db.execute(
-                "INSERT INTO posts_fts(rowid, title, content, username) SELECT p.id, p.title, p.content, u.username FROM posts p JOIN users u ON p.user_id = u.id WHERE p.id = ?",
-                (post_id,)
+                "INSERT INTO posts_fts(rowid, title, content, username) VALUES (?, ?, ?, ?)",
+                (post_id, title, content, username)
             )
             await db.commit()
             return post_id
@@ -264,36 +269,46 @@ class DB:
         if title is None and content is None:
             return False
         
-        # First verify the post belongs to the user
-        post = await DB._execute("SELECT user_id FROM posts WHERE id = ?", (post_id,), 'one')
-        if not post or post['user_id'] != user_id:
-            return False
-        
-        # Build dynamic update query
-        updates = []
-        params = []
-        if title is not None:
-            updates.append("title = ?")
-            params.append(title)
-        if content is not None:
-            updates.append("content = ?")
-            params.append(content)
-        
-        updates.append("updated_at = ?")
-        params.append(time.time())
-        params.append(post_id)
-        
         async with aiosqlite.connect(DB_PATH) as db:
+            # First verify the post belongs to the user
+            post_result = await db.execute("SELECT user_id FROM posts WHERE id = ?", (post_id,))
+            post_row = await post_result.fetchone()
+            if not post_row or post_row[0] != user_id:
+                return False
+            
+            # Build dynamic update query
+            updates = []
+            params = []
+            if title is not None:
+                updates.append("title = ?")
+                params.append(title)
+            if content is not None:
+                updates.append("content = ?")
+                params.append(content)
+            
+            updates.append("updated_at = ?")
+            params.append(time.time())
+            params.append(post_id)
+            
             query = f"UPDATE posts SET {', '.join(updates)} WHERE id = ?"
             await db.execute(query, params)
             
-            # Update FTS index
-            await db.execute(
-                "UPDATE posts_fts SET title = (SELECT title FROM posts WHERE id = ?), content = (SELECT content FROM posts WHERE id = ?) WHERE rowid = ?",
-                (post_id, post_id, post_id)
-            )
+            # Update FTS index - get current post data
+            post_data = await db.execute("""
+                SELECT p.title, p.content, u.username 
+                FROM posts p JOIN users u ON p.user_id = u.id 
+                WHERE p.id = ?
+            """, (post_id,))
+            current_post = await post_data.fetchone()
+            
+            if current_post:
+                await db.execute(
+                    "UPDATE posts_fts SET title = ?, content = ?, username = ? WHERE rowid = ?",
+                    (current_post[0], current_post[1], current_post[2], post_id)
+                )
+            
             await db.commit()
-        return True
+            return True
     
     @staticmethod
     async def delete_post(post_id, user_id):
@@ -301,10 +316,12 @@ class DB:
         async with aiosqlite.connect(DB_PATH) as db:
             # Verify ownership and delete in one query
             result = await db.execute("DELETE FROM posts WHERE id = ? AND user_id = ?", (post_id, user_id))
-            # Remove from FTS index
-            await db.execute("DELETE FROM posts_fts WHERE rowid = ?", (post_id,))
-            await db.commit()
-            return result.rowcount > 0
+            if result.rowcount > 0:
+                # Remove from FTS index
+                await db.execute("DELETE FROM posts_fts WHERE rowid = ?", (post_id,))
+                await db.commit()
+                return True
+            return False
     
     @staticmethod
     async def get_posts_count():
@@ -477,10 +494,22 @@ class DB:
             for tag_name in tag_names:
                 tag_name = tag_name.strip().lower()
                 if tag_name:
-                    # Create tag if doesn't exist
-                    tag_id = await DB.create_tag(tag_name)
+                    # Create tag if doesn't exist (inline to avoid nested connections)
+                    try:
+                        cursor = await db.execute("INSERT INTO tags (name, created_at) VALUES (?, ?)", (tag_name, time.time()))
+                        tag_id = cursor.lastrowid
+                    except aiosqlite.IntegrityError:
+                        # Tag already exists, get its ID
+                        result = await db.execute("SELECT id FROM tags WHERE name = ?", (tag_name,))
+                        row = await result.fetchone()
+                        tag_id = row[0] if row else None
+                    
                     if tag_id:
-                        await db.execute("INSERT INTO post_tags (post_id, tag_id) VALUES (?, ?)", (post_id, tag_id))
+                        try:
+                            await db.execute("INSERT INTO post_tags (post_id, tag_id) VALUES (?, ?)", (post_id, tag_id))
+                        except aiosqlite.IntegrityError:
+                            # Tag already associated with post, skip
+                            pass
             await db.commit()
     # ===== END ISOLATED SECTION: TAGS =====
 
