@@ -1,3 +1,19 @@
+#!/usr/bin/env python3
+"""
+Auth API - Production Ready Implementation
+==========================================
+• aiohttp async web server with SQLite database
+• PBKDF2 password hashing (600k iterations) with secure salts
+• Auto SSL detection: HTTP dev (localhost:8080) → HTTPS prod (0.0.0.0:8447)
+• Bearer token authentication with 1-hour session expiration
+• Unique user IDs (auto-increment integers) with username lookup
+• CORS enabled for cross-origin requests from frontend
+• Auto session cleanup (5min intervals) + file watching dev mode
+• Users can only delete their own accounts (self-service only)
+• Auto-routing system with manual parameterized route registration
+• Production: Frontend on :443, API on :8447, separate services
+"""
+
 from aiohttp import web
 import aiosqlite
 import hashlib
