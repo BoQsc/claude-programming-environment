@@ -12,6 +12,13 @@ Auth API - Production Ready Implementation
 • Users can only delete their own accounts (self-service only)
 • Auto-routing system with manual parameterized route registration
 • Production: Frontend on :443, API on :8447, separate services
+
+ISOLATION SECTIONS:
+==================
+This codebase uses "isolated sections" - clearly marked code blocks that add
+specific features and can be easily removed without affecting core functionality.
+Look for "ISOLATED SECTION: [FEATURE NAME]" comments to identify these blocks.
+To remove a feature, simply delete everything between the start/end markers.
 """
 
 from aiohttp import web
@@ -46,6 +53,18 @@ class DB:
     async def init():
         await DB._execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, salt TEXT, password_hash TEXT, created_at REAL, last_login REAL)")
         await DB._execute("CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, user_id INTEGER, created_at REAL, expires_at REAL, ip_address TEXT, user_agent TEXT, FOREIGN KEY (user_id) REFERENCES users (id))")
+        
+        # ===== ISOLATED SECTION: POSTS ENDPOINTS AND POSTS DATABASE IMPLEMENTATION =====
+        await DB._execute("""CREATE TABLE IF NOT EXISTS posts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, 
+            user_id INTEGER NOT NULL, 
+            title TEXT NOT NULL, 
+            content TEXT NOT NULL, 
+            created_at REAL NOT NULL, 
+            updated_at REAL NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        )""")
+        # ===== END ISOLATED SECTION: POSTS =====
     
     @staticmethod
     async def create_user(username, salt, password_hash):
@@ -108,6 +127,102 @@ class DB:
     @staticmethod
     async def cleanup_sessions():
         await DB._execute("DELETE FROM sessions WHERE expires_at < ?", (time.time(),))
+
+    # ===== ISOLATED SECTION: POSTS ENDPOINTS AND POSTS DATABASE IMPLEMENTATION =====
+    @staticmethod
+    async def create_post(user_id, title, content):
+        """Create a new post for the specified user"""
+        async with aiosqlite.connect(DB_PATH) as db:
+            cursor = await db.execute(
+                "INSERT INTO posts (user_id, title, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?)", 
+                (user_id, title, content, time.time(), time.time())
+            )
+            await db.commit()
+            return cursor.lastrowid
+    
+    @staticmethod
+    async def get_post_by_id(post_id):
+        """Get a specific post by ID with user information"""
+        return await DB._execute("""
+            SELECT p.*, u.username 
+            FROM posts p 
+            JOIN users u ON p.user_id = u.id 
+            WHERE p.id = ?
+        """, (post_id,), 'one')
+    
+    @staticmethod
+    async def get_posts_by_user(user_id, limit=50, offset=0):
+        """Get all posts by a specific user with pagination"""
+        return await DB._execute("""
+            SELECT p.*, u.username 
+            FROM posts p 
+            JOIN users u ON p.user_id = u.id 
+            WHERE p.user_id = ? 
+            ORDER BY p.created_at DESC 
+            LIMIT ? OFFSET ?
+        """, (user_id, limit, offset), 'all')
+    
+    @staticmethod
+    async def get_all_posts(limit=50, offset=0):
+        """Get all posts with user information and pagination"""
+        return await DB._execute("""
+            SELECT p.*, u.username 
+            FROM posts p 
+            JOIN users u ON p.user_id = u.id 
+            ORDER BY p.created_at DESC 
+            LIMIT ? OFFSET ?
+        """, (limit, offset), 'all')
+    
+    @staticmethod
+    async def update_post(post_id, user_id, title=None, content=None):
+        """Update a post - only the owner can update"""
+        if title is None and content is None:
+            return False
+        
+        # First verify the post belongs to the user
+        post = await DB._execute("SELECT user_id FROM posts WHERE id = ?", (post_id,), 'one')
+        if not post or post['user_id'] != user_id:
+            return False
+        
+        # Build dynamic update query
+        updates = []
+        params = []
+        if title is not None:
+            updates.append("title = ?")
+            params.append(title)
+        if content is not None:
+            updates.append("content = ?")
+            params.append(content)
+        
+        updates.append("updated_at = ?")
+        params.append(time.time())
+        params.append(post_id)
+        
+        query = f"UPDATE posts SET {', '.join(updates)} WHERE id = ?"
+        result = await DB._execute(query, params)
+        return True
+    
+    @staticmethod
+    async def delete_post(post_id, user_id):
+        """Delete a post - only the owner can delete"""
+        async with aiosqlite.connect(DB_PATH) as db:
+            # Verify ownership and delete in one query
+            result = await db.execute("DELETE FROM posts WHERE id = ? AND user_id = ?", (post_id, user_id))
+            await db.commit()
+            return result.rowcount > 0
+    
+    @staticmethod
+    async def get_posts_count():
+        """Get total number of posts"""
+        result = await DB._execute("SELECT COUNT(*) as count FROM posts", fetch='one')
+        return result['count'] if result else 0
+    
+    @staticmethod
+    async def get_user_posts_count(user_id):
+        """Get total number of posts by a specific user"""
+        result = await DB._execute("SELECT COUNT(*) as count FROM posts WHERE user_id = ?", (user_id,), 'one')
+        return result['count'] if result else 0
+    # ===== END ISOLATED SECTION: POSTS =====
 
 # Async password functions - single line implementations
 async def hash_password(password: str) -> tuple[str, str]:
@@ -308,6 +423,148 @@ async def delete_users_id(request):
     print(f"✅ User {user_id} deleted successfully")
     return web.json_response({'message': 'User deleted'})
 
+# ===== ISOLATED SECTION: POSTS ENDPOINTS AND POSTS DATABASE IMPLEMENTATION =====
+@require_auth
+async def post_posts(request):
+    """Create a new post"""
+    try:
+        data = await request.json()
+        title = data.get('title', '').strip()
+        content = data.get('content', '').strip()
+        
+        if not title or not content:
+            return web.json_response({'error': 'Title and content are required'}, status=400)
+        
+        if len(title) > 200:
+            return web.json_response({'error': 'Title too long (max 200 chars)'}, status=400)
+        
+        if len(content) > 10000:
+            return web.json_response({'error': 'Content too long (max 10000 chars)'}, status=400)
+        
+        user = request['user']
+        post_id = await DB.create_post(user['id'], title, content)
+        
+        return web.json_response({
+            'message': 'Post created',
+            'post_id': post_id,
+            'title': title
+        }, status=201)
+    
+    except (KeyError, json.JSONDecodeError):
+        return web.json_response({'error': 'Invalid request'}, status=400)
+
+@require_auth
+async def get_posts(request):
+    """Get all posts with pagination"""
+    try:
+        limit = min(int(request.query.get('limit', 50)), 100)  # Max 100 posts per request
+        offset = int(request.query.get('offset', 0))
+        user_id = request.query.get('user_id')  # Optional filter by user
+        
+        if user_id:
+            posts = await DB.get_posts_by_user(int(user_id), limit, offset)
+            total_count = await DB.get_user_posts_count(int(user_id))
+        else:
+            posts = await DB.get_all_posts(limit, offset)
+            total_count = await DB.get_posts_count()
+        
+        return web.json_response({
+            'posts': [dict(post) for post in posts],
+            'pagination': {
+                'limit': limit,
+                'offset': offset,
+                'total': total_count,
+                'has_more': offset + limit < total_count
+            }
+        })
+    
+    except ValueError:
+        return web.json_response({'error': 'Invalid pagination parameters'}, status=400)
+
+@require_auth
+async def get_posts_id(request):
+    """Get a specific post by ID"""
+    try:
+        post_id = int(request.match_info['id'])
+    except ValueError:
+        return web.json_response({'error': 'Invalid post ID'}, status=400)
+    
+    post = await DB.get_post_by_id(post_id)
+    if not post:
+        return web.json_response({'error': 'Post not found'}, status=404)
+    
+    return web.json_response({'post': dict(post)})
+
+@require_auth
+async def put_posts_id(request):
+    """Update a specific post by ID"""
+    try:
+        post_id = int(request.match_info['id'])
+        data = await request.json()
+        
+        title = data.get('title', '').strip() if 'title' in data else None
+        content = data.get('content', '').strip() if 'content' in data else None
+        
+        if title is not None and (not title or len(title) > 200):
+            return web.json_response({'error': 'Invalid title (1-200 chars)'}, status=400)
+        
+        if content is not None and (not content or len(content) > 10000):
+            return web.json_response({'error': 'Invalid content (1-10000 chars)'}, status=400)
+        
+        user = request['user']
+        updated = await DB.update_post(post_id, user['id'], title, content)
+        
+        if not updated:
+            return web.json_response({'error': 'Post not found or unauthorized'}, status=404)
+        
+        return web.json_response({'message': 'Post updated'})
+    
+    except ValueError:
+        return web.json_response({'error': 'Invalid post ID'}, status=400)
+    except (KeyError, json.JSONDecodeError):
+        return web.json_response({'error': 'Invalid request'}, status=400)
+
+@require_auth
+async def delete_posts_id(request):
+    """Delete a specific post by ID"""
+    try:
+        post_id = int(request.match_info['id'])
+    except ValueError:
+        return web.json_response({'error': 'Invalid post ID'}, status=400)
+    
+    user = request['user']
+    deleted = await DB.delete_post(post_id, user['id'])
+    
+    if not deleted:
+        return web.json_response({'error': 'Post not found or unauthorized'}, status=404)
+    
+    return web.json_response({'message': 'Post deleted'})
+
+@require_auth
+async def get_posts_my(request):
+    """Get current user's posts"""
+    try:
+        limit = min(int(request.query.get('limit', 50)), 100)
+        offset = int(request.query.get('offset', 0))
+        
+        user = request['user']
+        posts = await DB.get_posts_by_user(user['id'], limit, offset)
+        total_count = await DB.get_user_posts_count(user['id'])
+        
+        return web.json_response({
+            'posts': [dict(post) for post in posts],
+            'pagination': {
+                'limit': limit,
+                'offset': offset,
+                'total': total_count,
+                'has_more': offset + limit < total_count
+            }
+        })
+    
+    except ValueError:
+        return web.json_response({'error': 'Invalid pagination parameters'}, status=400)
+# ===== END ISOLATED SECTION: POSTS =====
+
 async def cleanup_task():
     while True:
         await asyncio.sleep(300)
@@ -341,10 +598,19 @@ app.on_startup.append(lambda app: init_app())
 app.router.add_route('GET', '/users/{id}', get_users_id)
 app.router.add_route('DELETE', '/users/{id}', delete_users_id)
 
+# ===== ISOLATED SECTION: POSTS ENDPOINTS AND POSTS DATABASE IMPLEMENTATION =====
+# Manually register posts parameterized routes
+app.router.add_route('GET', '/posts/{id}', get_posts_id)
+app.router.add_route('PUT', '/posts/{id}', put_posts_id)
+app.router.add_route('DELETE', '/posts/{id}', delete_posts_id)
+# ===== END ISOLATED SECTION: POSTS =====
+
 # Auto-register other routes
 for name, handler in list(globals().items()):
     # Skip manually registered routes
-    if name in ['get_users_id', 'delete_users_id']:
+    # ===== ISOLATED SECTION: POSTS ENDPOINTS AND POSTS DATABASE IMPLEMENTATION =====
+    if name in ['get_users_id', 'delete_users_id', 'get_posts_id', 'put_posts_id', 'delete_posts_id']:
+    # ===== END ISOLATED SECTION: POSTS =====
         continue
         
     for method in ['get', 'post', 'put', 'delete', 'patch']:
@@ -400,6 +666,16 @@ if __name__ == '__main__':
     print(f"  GET    /users/{{id}}     - Get specific user by ID")
     print(f"  DELETE /users/{{id}}     - Delete user account (own only)")
     
+    # ===== ISOLATED SECTION: POSTS ENDPOINTS AND POSTS DATABASE IMPLEMENTATION =====
+    print(f"\n📝 Posts API endpoints:")
+    print(f"  POST   /posts          - Create new post")
+    print(f"  GET    /posts          - List all posts (with pagination)")
+    print(f"  GET    /posts/my       - Get current user's posts")
+    print(f"  GET    /posts/{{id}}     - Get specific post by ID")
+    print(f"  PUT    /posts/{{id}}     - Update specific post (owner only)")
+    print(f"  DELETE /posts/{{id}}     - Delete specific post (owner only)")
+    # ===== END ISOLATED SECTION: POSTS =====
+    
     print(f"\n🔧 Example API usage:")
     base_url = f"{protocol}://{host}:{port}"
     print(f"# Register new user:")
@@ -412,6 +688,22 @@ if __name__ == '__main__':
     print(f"curl -H 'Authorization: Bearer YOUR_TOKEN' {base_url}/profile")
     print(f"\n# List users:")
     print(f"curl -H 'Authorization: Bearer YOUR_TOKEN' {base_url}/users")
+    
+    # ===== ISOLATED SECTION: POSTS ENDPOINTS AND POSTS DATABASE IMPLEMENTATION =====
+    print(f"\n📝 Posts API examples:")
+    print(f"# Create post:")
+    print(f"curl -X POST {base_url}/posts -H 'Content-Type: application/json' \\")
+    print(f"  -H 'Authorization: Bearer YOUR_TOKEN' \\")
+    print(f"  -d '{{\"title\":\"My First Post\",\"content\":\"Hello world!\"}}'")
+    print(f"\n# Get all posts:")
+    print(f"curl -H 'Authorization: Bearer YOUR_TOKEN' {base_url}/posts")
+    print(f"\n# Get my posts:")
+    print(f"curl -H 'Authorization: Bearer YOUR_TOKEN' {base_url}/posts/my")
+    print(f"\n# Update post:")
+    print(f"curl -X PUT {base_url}/posts/1 -H 'Content-Type: application/json' \\")
+    print(f"  -H 'Authorization: Bearer YOUR_TOKEN' \\")
+    print(f"  -d '{{\"title\":\"Updated Title\",\"content\":\"Updated content\"}}'")
+    # ===== END ISOLATED SECTION: POSTS =====
     
     if protocol == 'https':
         print(f"\n🌐 Production Architecture:")
