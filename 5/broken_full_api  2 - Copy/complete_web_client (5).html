@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Posts Platform</title>
+    <!-- Prism.js for syntax highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -11,24 +14,45 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --success-color: #059669;
+            --danger-color: #dc2626;
+            --warning-color: #d97706;
+            --secondary-color: #6b7280;
+            --background-color: #f8fafc;
+            --card-background: #ffffff;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            --text-muted: #9ca3af;
+            --border-color: #e5e7eb;
+            --border-hover: #d1d5db;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --border-radius: 8px;
+            --transition: all 0.2s ease;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f5;
-            color: #333;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--background-color);
+            color: var(--text-primary);
             line-height: 1.6;
         }
 
         .container {
             display: grid;
-            grid-template-columns: 280px 1fr;
+            grid-template-columns: 300px 1fr;
             min-height: 100vh;
         }
 
         /* Header */
         .header {
             grid-column: 1 / -1;
-            background: #fff;
-            border-bottom: 1px solid #e0e0e0;
+            background: var(--card-background);
+            border-bottom: 1px solid var(--border-color);
             padding: 1rem 2rem;
             display: flex;
             justify-content: space-between;
@@ -36,12 +60,50 @@
             position: sticky;
             top: 0;
             z-index: 100;
+            box-shadow: var(--shadow-sm);
         }
 
         .logo {
             font-size: 1.5rem;
-            font-weight: bold;
-            color: #2563eb;
+            font-weight: 700;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .header-center {
+            flex: 1;
+            max-width: 500px;
+            margin: 0 2rem;
+        }
+
+        .search-container {
+            position: relative;
+            width: 100%;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--border-radius);
+            font-size: 0.95rem;
+            transition: var(--transition);
+            background: #f9fafb;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 1.1rem;
         }
 
         .header-actions {
@@ -50,67 +112,107 @@
             align-items: center;
         }
 
-        .search-box {
-            padding: 0.5rem 1rem;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            width: 300px;
-        }
-
         .btn {
             padding: 0.5rem 1rem;
             border: none;
-            border-radius: 6px;
+            border-radius: var(--border-radius);
             cursor: pointer;
             font-size: 0.9rem;
-            transition: all 0.2s;
+            font-weight: 500;
+            transition: var(--transition);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
         .btn-primary {
-            background: #2563eb;
+            background: var(--primary-color);
             color: white;
         }
 
-        .btn-primary:hover {
-            background: #1d4ed8;
+        .btn-primary:hover:not(:disabled) {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
         }
 
         .btn-secondary {
-            background: #6b7280;
+            background: var(--secondary-color);
             color: white;
         }
 
-        .btn-secondary:hover {
+        .btn-secondary:hover:not(:disabled) {
             background: #4b5563;
         }
 
         .btn-success {
-            background: #059669;
+            background: var(--success-color);
             color: white;
         }
 
+        .btn-success:hover:not(:disabled) {
+            background: #047857;
+        }
+
         .btn-danger {
-            background: #dc2626;
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #b91c1c;
+        }
+
+        .btn-warning {
+            background: var(--warning-color);
             color: white;
         }
 
         .btn-small {
-            padding: 0.25rem 0.5rem;
+            padding: 0.375rem 0.75rem;
             font-size: 0.8rem;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .btn-outline:hover:not(:disabled) {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
         }
 
         /* Sidebar */
         .sidebar {
-            background: #fff;
-            border-right: 1px solid #e0e0e0;
-            padding: 2rem 1rem;
+            background: var(--card-background);
+            border-right: 1px solid var(--border-color);
+            padding: 2rem 1.5rem;
             overflow-y: auto;
+            height: calc(100vh - 80px);
+        }
+
+        .sidebar-section {
+            margin-bottom: 2rem;
         }
 
         .sidebar h3 {
             margin-bottom: 1rem;
-            color: #374151;
-            font-size: 1.1rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
         }
 
         .sidebar-stats {
@@ -122,29 +224,61 @@
         }
 
         .sidebar-stats a {
-            color: #6b7280;
+            color: var(--text-secondary);
             text-decoration: none;
             display: flex;
             justify-content: space-between;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            transition: background 0.2s;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            border-radius: var(--border-radius);
+            transition: var(--transition);
+            font-size: 0.9rem;
         }
 
         .sidebar-stats a:hover {
             background: #f3f4f6;
-            color: #2563eb;
+            color: var(--primary-color);
+            transform: translateX(4px);
         }
 
         .sidebar-stats .count {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            background: #f3f4f6;
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+
+        .sidebar-settings {
+            background: #f9fafb;
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+        }
+
+        .sidebar-settings label {
+            display: block;
+            margin-bottom: 0.5rem;
             font-size: 0.9rem;
-            color: #9ca3af;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .sidebar-settings select {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            background: white;
+            font-size: 0.9rem;
         }
 
         /* Main Content */
         .main-content {
             padding: 2rem;
             overflow-y: auto;
+            height: calc(100vh - 80px);
         }
 
         .content-header {
@@ -152,30 +286,66 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--border-color);
         }
 
         .content-header h1 {
-            color: #111827;
+            color: var(--text-primary);
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        .content-filters {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .filter-chip {
+            padding: 0.5rem 1rem;
+            background: white;
+            border: 2px solid var(--border-color);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.9rem;
+        }
+
+        .filter-chip.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .filter-chip:hover {
+            border-color: var(--primary-color);
         }
 
         /* Posts */
         .posts-container {
             display: flex;
             flex-direction: column;
-            gap: 1.5rem;
+            gap: 2rem;
         }
 
         .post {
-            background: #fff;
-            border-radius: 8px;
-            padding: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            border: 1px solid #e5e7eb;
+            background: var(--card-background);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+
+        .post:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
         }
 
         .post-header {
             display: flex;
-            justify-content: between;
+            justify-content: space-between;
             align-items: flex-start;
             margin-bottom: 1rem;
         }
@@ -184,61 +354,173 @@
             display: flex;
             gap: 1rem;
             align-items: center;
-            color: #6b7280;
+            color: var(--text-secondary);
             font-size: 0.9rem;
             flex-grow: 1;
+        }
+
+        .post-meta .author {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .post-meta .date {
+            color: var(--text-muted);
         }
 
         .post-actions {
             display: flex;
             gap: 0.5rem;
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .post:hover .post-actions {
+            opacity: 1;
         }
 
         .post-title {
-            font-size: 1.3rem;
-            font-weight: 600;
-            color: #111827;
-            margin-bottom: 0.5rem;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            line-height: 1.3;
         }
 
         .post-content {
-            color: #374151;
-            margin-bottom: 1rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
             line-height: 1.7;
+            font-size: 1rem;
+        }
+
+        .post-content h1,
+        .post-content h2,
+        .post-content h3,
+        .post-content h4,
+        .post-content h5,
+        .post-content h6 {
+            color: var(--text-primary);
+            margin: 1.5rem 0 1rem 0;
+            font-weight: 600;
+        }
+
+        .post-content h1 { font-size: 1.5rem; }
+        .post-content h2 { font-size: 1.3rem; }
+        .post-content h3 { font-size: 1.2rem; }
+
+        .post-content p {
+            margin-bottom: 1rem;
+        }
+
+        .post-content ul,
+        .post-content ol {
+            margin: 1rem 0;
+            padding-left: 2rem;
+        }
+
+        .post-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .post-content blockquote {
+            background: #f9fafb;
+            border-left: 4px solid var(--primary-color);
+            padding: 1rem 1.5rem;
+            margin: 1.5rem 0;
+            font-style: italic;
+            color: var(--text-secondary);
         }
 
         .post-content pre {
-            background: #f3f4f6;
-            padding: 1rem;
-            border-radius: 6px;
+            background: #1a1a1a;
+            color: #f8f8f2;
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
             overflow-x: auto;
-            margin: 1rem 0;
+            margin: 1.5rem 0;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
         }
 
         .post-content code {
             background: #f3f4f6;
-            padding: 0.2rem 0.4rem;
-            border-radius: 3px;
-            font-family: 'Monaco', 'Courier New', monospace;
+            color: #e11d48;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9em;
         }
 
         .post-content pre code {
             background: none;
+            color: inherit;
             padding: 0;
+        }
+
+        .post-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: var(--border-radius);
+            margin: 1rem 0;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .post-content a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .post-content a:hover {
+            text-decoration: underline;
+        }
+
+        .post-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+        }
+
+        .post-content th,
+        .post-content td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .post-content th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: var(--text-primary);
         }
 
         .post-tags {
             display: flex;
             gap: 0.5rem;
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
         }
 
         .tag {
-            background: #dbeafe;
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
             color: #1e40af;
-            padding: 0.25rem 0.5rem;
-            border-radius: 12px;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
             font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 1px solid transparent;
+        }
+
+        .tag:hover {
+            background: linear-gradient(135deg, #bfdbfe, #93c5fd);
+            transform: translateY(-1px);
         }
 
         .post-footer {
@@ -246,56 +528,118 @@
             justify-content: space-between;
             align-items: center;
             padding-top: 1rem;
-            border-top: 1px solid #f3f4f6;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .post-stats {
+            display: flex;
+            gap: 1rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .post-interactions {
+            display: flex;
+            gap: 0.5rem;
         }
 
         /* Comments */
         .comments-section {
-            margin-top: 1rem;
-            border-top: 1px solid #f3f4f6;
-            padding-top: 1rem;
+            margin-top: 1.5rem;
+            border-top: 2px solid var(--border-color);
+            padding-top: 1.5rem;
+            display: none;
+        }
+
+        .comments-section.visible {
+            display: block;
         }
 
         .comment {
             background: #f9fafb;
-            padding: 1rem;
-            border-radius: 6px;
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
             margin-bottom: 1rem;
-            border-left: 3px solid #e5e7eb;
+            border-left: 4px solid var(--border-color);
+            transition: var(--transition);
+        }
+
+        .comment:hover {
+            border-left-color: var(--primary-color);
         }
 
         .comment-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.75rem;
         }
 
         .comment-meta {
-            color: #6b7280;
+            color: var(--text-secondary);
             font-size: 0.9rem;
         }
 
+        .comment-meta .author {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
         .comment-content {
-            color: #374151;
+            color: var(--text-primary);
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .comment-actions {
+            display: flex;
+            gap: 0.5rem;
         }
 
         .comment-replies {
-            margin-left: 1.5rem;
+            margin-left: 2rem;
             margin-top: 1rem;
+            border-left: 2px solid var(--border-color);
+            padding-left: 1rem;
         }
 
         .comment-form {
-            margin-top: 1rem;
+            margin-top: 1.5rem;
+            background: white;
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
         }
 
         .comment-form textarea {
             width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
+            padding: 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--border-radius);
             resize: vertical;
-            min-height: 80px;
+            min-height: 100px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: var(--transition);
+        }
+
+        .comment-form textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .reply-form {
+            display: none;
+            margin-top: 1rem;
+            background: white;
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+        }
+
+        .reply-form.visible {
+            display: block;
         }
 
         /* Editor */
@@ -306,87 +650,217 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.6);
             z-index: 1000;
+            backdrop-filter: blur(4px);
         }
 
         .editor-modal {
-            background: #fff;
+            background: var(--card-background);
             margin: 2rem;
-            border-radius: 8px;
+            border-radius: var(--border-radius);
             display: flex;
             flex-direction: column;
             height: calc(100vh - 4rem);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
         }
 
         .editor-header {
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid #e5e7eb;
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            background: #f9fafb;
+        }
+
+        .editor-header h2 {
+            color: var(--text-primary);
+            font-size: 1.3rem;
+            font-weight: 600;
         }
 
         .editor-toolbar {
             display: flex;
             gap: 0.5rem;
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid #e5e7eb;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border-color);
             background: #f9fafb;
+            flex-wrap: wrap;
         }
 
         .toolbar-btn {
-            padding: 0.5rem;
-            border: 1px solid #d1d5db;
-            background: #fff;
-            border-radius: 4px;
+            padding: 0.5rem 0.75rem;
+            border: 2px solid var(--border-color);
+            background: white;
+            border-radius: var(--border-radius);
             cursor: pointer;
-            transition: all 0.2s;
+            transition: var(--transition);
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .toolbar-btn:hover {
-            background: #f3f4f6;
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            transform: translateY(-1px);
+        }
+
+        .toolbar-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
         }
 
         .editor-body {
             flex: 1;
             display: flex;
             flex-direction: column;
-            padding: 1.5rem;
+            padding: 2rem;
+            gap: 1rem;
         }
 
         .editor-input {
             width: 100%;
             padding: 1rem;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            margin-bottom: 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            font-family: inherit;
+            transition: var(--transition);
+        }
+
+        .editor-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .editor-content-container {
+            flex: 1;
+            display: flex;
+            gap: 1rem;
         }
 
         .editor-textarea {
             flex: 1;
             resize: none;
-            font-family: 'Monaco', 'Courier New', monospace;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
             line-height: 1.5;
+            font-size: 0.95rem;
+        }
+
+        .editor-preview {
+            flex: 1;
+            border: 2px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 1rem;
+            background: white;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .editor-preview.visible {
+            display: block;
+        }
+
+        .split-view .editor-preview {
+            display: block;
         }
 
         .editor-footer {
-            padding: 1rem 1.5rem;
-            border-top: 1px solid #e5e7eb;
+            padding: 1.5rem 2rem;
+            border-top: 1px solid var(--border-color);
             display: flex;
             gap: 1rem;
             justify-content: flex-end;
-        }
-
-        .editor-tags {
-            margin-bottom: 1rem;
+            background: #f9fafb;
         }
 
         .editor-tags input {
             width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--border-radius);
+            font-size: 0.95rem;
+            transition: var(--transition);
+        }
+
+        .editor-tags input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        /* File Upload */
+        .file-upload-area {
+            border: 3px dashed var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            text-align: center;
+            margin: 1rem 0;
+            transition: var(--transition);
+            background: #f9fafb;
+            display: none;
+        }
+
+        .file-upload-area.visible {
+            display: block;
+        }
+
+        .file-upload-area.dragover {
+            border-color: var(--primary-color);
+            background: rgba(37, 99, 235, 0.05);
+            transform: scale(1.02);
+        }
+
+        .file-upload-area input[type="file"] {
+            display: none;
+        }
+
+        .file-upload-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .file-upload-icon {
+            font-size: 3rem;
+            color: var(--text-muted);
+        }
+
+        .uploaded-files {
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .uploaded-files.visible {
+            display: block;
+        }
+
+        .uploaded-file {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem 1rem;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            margin-bottom: 0.5rem;
+        }
+
+        .file-preview {
+            width: 40px;
+            height: 40px;
+            border-radius: 4px;
+            object-fit: cover;
+            background: var(--border-color);
         }
 
         /* Pagination */
@@ -395,42 +869,33 @@
             justify-content: center;
             align-items: center;
             gap: 1rem;
-            margin-top: 2rem;
+            margin-top: 3rem;
             padding: 2rem;
-        }
-
-        .pagination button {
-            padding: 0.5rem 1rem;
-            border: 1px solid #d1d5db;
-            background: #fff;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-
-        .pagination button:hover:not(:disabled) {
-            background: #f3f4f6;
-        }
-
-        .pagination button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
         }
 
         .pagination-info {
-            color: #6b7280;
+            color: var(--text-secondary);
             font-size: 0.9rem;
+            font-weight: 500;
         }
 
-        .pagination-settings {
+        .pagination-jump {
             display: flex;
             gap: 0.5rem;
             align-items: center;
         }
 
-        .pagination-settings select {
-            padding: 0.25rem 0.5rem;
-            border: 1px solid #d1d5db;
-            border-radius: 4px;
+        .pagination-jump input {
+            width: 80px;
+            padding: 0.5rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--border-radius);
+            text-align: center;
+            font-size: 0.9rem;
         }
 
         /* Modal */
@@ -441,28 +906,48 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.6);
             z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal.visible {
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .modal-content {
-            background: #fff;
-            margin: 5% auto;
+            background: var(--card-background);
             padding: 2rem;
-            border-radius: 8px;
+            border-radius: var(--border-radius);
             width: 90%;
             max-width: 500px;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+            transform: scale(0.9);
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .modal.visible .modal-content {
+            transform: scale(1);
+            opacity: 1;
         }
 
         .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1.5rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
         }
 
         .modal-header h2 {
-            color: #111827;
+            color: var(--text-primary);
+            font-size: 1.3rem;
+            font-weight: 600;
         }
 
         .close-btn {
@@ -470,67 +955,71 @@
             border: none;
             font-size: 1.5rem;
             cursor: pointer;
-            color: #6b7280;
+            color: var(--text-muted);
+            padding: 0.5rem;
+            border-radius: var(--border-radius);
+            transition: var(--transition);
+        }
+
+        .close-btn:hover {
+            background: var(--border-color);
+            color: var(--text-primary);
         }
 
         .form-group {
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
         }
 
         .form-group label {
             display: block;
             margin-bottom: 0.5rem;
-            color: #374151;
+            color: var(--text-primary);
             font-weight: 500;
+            font-size: 0.95rem;
         }
 
         .form-group input,
         .form-group textarea {
             width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--border-radius);
+            font-size: 0.95rem;
+            font-family: inherit;
+            transition: var(--transition);
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
 
         .form-actions {
             display: flex;
             gap: 1rem;
             justify-content: flex-end;
-            margin-top: 1.5rem;
-        }
-
-        /* File upload */
-        .file-upload-area {
-            border: 2px dashed #d1d5db;
-            border-radius: 6px;
-            padding: 2rem;
-            text-align: center;
-            margin: 1rem 0;
-            transition: all 0.2s;
-        }
-
-        .file-upload-area.dragover {
-            border-color: #2563eb;
-            background: #dbeafe;
-        }
-
-        .file-upload-area input[type="file"] {
-            display: none;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
         }
 
         /* Notifications */
         .notification {
             position: fixed;
-            top: 20px;
+            top: 100px;
             right: 20px;
             padding: 1rem 1.5rem;
-            border-radius: 6px;
-            color: #fff;
+            border-radius: var(--border-radius);
+            color: white;
             z-index: 2000;
             max-width: 400px;
             opacity: 0;
             transform: translateX(100%);
-            transition: all 0.3s;
+            transition: var(--transition);
+            box-shadow: var(--shadow-lg);
+            font-weight: 500;
         }
 
         .notification.show {
@@ -539,15 +1028,19 @@
         }
 
         .notification.success {
-            background: #059669;
+            background: var(--success-color);
         }
 
         .notification.error {
-            background: #dc2626;
+            background: var(--danger-color);
         }
 
         .notification.info {
-            background: #2563eb;
+            background: var(--primary-color);
+        }
+
+        .notification.warning {
+            background: var(--warning-color);
         }
 
         /* User info */
@@ -555,15 +1048,104 @@
             display: flex;
             align-items: center;
             gap: 1rem;
-            color: #6b7280;
+            color: var(--text-secondary);
         }
 
         .user-info .username {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--border-color);
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: 999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(2px);
+        }
+
+        .loading-overlay.visible {
+            display: flex;
+        }
+
+        /* Proposals */
+        .proposals-section {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid var(--border-color);
+            display: none;
+        }
+
+        .proposals-section.visible {
+            display: block;
+        }
+
+        .proposal {
+            background: #fef3c7;
+            border: 2px solid #fbbf24;
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 1rem;
+        }
+
+        .proposal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .proposal-meta {
+            color: #92400e;
+            font-size: 0.9rem;
             font-weight: 500;
-            color: #374151;
+        }
+
+        .proposal-actions {
+            display: flex;
+            gap: 0.5rem;
         }
 
         /* Responsive */
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 250px 1fr;
+            }
+            
+            .sidebar {
+                padding: 1.5rem 1rem;
+            }
+        }
+
         @media (max-width: 768px) {
             .container {
                 grid-template-columns: 1fr;
@@ -576,118 +1158,188 @@
             .header {
                 flex-direction: column;
                 gap: 1rem;
+                padding: 1rem;
             }
 
-            .search-box {
-                width: 100%;
+            .header-center {
+                margin: 0;
+                max-width: none;
             }
 
             .editor-modal {
-                margin: 1rem;
-                height: calc(100vh - 2rem);
+                margin: 0.5rem;
+                height: calc(100vh - 1rem);
+            }
+
+            .editor-toolbar {
+                padding: 1rem;
+            }
+
+            .main-content {
+                padding: 1rem;
+            }
+
+            .post {
+                padding: 1.5rem;
+            }
+
+            .comment-replies {
+                margin-left: 1rem;
             }
         }
 
-        /* Loading */
-        .loading {
-            text-align: center;
-            padding: 2rem;
-            color: #6b7280;
-        }
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --background-color: #0f172a;
+                --card-background: #1e293b;
+                --text-primary: #f1f5f9;
+                --text-secondary: #cbd5e1;
+                --text-muted: #94a3b8;
+                --border-color: #334155;
+                --border-hover: #475569;
+            }
 
-        .spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid #f3f4f6;
-            border-top: 2px solid #2563eb;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
+            .search-box {
+                background: #334155;
+                color: var(--text-primary);
+            }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+            .sidebar-settings {
+                background: #334155;
+            }
 
-        /* Proposals */
-        .proposals-section {
-            margin-top: 1rem;
-            padding-top: 1rem;
-            border-top: 1px solid #f3f4f6;
-        }
+            .post-content pre {
+                background: #020617;
+            }
 
-        .proposal {
-            background: #fef3c7;
-            border: 1px solid #fbbf24;
-            padding: 1rem;
-            border-radius: 6px;
-            margin-bottom: 1rem;
-        }
+            .comment {
+                background: #334155;
+            }
 
-        .proposal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.5rem;
-        }
+            .comment-form,
+            .reply-form {
+                background: #334155;
+            }
 
-        .proposal-meta {
-            color: #92400e;
-            font-size: 0.9rem;
-        }
-
-        .proposal-actions {
-            display: flex;
-            gap: 0.5rem;
+            .file-upload-area {
+                background: #334155;
+            }
         }
 
         .hidden {
+            display: none !important;
+        }
+
+        .tag-input-container {
+            position: relative;
+        }
+
+        .tag-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid var(--border-color);
+            border-top: none;
+            border-radius: 0 0 var(--border-radius) var(--border-radius);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 10;
             display: none;
+        }
+
+        .tag-suggestions.visible {
+            display: block;
+        }
+
+        .tag-suggestion {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+
+        .tag-suggestion:hover {
+            background: #f3f4f6;
+        }
+
+        .tag-suggestion:last-child {
+            border-bottom: none;
         }
     </style>
 </head>
 <body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading">
+            <div class="spinner"></div>
+            Loading...
+        </div>
+    </div>
+
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <div class="logo">Posts Platform</div>
+            <a href="#" class="logo" onclick="goHome()">📝 Posts Platform</a>
+            <div class="header-center">
+                <div class="search-container">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" class="search-box" placeholder="Search posts, tags, authors..." id="searchInput">
+                </div>
+            </div>
             <div class="header-actions">
-                <input type="text" class="search-box" placeholder="Search posts..." id="searchInput">
                 <div class="user-info" id="userInfo" style="display: none;">
                     <span class="username" id="username"></span>
-                    <button class="btn btn-secondary btn-small" onclick="logout()">Logout</button>
+                    <button class="btn btn-secondary btn-small" onclick="logout()">🚪 Logout</button>
                 </div>
-                <button class="btn btn-primary" id="loginBtn" onclick="showLoginModal()">Login</button>
+                <button class="btn btn-primary" id="loginBtn" onclick="showLoginModal()">👤 Login</button>
             </div>
         </div>
 
         <!-- Sidebar -->
         <div class="sidebar">
-            <h3>📅 Archive</h3>
-            <ul class="sidebar-stats" id="archiveStats">
-                <li><a href="#" onclick="loadPosts()">All Posts <span class="count" id="totalCount">0</span></a></li>
-            </ul>
+            <div class="sidebar-section">
+                <h3>📅 Archive</h3>
+                <ul class="sidebar-stats" id="archiveStats">
+                    <li><a href="#" onclick="loadPosts()">📄 All Posts <span class="count" id="totalCount">0</span></a></li>
+                </ul>
+            </div>
 
-            <h3>🔧 Settings</h3>
-            <div class="pagination-settings">
-                <label for="postsPerPage">Posts per page:</label>
-                <select id="postsPerPage" onchange="changePostsPerPage()">
-                    <option value="5">5</option>
-                    <option value="10" selected>10</option>
-                    <option value="20">20</option>
-                    <option value="50">50</option>
-                </select>
+            <div class="sidebar-section">
+                <h3>🏷️ Tags</h3>
+                <div id="popularTags" class="popular-tags">
+                    <div class="loading">Loading tags...</div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>⚙️ Settings</h3>
+                <div class="sidebar-settings">
+                    <label for="postsPerPage">Posts per page:</label>
+                    <select id="postsPerPage" onchange="changePostsPerPage()">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                    </select>
+                </div>
             </div>
         </div>
 
         <!-- Main Content -->
         <div class="main-content">
             <div class="content-header">
-                <h1 id="pageTitle">Latest Posts</h1>
+                <h1 id="pageTitle">✨ Latest Posts</h1>
                 <div>
                     <button class="btn btn-success" id="newPostBtn" onclick="showEditor()" style="display: none;">✏️ New Post</button>
                 </div>
+            </div>
+
+            <div class="content-filters" id="contentFilters">
+                <div class="filter-chip active" onclick="setFilter('all')">All Posts</div>
+                <div class="filter-chip" onclick="setFilter('my')">My Posts</div>
+                <div class="filter-chip" onclick="setFilter('recent')">Recent</div>
             </div>
 
             <div class="posts-container" id="postsContainer">
@@ -698,12 +1350,13 @@
             </div>
 
             <div class="pagination" id="pagination">
-                <button id="prevBtn" onclick="previousPage()" disabled>← Previous</button>
+                <button class="btn btn-outline" id="prevBtn" onclick="previousPage()" disabled>← Previous</button>
                 <div class="pagination-info" id="paginationInfo">Page 1 of 1</div>
-                <button id="nextBtn" onclick="nextPage()" disabled>Next →</button>
-                <div class="pagination-settings">
-                    <input type="number" id="gotoPage" min="1" style="width: 60px; padding: 0.25rem;" placeholder="1">
-                    <button onclick="gotoPage()" class="btn btn-small">Go</button>
+                <button class="btn btn-outline" id="nextBtn" onclick="nextPage()" disabled>Next →</button>
+                <div class="pagination-jump">
+                    <span>Go to:</span>
+                    <input type="number" id="gotoPage" min="1" placeholder="1">
+                    <button onclick="gotoPage()" class="btn btn-small btn-primary">Go</button>
                 </div>
             </div>
         </div>
@@ -713,21 +1366,24 @@
     <div class="modal" id="loginModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 id="modalTitle">Login</h2>
+                <h2 id="modalTitle">👤 Login</h2>
                 <button class="close-btn" onclick="closeModal('loginModal')">&times;</button>
             </div>
             <form id="authForm">
                 <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="authUsername" required>
+                    <label for="authUsername">Username</label>
+                    <input type="text" id="authUsername" required minlength="3" maxlength="50">
                 </div>
                 <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="authPassword" required>
+                    <label for="authPassword">Password</label>
+                    <input type="password" id="authPassword" required minlength="6">
                 </div>
                 <div class="form-actions">
-                    <button type="button" onclick="toggleAuthMode()" id="toggleBtn">Register instead</button>
-                    <button type="submit" class="btn btn-primary" id="submitBtn">Login</button>
+                    <button type="button" onclick="toggleAuthMode()" id="toggleBtn" class="btn btn-outline">Register instead</button>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        <span class="spinner" id="authSpinner" style="display: none;"></span>
+                        Login
+                    </button>
                 </div>
             </form>
         </div>
@@ -737,36 +1393,60 @@
     <div class="editor-container" id="editorContainer">
         <div class="editor-modal">
             <div class="editor-header">
-                <h2 id="editorTitle">Create New Post</h2>
-                <button class="btn btn-secondary" onclick="closeEditor()">Close</button>
+                <h2 id="editorTitle">✏️ Create New Post</h2>
+                <button class="btn btn-secondary" onclick="closeEditor()">✕ Close</button>
             </div>
             <div class="editor-toolbar">
-                <button class="toolbar-btn" onclick="insertMarkdown('**', '**')" title="Bold">B</button>
-                <button class="toolbar-btn" onclick="insertMarkdown('*', '*')" title="Italic">I</button>
-                <button class="toolbar-btn" onclick="insertMarkdown('`', '`')" title="Code">Code</button>
-                <button class="toolbar-btn" onclick="insertMarkdown('```\n', '\n```')" title="Code Block">Block</button>
-                <button class="toolbar-btn" onclick="insertMarkdown('- ', '')" title="List">List</button>
-                <button class="toolbar-btn" onclick="insertMarkdown('| ', ' | | |\n|---|---|---|')" title="Table">Table</button>
-                <button class="toolbar-btn" onclick="togglePreview()" id="previewBtn">Preview</button>
-                <button class="toolbar-btn" onclick="showFileUpload()" title="Upload File">📁</button>
+                <button class="toolbar-btn" onclick="insertMarkdown('**', '**')" title="Bold"><strong>B</strong></button>
+                <button class="toolbar-btn" onclick="insertMarkdown('*', '*')" title="Italic"><em>I</em></button>
+                <button class="toolbar-btn" onclick="insertMarkdown('`', '`')" title="Inline Code">Code</button>
+                <button class="toolbar-btn" onclick="insertMarkdown('```\n', '\n```')" title="Code Block">📋 Block</button>
+                <button class="toolbar-btn" onclick="insertMarkdown('- ', '')" title="List">📝 List</button>
+                <button class="toolbar-btn" onclick="insertMarkdown('| Column 1 | Column 2 |\n|----------|----------|\n| ', ' | |')" title="Table">📊 Table</button>
+                <button class="toolbar-btn" onclick="insertMarkdown('> ', '')" title="Quote">💬 Quote</button>
+                <button class="toolbar-btn" onclick="insertMarkdown('## ', '')" title="Heading">📰 H2</button>
+                <button class="toolbar-btn" onclick="togglePreview()" id="previewBtn">👁️ Preview</button>
+                <button class="toolbar-btn" onclick="toggleSplitView()" id="splitBtn">🔄 Split</button>
+                <button class="toolbar-btn" onclick="showFileUpload()" title="Upload File">📁 File</button>
             </div>
             <div class="editor-body">
-                <input type="text" class="editor-input" id="postTitle" placeholder="Post title...">
-                <div class="editor-tags">
-                    <input type="text" id="postTags" placeholder="Tags (comma-separated)...">
+                <input type="text" class="editor-input" id="postTitle" placeholder="📝 Enter your post title..." maxlength="200">
+                <div class="editor-tags tag-input-container">
+                    <input type="text" id="postTags" placeholder="🏷️ Tags (comma-separated): javascript, tutorial, web-dev" maxlength="200">
+                    <div class="tag-suggestions" id="tagSuggestions"></div>
                 </div>
-                <textarea class="editor-input editor-textarea" id="postContent" placeholder="Write your post in Markdown..."></textarea>
-                <div id="postPreview" class="post-content" style="display: none;"></div>
                 
-                <div class="file-upload-area" id="fileUploadArea" style="display: none;">
-                    <input type="file" id="fileInput" multiple accept="image/*,video/*,.pdf,.txt,.md">
-                    <p>Drag & drop files here or <button type="button" onclick="document.getElementById('fileInput').click()" class="btn btn-primary">Choose Files</button></p>
-                    <p style="font-size: 0.9rem; color: #6b7280; margin-top: 0.5rem;">Supported: Images, Videos, PDF, Text files (max 50MB each)</p>
+                <div class="editor-content-container" id="editorContentContainer">
+                    <textarea class="editor-input editor-textarea" id="postContent" placeholder="✨ Write your post in Markdown...
+
+💡 **Tips:**
+- Use **bold** and *italic* text
+- Create `code snippets` 
+- Add > quotes
+- Make lists with - or 1.
+- Upload images with the 📁 button"></textarea>
+                    <div id="postPreview" class="editor-preview post-content"></div>
                 </div>
+                
+                <div class="file-upload-area" id="fileUploadArea">
+                    <input type="file" id="fileInput" multiple accept="image/*,video/*,.pdf,.txt,.md,.json,.csv">
+                    <div class="file-upload-content">
+                        <div class="file-upload-icon">📁</div>
+                        <p><strong>Drag & drop files here</strong> or <button type="button" onclick="document.getElementById('fileInput').click()" class="btn btn-primary">Choose Files</button></p>
+                        <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.5rem;">
+                            📸 Images, 🎥 Videos, 📄 PDFs, 📝 Text files (max 50MB each)
+                        </p>
+                    </div>
+                </div>
+
+                <div class="uploaded-files" id="uploadedFiles"></div>
             </div>
             <div class="editor-footer">
-                <button class="btn btn-secondary" onclick="closeEditor()">Cancel</button>
-                <button class="btn btn-success" onclick="savePost()" id="saveBtn">Publish Post</button>
+                <button class="btn btn-secondary" onclick="closeEditor()">❌ Cancel</button>
+                <button class="btn btn-success" onclick="savePost()" id="saveBtn">
+                    <span class="spinner" id="saveSpinner" style="display: none;"></span>
+                    ✨ Publish Post
+                </button>
             </div>
         </div>
     </div>
@@ -775,37 +1455,44 @@
     <div class="modal" id="proposalModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Suggest Edit</h2>
+                <h2>✏️ Suggest Edit</h2>
                 <button class="close-btn" onclick="closeModal('proposalModal')">&times;</button>
             </div>
             <form id="proposalForm">
                 <div class="form-group">
                     <label for="proposerName">Your Name</label>
-                    <input type="text" id="proposerName" required>
+                    <input type="text" id="proposerName" required maxlength="100">
                 </div>
                 <div class="form-group">
                     <label for="proposerEmail">Your Email</label>
-                    <input type="email" id="proposerEmail" required>
+                    <input type="email" id="proposerEmail" required maxlength="100">
                 </div>
                 <div class="form-group">
                     <label for="proposalTitle">Proposed Title</label>
-                    <input type="text" id="proposalTitle" required>
+                    <input type="text" id="proposalTitle" required maxlength="200">
                 </div>
                 <div class="form-group">
                     <label for="proposalContent">Proposed Content</label>
-                    <textarea id="proposalContent" rows="10" required></textarea>
+                    <textarea id="proposalContent" rows="10" required maxlength="50000"></textarea>
                 </div>
                 <div class="form-group">
-                    <label for="proposalReason">Reason for Edit</label>
-                    <textarea id="proposalReason" rows="3" placeholder="Why are you suggesting this change?"></textarea>
+                    <label for="proposalReason">Reason for Edit (Optional)</label>
+                    <textarea id="proposalReason" rows="3" placeholder="Why are you suggesting this change?" maxlength="1000"></textarea>
                 </div>
                 <div class="form-actions">
                     <button type="button" onclick="closeModal('proposalModal')" class="btn btn-secondary">Cancel</button>
-                    <button type="submit" class="btn btn-success">Submit Proposal</button>
+                    <button type="submit" class="btn btn-success">
+                        <span class="spinner" id="proposalSpinner" style="display: none;"></span>
+                        Submit Proposal
+                    </button>
                 </div>
             </form>
         </div>
     </div>
+
+    <!-- Prism.js for syntax highlighting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
 
     <script>
         // Configuration
@@ -818,21 +1505,38 @@
         let totalPosts = 0;
         let currentPosts = [];
         let currentSearchQuery = '';
+        let currentFilter = 'all';
         let isEditMode = false;
         let editingPostId = null;
+        let allTags = [];
+        let isSplitView = false;
 
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
+            showLoading(true);
             loadUserFromStorage();
             loadPosts();
             loadArchiveStats();
+            loadTags();
             setupEventListeners();
+            showLoading(false);
         });
 
         function setupEventListeners() {
-            // Search
+            // Search with debounce
+            let searchTimeout;
+            document.getElementById('searchInput').addEventListener('input', function(e) {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    if (e.target.value.trim() !== currentSearchQuery) {
+                        performSearch();
+                    }
+                }, 500);
+            });
+
             document.getElementById('searchInput').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
+                    clearTimeout(searchTimeout);
                     performSearch();
                 }
             });
@@ -844,6 +1548,13 @@
             document.getElementById('proposalForm').addEventListener('submit', submitProposal);
 
             // File upload
+            setupFileUpload();
+
+            // Tag input with suggestions
+            setupTagInput();
+        }
+
+        function setupFileUpload() {
             const fileUploadArea = document.getElementById('fileUploadArea');
             const fileInput = document.getElementById('fileInput');
 
@@ -854,7 +1565,9 @@
 
             fileUploadArea.addEventListener('dragleave', function(e) {
                 e.preventDefault();
-                fileUploadArea.classList.remove('dragover');
+                if (!fileUploadArea.contains(e.relatedTarget)) {
+                    fileUploadArea.classList.remove('dragover');
+                }
             });
 
             fileUploadArea.addEventListener('drop', function(e) {
@@ -869,14 +1582,72 @@
             });
         }
 
+        function setupTagInput() {
+            const tagInput = document.getElementById('postTags');
+            const tagSuggestions = document.getElementById('tagSuggestions');
+
+            tagInput.addEventListener('input', function(e) {
+                const value = e.target.value;
+                const lastComma = value.lastIndexOf(',');
+                const currentTag = value.substring(lastComma + 1).trim().toLowerCase();
+
+                if (currentTag.length >= 2) {
+                    const suggestions = allTags.filter(tag => 
+                        tag.name.toLowerCase().includes(currentTag) && 
+                        !value.toLowerCase().includes(tag.name.toLowerCase())
+                    ).slice(0, 5);
+
+                    if (suggestions.length > 0) {
+                        tagSuggestions.innerHTML = suggestions.map(tag => 
+                            `<div class="tag-suggestion" onclick="selectTag('${tag.name}')">${tag.name}</div>`
+                        ).join('');
+                        tagSuggestions.classList.add('visible');
+                    } else {
+                        tagSuggestions.classList.remove('visible');
+                    }
+                } else {
+                    tagSuggestions.classList.remove('visible');
+                }
+            });
+
+            tagInput.addEventListener('blur', function() {
+                setTimeout(() => tagSuggestions.classList.remove('visible'), 200);
+            });
+        }
+
+        function selectTag(tagName) {
+            const tagInput = document.getElementById('postTags');
+            const value = tagInput.value;
+            const lastComma = value.lastIndexOf(',');
+            
+            if (lastComma >= 0) {
+                tagInput.value = value.substring(0, lastComma + 1) + ' ' + tagName + ', ';
+            } else {
+                tagInput.value = tagName + ', ';
+            }
+            
+            document.getElementById('tagSuggestions').classList.remove('visible');
+            tagInput.focus();
+        }
+
+        function showLoading(show) {
+            document.getElementById('loadingOverlay').classList.toggle('visible', show);
+        }
+
         // Authentication
         function loadUserFromStorage() {
             const userData = localStorage.getItem('user');
             const token = localStorage.getItem('token');
             
             if (userData && token) {
-                currentUser = JSON.parse(userData);
-                updateUIForUser();
+                try {
+                    currentUser = JSON.parse(userData);
+                    updateUIForUser();
+                } catch (e) {
+                    console.error('Invalid user data in storage:', e);
+                    localStorage.removeItem('user');
+                    localStorage.removeItem('token');
+                }
             }
         }
 
@@ -885,20 +1656,23 @@
                 document.getElementById('loginBtn').style.display = 'none';
                 document.getElementById('userInfo').style.display = 'flex';
                 document.getElementById('username').textContent = currentUser.username;
-                document.getElementById('newPostBtn').style.display = 'inline-block';
+                document.getElementById('newPostBtn').style.display = 'inline-flex';
+                document.getElementById('contentFilters').style.display = 'flex';
             } else {
-                document.getElementById('loginBtn').style.display = 'inline-block';
+                document.getElementById('loginBtn').style.display = 'inline-flex';
                 document.getElementById('userInfo').style.display = 'none';
                 document.getElementById('newPostBtn').style.display = 'none';
+                document.getElementById('contentFilters').style.display = 'none';
             }
         }
 
         function showLoginModal() {
-            document.getElementById('loginModal').style.display = 'block';
+            document.getElementById('loginModal').classList.add('visible');
+            setTimeout(() => document.getElementById('authUsername').focus(), 100);
         }
 
         function closeModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
+            document.getElementById(modalId).classList.remove('visible');
         }
 
         function toggleAuthMode() {
@@ -906,13 +1680,13 @@
             const submitBtn = document.getElementById('submitBtn');
             const toggleBtn = document.getElementById('toggleBtn');
             
-            if (modalTitle.textContent === 'Login') {
-                modalTitle.textContent = 'Register';
-                submitBtn.textContent = 'Register';
+            if (modalTitle.textContent.includes('Login')) {
+                modalTitle.innerHTML = '📝 Register';
+                submitBtn.innerHTML = '<span class="spinner" id="authSpinner" style="display: none;"></span>Register';
                 toggleBtn.textContent = 'Login instead';
             } else {
-                modalTitle.textContent = 'Login';
-                submitBtn.textContent = 'Login';
+                modalTitle.innerHTML = '👤 Login';
+                submitBtn.innerHTML = '<span class="spinner" id="authSpinner" style="display: none;"></span>Login';
                 toggleBtn.textContent = 'Register instead';
             }
         }
@@ -920,9 +1694,15 @@
         async function handleAuth(e) {
             e.preventDefault();
             
-            const username = document.getElementById('authUsername').value;
+            const username = document.getElementById('authUsername').value.trim();
             const password = document.getElementById('authPassword').value;
-            const isLogin = document.getElementById('modalTitle').textContent === 'Login';
+            const isLogin = document.getElementById('modalTitle').textContent.includes('Login');
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const spinner = document.getElementById('authSpinner');
+            
+            submitBtn.disabled = true;
+            spinner.style.display = 'inline-block';
             
             const endpoint = isLogin ? '/login' : '/register';
             
@@ -944,17 +1724,23 @@
                         localStorage.setItem('token', data.token);
                         updateUIForUser();
                         closeModal('loginModal');
-                        showNotification('Logged in successfully!', 'success');
+                        showNotification('Welcome back! 🎉', 'success');
                         loadPosts(); // Reload to show user-specific options
                     } else {
-                        showNotification('Account created! Please login.', 'success');
+                        showNotification('Account created successfully! Please login. 📝', 'success');
                         toggleAuthMode();
+                        document.getElementById('authPassword').value = '';
+                        document.getElementById('authPassword').focus();
                     }
                 } else {
                     showNotification(data.error || 'Authentication failed', 'error');
                 }
             } catch (error) {
-                showNotification('Network error', 'error');
+                console.error('Auth error:', error);
+                showNotification('Network error. Please try again.', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                spinner.style.display = 'none';
             }
         }
 
@@ -964,7 +1750,16 @@
             localStorage.removeItem('token');
             updateUIForUser();
             loadPosts(); // Reload to hide user-specific options
-            showNotification('Logged out successfully', 'info');
+            showNotification('See you later! 👋', 'info');
+        }
+
+        function goHome() {
+            currentSearchQuery = '';
+            currentFilter = 'all';
+            document.getElementById('searchInput').value = '';
+            document.getElementById('pageTitle').innerHTML = '✨ Latest Posts';
+            setFilter('all');
+            loadPosts(1);
         }
 
         // Posts
@@ -978,6 +1773,8 @@
             
             if (currentSearchQuery) {
                 url = `${API_BASE}/search?q=${encodeURIComponent(currentSearchQuery)}&limit=${postsPerPage}&offset=${offset}`;
+            } else if (currentFilter === 'my' && currentUser) {
+                url = `${API_BASE}/posts/my?limit=${postsPerPage}&offset=${offset}`;
             }
             
             try {
@@ -997,10 +1794,12 @@
                     updatePagination(data.pagination);
                 } else {
                     showNotification(data.error || 'Failed to load posts', 'error');
+                    container.innerHTML = '<div class="loading">❌ Failed to load posts</div>';
                 }
             } catch (error) {
-                container.innerHTML = '<div class="loading">Failed to load posts</div>';
-                showNotification('Network error', 'error');
+                console.error('Load posts error:', error);
+                container.innerHTML = '<div class="loading">❌ Network error</div>';
+                showNotification('Network error. Please check your connection.', 'error');
             }
         }
 
@@ -1008,28 +1807,33 @@
             const container = document.getElementById('postsContainer');
             
             if (posts.length === 0) {
-                container.innerHTML = '<div class="loading">No posts found</div>';
+                container.innerHTML = `
+                    <div class="loading">
+                        📭 No posts found
+                        ${currentFilter === 'my' ? '<br><small>Create your first post!</small>' : ''}
+                    </div>
+                `;
                 return;
             }
             
             container.innerHTML = posts.map(post => `
-                <article class="post">
+                <article class="post" data-post-id="${post.id}">
                     <div class="post-header">
                         <div class="post-meta">
-                            <span>By ${post.username}</span>
-                            <span>${formatDate(post.created_at)}</span>
-                            ${post.updated_at !== post.created_at ? `<span>(edited ${formatDate(post.updated_at)})</span>` : ''}
+                            <span class="author">👤 ${escapeHtml(post.username)}</span>
+                            <span class="date">📅 ${formatDate(post.created_at)}</span>
+                            ${post.updated_at !== post.created_at ? `<span class="date">✏️ Edited ${formatDate(post.updated_at)}</span>` : ''}
                         </div>
                         <div class="post-actions">
                             ${currentUser ? `
                                 ${currentUser.id === post.user_id ? `
-                                    <button class="btn btn-small btn-secondary" onclick="editPost(${post.id})">Edit</button>
-                                    <button class="btn btn-small btn-danger" onclick="deletePost(${post.id})">Delete</button>
+                                    <button class="btn btn-small btn-secondary" onclick="editPost(${post.id})" title="Edit post">✏️</button>
+                                    <button class="btn btn-small btn-danger" onclick="deletePost(${post.id})" title="Delete post">🗑️</button>
                                 ` : `
-                                    <button class="btn btn-small btn-secondary" onclick="showProposalModal(${post.id})">Suggest Edit</button>
+                                    <button class="btn btn-small btn-warning" onclick="showProposalModal(${post.id})" title="Suggest edit">💡</button>
                                 `}
                             ` : `
-                                <button class="btn btn-small btn-secondary" onclick="showProposalModal(${post.id})">Suggest Edit</button>
+                                <button class="btn btn-small btn-warning" onclick="showProposalModal(${post.id})" title="Suggest edit">💡</button>
                             `}
                         </div>
                     </div>
@@ -1037,23 +1841,71 @@
                     <div class="post-content">${renderMarkdown(post.content)}</div>
                     ${post.tags && post.tags.length > 0 ? `
                         <div class="post-tags">
-                            ${post.tags.map(tag => `<span class="tag">${escapeHtml(tag.name)}</span>`).join('')}
+                            ${post.tags.map(tag => `<span class="tag" onclick="searchByTag('${escapeHtml(tag.name)}')">${escapeHtml(tag.name)}</span>`).join('')}
                         </div>
                     ` : ''}
                     <div class="post-footer">
-                        <button class="btn btn-small btn-secondary" onclick="toggleComments(${post.id})">💬 Comments</button>
-                        ${currentUser && currentUser.id === post.user_id ? `
-                            <button class="btn btn-small btn-secondary" onclick="loadProposals(${post.id})">📝 Proposals</button>
-                        ` : ''}
+                        <div class="post-stats">
+                            <span title="Click to view comments">💬 Comments</span>
+                        </div>
+                        <div class="post-interactions">
+                            <button class="btn btn-small btn-outline" onclick="toggleComments(${post.id})" title="View comments">💬 Comments</button>
+                            ${currentUser && currentUser.id === post.user_id ? `
+                                <button class="btn btn-small btn-outline" onclick="loadProposals(${post.id})" title="View edit proposals">📝 Proposals</button>
+                            ` : ''}
+                        </div>
                     </div>
-                    <div class="comments-section" id="comments-${post.id}" style="display: none;">
+                    <div class="comments-section" id="comments-${post.id}">
                         <div class="loading"><div class="spinner"></div>Loading comments...</div>
                     </div>
-                    <div class="proposals-section" id="proposals-${post.id}" style="display: none;">
+                    <div class="proposals-section" id="proposals-${post.id}">
                         <div class="loading"><div class="spinner"></div>Loading proposals...</div>
                     </div>
                 </article>
             `).join('');
+
+            // Apply syntax highlighting to code blocks
+            if (window.Prism) {
+                Prism.highlightAll();
+            }
+        }
+
+        function searchByTag(tagName) {
+            currentSearchQuery = tagName;
+            document.getElementById('searchInput').value = tagName;
+            document.getElementById('pageTitle').innerHTML = `🏷️ Posts tagged "${tagName}"`;
+            setFilter('all');
+            loadPosts(1);
+        }
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            
+            // Update filter UI
+            document.querySelectorAll('.filter-chip').forEach(chip => {
+                chip.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update title
+            switch (filter) {
+                case 'all':
+                    document.getElementById('pageTitle').innerHTML = '✨ Latest Posts';
+                    break;
+                case 'my':
+                    if (!currentUser) {
+                        showNotification('Please login to view your posts', 'warning');
+                        setFilter('all');
+                        return;
+                    }
+                    document.getElementById('pageTitle').innerHTML = '📝 My Posts';
+                    break;
+                case 'recent':
+                    document.getElementById('pageTitle').innerHTML = '🆕 Recent Posts';
+                    break;
+            }
+            
+            loadPosts(1);
         }
 
         function updatePagination(pagination) {
@@ -1061,7 +1913,7 @@
             
             document.getElementById('prevBtn').disabled = currentPage <= 1;
             document.getElementById('nextBtn').disabled = !pagination.has_more;
-            document.getElementById('paginationInfo').textContent = `Page ${currentPage} of ${totalPages}`;
+            document.getElementById('paginationInfo').textContent = `Page ${currentPage} of ${totalPages} (${pagination.total} posts)`;
             document.getElementById('gotoPage').max = totalPages;
             document.getElementById('totalCount').textContent = pagination.total;
         }
@@ -1082,6 +1934,7 @@
             
             if (page >= 1 && page <= totalPages) {
                 loadPosts(page);
+                document.getElementById('gotoPage').value = '';
             }
         }
 
@@ -1096,15 +1949,16 @@
             currentSearchQuery = query;
             
             if (query) {
-                document.getElementById('pageTitle').textContent = `Search Results for "${query}"`;
+                document.getElementById('pageTitle').innerHTML = `🔍 Search: "${query}"`;
             } else {
-                document.getElementById('pageTitle').textContent = 'Latest Posts';
+                document.getElementById('pageTitle').innerHTML = '✨ Latest Posts';
             }
             
+            setFilter('all');
             loadPosts(1);
         }
 
-        // Archive stats
+        // Archive stats and tags
         async function loadArchiveStats() {
             try {
                 const response = await fetch(`${API_BASE}/posts/stats`);
@@ -1116,6 +1970,39 @@
             } catch (error) {
                 console.error('Failed to load archive stats:', error);
             }
+        }
+
+        async function loadTags() {
+            try {
+                const response = await fetch(`${API_BASE}/tags`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    allTags = data.tags;
+                    renderPopularTags(data.tags.slice(0, 10)); // Show top 10
+                }
+            } catch (error) {
+                console.error('Failed to load tags:', error);
+            }
+        }
+
+        function renderPopularTags(tags) {
+            const container = document.getElementById('popularTags');
+            
+            if (tags.length === 0) {
+                container.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem;">No tags yet</div>';
+                return;
+            }
+            
+            container.innerHTML = `
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    ${tags.map(tag => `
+                        <span class="tag" onclick="searchByTag('${escapeHtml(tag.name)}')" style="align-self: flex-start;">
+                            ${escapeHtml(tag.name)}
+                        </span>
+                    `).join('')}
+                </div>
+            `;
         }
 
         function renderArchiveStats(stats) {
@@ -1132,7 +2019,7 @@
                 const li = document.createElement('li');
                 li.innerHTML = `
                     <a href="#" onclick="filterByMonth('${stat.year}', '${stat.month}')">
-                        ${monthName} ${stat.year} <span class="count">${stat.count}</span>
+                        📅 ${monthName} ${stat.year} <span class="count">${stat.count}</span>
                     </a>
                 `;
                 container.appendChild(li);
@@ -1141,19 +2028,20 @@
 
         function filterByMonth(year, month) {
             // This would need backend support for date filtering
-            showNotification('Date filtering coming soon!', 'info');
+            showNotification('📅 Date filtering coming soon!', 'info');
         }
 
         // Editor
         function showEditor() {
             if (!currentUser) {
                 showNotification('Please login to create posts', 'error');
+                showLoginModal();
                 return;
             }
             
             document.getElementById('editorContainer').style.display = 'block';
-            document.getElementById('editorTitle').textContent = 'Create New Post';
-            document.getElementById('saveBtn').textContent = 'Publish Post';
+            document.getElementById('editorTitle').innerHTML = '✏️ Create New Post';
+            document.getElementById('saveBtn').innerHTML = '<span class="spinner" id="saveSpinner" style="display: none;"></span>✨ Publish Post';
             isEditMode = false;
             editingPostId = null;
             
@@ -1161,14 +2049,24 @@
             document.getElementById('postTitle').value = '';
             document.getElementById('postContent').value = '';
             document.getElementById('postTags').value = '';
+            document.getElementById('postPreview').innerHTML = '';
+            document.getElementById('uploadedFiles').innerHTML = '';
+            document.getElementById('uploadedFiles').classList.remove('visible');
+            
+            // Focus on title
+            setTimeout(() => document.getElementById('postTitle').focus(), 100);
         }
 
         function closeEditor() {
             document.getElementById('editorContainer').style.display = 'none';
-            document.getElementById('postPreview').style.display = 'none';
+            document.getElementById('postPreview').classList.remove('visible');
             document.getElementById('postContent').style.display = 'block';
-            document.getElementById('previewBtn').textContent = 'Preview';
-            document.getElementById('fileUploadArea').style.display = 'none';
+            document.getElementById('previewBtn').innerHTML = '👁️ Preview';
+            document.getElementById('fileUploadArea').classList.remove('visible');
+            document.getElementById('tagSuggestions').classList.remove('visible');
+            isSplitView = false;
+            document.getElementById('editorContentContainer').classList.remove('split-view');
+            document.getElementById('splitBtn').innerHTML = '🔄 Split';
         }
 
         function insertMarkdown(before, after) {
@@ -1185,6 +2083,11 @@
             const newPosition = start + before.length + selectedText.length + after.length;
             textarea.focus();
             textarea.setSelectionRange(newPosition, newPosition);
+            
+            // Update preview if visible
+            if (document.getElementById('postPreview').classList.contains('visible') || isSplitView) {
+                updatePreview();
+            }
         }
 
         function togglePreview() {
@@ -1192,27 +2095,76 @@
             const preview = document.getElementById('postPreview');
             const btn = document.getElementById('previewBtn');
             
-            if (preview.style.display === 'none') {
-                preview.innerHTML = renderMarkdown(content.value);
-                preview.style.display = 'block';
-                content.style.display = 'none';
-                btn.textContent = 'Edit';
-            } else {
-                preview.style.display = 'none';
+            if (isSplitView) {
+                // Exit split view
+                isSplitView = false;
+                document.getElementById('editorContentContainer').classList.remove('split-view');
+                preview.classList.remove('visible');
                 content.style.display = 'block';
-                btn.textContent = 'Preview';
+                btn.innerHTML = '👁️ Preview';
+                document.getElementById('splitBtn').innerHTML = '🔄 Split';
+            } else if (preview.classList.contains('visible')) {
+                // Exit preview mode
+                preview.classList.remove('visible');
+                content.style.display = 'block';
+                btn.innerHTML = '👁️ Preview';
+            } else {
+                // Enter preview mode
+                updatePreview();
+                preview.classList.add('visible');
+                content.style.display = 'none';
+                btn.innerHTML = '✏️ Edit';
+            }
+        }
+
+        function toggleSplitView() {
+            const content = document.getElementById('postContent');
+            const preview = document.getElementById('postPreview');
+            const splitBtn = document.getElementById('splitBtn');
+            const previewBtn = document.getElementById('previewBtn');
+            
+            if (isSplitView) {
+                // Exit split view
+                isSplitView = false;
+                document.getElementById('editorContentContainer').classList.remove('split-view');
+                preview.classList.remove('visible');
+                content.style.display = 'block';
+                splitBtn.innerHTML = '🔄 Split';
+                previewBtn.innerHTML = '👁️ Preview';
+            } else {
+                // Enter split view
+                isSplitView = true;
+                document.getElementById('editorContentContainer').classList.add('split-view');
+                updatePreview();
+                preview.classList.add('visible');
+                content.style.display = 'block';
+                splitBtn.innerHTML = '📖 Exit Split';
+                previewBtn.innerHTML = '👁️ Preview';
+            }
+        }
+
+        function updatePreview() {
+            const content = document.getElementById('postContent').value;
+            const preview = document.getElementById('postPreview');
+            preview.innerHTML = renderMarkdown(content);
+            
+            // Apply syntax highlighting if Prism is available
+            if (window.Prism) {
+                Prism.highlightAllUnder(preview);
             }
         }
 
         function showFileUpload() {
             const area = document.getElementById('fileUploadArea');
-            area.style.display = area.style.display === 'none' ? 'block' : 'none';
+            area.classList.toggle('visible');
         }
 
         async function handleFileUpload(files) {
+            const uploadedFiles = document.getElementById('uploadedFiles');
+            
             for (const file of files) {
                 if (file.size > 50 * 1024 * 1024) {
-                    showNotification(`File ${file.name} is too large (max 50MB)`, 'error');
+                    showNotification(`❌ File ${file.name} is too large (max 50MB)`, 'error');
                     continue;
                 }
                 
@@ -1223,6 +2175,21 @@
         async function uploadFile(file) {
             const formData = new FormData();
             formData.append('file', file);
+            
+            const uploadedFiles = document.getElementById('uploadedFiles');
+            const fileElement = document.createElement('div');
+            fileElement.className = 'uploaded-file';
+            fileElement.innerHTML = `
+                <div class="file-preview">📄</div>
+                <div style="flex: 1;">
+                    <div style="font-weight: 500;">${escapeHtml(file.name)}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">Uploading...</div>
+                </div>
+                <div class="spinner"></div>
+            `;
+            
+            uploadedFiles.appendChild(fileElement);
+            uploadedFiles.classList.add('visible');
             
             try {
                 const response = await fetch(`${API_BASE}/files`, {
@@ -1236,23 +2203,57 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    // Insert file reference into content
-                    const fileRef = file.type.startsWith('image/') 
-                        ? `![${file.name}](${API_BASE}/files/${data.file_id})`
-                        : `[${file.name}](${API_BASE}/files/${data.file_id})`;
+                    // Update file element with success
+                    fileElement.innerHTML = `
+                        <div class="file-preview">${file.type.startsWith('image/') ? '🖼️' : '📄'}</div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 500;">${escapeHtml(file.name)}</div>
+                            <div style="font-size: 0.8rem; color: var(--success-color);">✅ Uploaded</div>
+                        </div>
+                        <button class="btn btn-small btn-secondary" onclick="insertFileReference('${data.file_id}', '${escapeHtml(file.name)}', '${file.type}')">📋 Insert</button>
+                    `;
                     
-                    const textarea = document.getElementById('postContent');
-                    const currentPos = textarea.selectionStart;
-                    const newText = textarea.value.substring(0, currentPos) + fileRef + textarea.value.substring(currentPos);
-                    textarea.value = newText;
-                    
-                    showNotification(`File ${file.name} uploaded successfully!`, 'success');
+                    showNotification(`✅ ${file.name} uploaded successfully!`, 'success');
                 } else {
-                    showNotification(data.error || `Failed to upload ${file.name}`, 'error');
+                    fileElement.innerHTML = `
+                        <div class="file-preview">❌</div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 500;">${escapeHtml(file.name)}</div>
+                            <div style="font-size: 0.8rem; color: var(--danger-color);">❌ Failed</div>
+                        </div>
+                    `;
+                    showNotification(`❌ ${data.error || `Failed to upload ${file.name}`}`, 'error');
                 }
             } catch (error) {
-                showNotification(`Upload failed: ${file.name}`, 'error');
+                console.error('Upload error:', error);
+                fileElement.innerHTML = `
+                    <div class="file-preview">❌</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 500;">${escapeHtml(file.name)}</div>
+                        <div style="font-size: 0.8rem; color: var(--danger-color);">❌ Network error</div>
+                    </div>
+                `;
+                showNotification(`❌ Upload failed: ${file.name}`, 'error');
             }
+        }
+
+        function insertFileReference(fileId, fileName, mimeType) {
+            const textarea = document.getElementById('postContent');
+            const fileRef = mimeType.startsWith('image/') 
+                ? `![${fileName}](${API_BASE}/files/${fileId})`
+                : `[📄 ${fileName}](${API_BASE}/files/${fileId})`;
+            
+            const currentPos = textarea.selectionStart;
+            const newText = textarea.value.substring(0, currentPos) + '\n' + fileRef + '\n' + textarea.value.substring(currentPos);
+            textarea.value = newText;
+            textarea.focus();
+            
+            // Update preview if visible
+            if (document.getElementById('postPreview').classList.contains('visible') || isSplitView) {
+                updatePreview();
+            }
+            
+            showNotification('📋 File reference inserted!', 'success');
         }
 
         async function savePost() {
@@ -1261,7 +2262,7 @@
             const tagsText = document.getElementById('postTags').value.trim();
             
             if (!title || !content) {
-                showNotification('Title and content are required', 'error');
+                showNotification('❌ Title and content are required', 'error');
                 return;
             }
             
@@ -1270,6 +2271,12 @@
             const payload = { title, content, tags };
             const method = isEditMode ? 'PUT' : 'POST';
             const url = isEditMode ? `${API_BASE}/posts/${editingPostId}` : `${API_BASE}/posts`;
+            
+            const saveBtn = document.getElementById('saveBtn');
+            const spinner = document.getElementById('saveSpinner');
+            
+            saveBtn.disabled = true;
+            spinner.style.display = 'inline-block';
             
             try {
                 const response = await fetch(url, {
@@ -1284,14 +2291,19 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    showNotification(isEditMode ? 'Post updated!' : 'Post created!', 'success');
+                    showNotification(isEditMode ? '✅ Post updated!' : '🎉 Post published!', 'success');
                     closeEditor();
                     loadPosts(currentPage);
+                    loadTags(); // Refresh tags
                 } else {
-                    showNotification(data.error || 'Failed to save post', 'error');
+                    showNotification(`❌ ${data.error || 'Failed to save post'}`, 'error');
                 }
             } catch (error) {
-                showNotification('Network error', 'error');
+                console.error('Save post error:', error);
+                showNotification('❌ Network error', 'error');
+            } finally {
+                saveBtn.disabled = false;
+                spinner.style.display = 'none';
             }
         }
 
@@ -1309,24 +2321,31 @@
                     const post = data.post;
                     
                     document.getElementById('editorContainer').style.display = 'block';
-                    document.getElementById('editorTitle').textContent = 'Edit Post';
-                    document.getElementById('saveBtn').textContent = 'Update Post';
+                    document.getElementById('editorTitle').innerHTML = '✏️ Edit Post';
+                    document.getElementById('saveBtn').innerHTML = '<span class="spinner" id="saveSpinner" style="display: none;"></span>💾 Update Post';
                     isEditMode = true;
                     editingPostId = postId;
                     
                     document.getElementById('postTitle').value = post.title;
                     document.getElementById('postContent').value = post.content;
                     document.getElementById('postTags').value = post.tags ? post.tags.map(tag => tag.name).join(', ') : '';
+                    
+                    // Clear uploaded files
+                    document.getElementById('uploadedFiles').innerHTML = '';
+                    document.getElementById('uploadedFiles').classList.remove('visible');
+                    
+                    setTimeout(() => document.getElementById('postTitle').focus(), 100);
                 } else {
-                    showNotification(data.error || 'Failed to load post', 'error');
+                    showNotification(`❌ ${data.error || 'Failed to load post'}`, 'error');
                 }
             } catch (error) {
-                showNotification('Network error', 'error');
+                console.error('Edit post error:', error);
+                showNotification('❌ Network error', 'error');
             }
         }
 
         async function deletePost(postId) {
-            if (!confirm('Are you sure you want to delete this post?')) {
+            if (!confirm('🗑️ Are you sure you want to delete this post? This action cannot be undone.')) {
                 return;
             }
             
@@ -1341,13 +2360,15 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    showNotification('Post deleted', 'success');
+                    showNotification('🗑️ Post deleted', 'success');
                     loadPosts(currentPage);
+                    loadTags(); // Refresh tags
                 } else {
-                    showNotification(data.error || 'Failed to delete post', 'error');
+                    showNotification(`❌ ${data.error || 'Failed to delete post'}`, 'error');
                 }
             } catch (error) {
-                showNotification('Network error', 'error');
+                console.error('Delete post error:', error);
+                showNotification('❌ Network error', 'error');
             }
         }
 
@@ -1355,15 +2376,17 @@
         async function toggleComments(postId) {
             const commentsSection = document.getElementById(`comments-${postId}`);
             
-            if (commentsSection.style.display === 'none') {
-                commentsSection.style.display = 'block';
-                await loadComments(postId);
+            if (commentsSection.classList.contains('visible')) {
+                commentsSection.classList.remove('visible');
             } else {
-                commentsSection.style.display = 'none';
+                commentsSection.classList.add('visible');
+                await loadComments(postId);
             }
         }
 
         async function loadComments(postId) {
+            const commentsSection = document.getElementById(`comments-${postId}`);
+            
             try {
                 const headers = {};
                 const token = localStorage.getItem('token');
@@ -1376,9 +2399,12 @@
                 
                 if (response.ok) {
                     renderComments(postId, data.comments);
+                } else {
+                    commentsSection.innerHTML = '<div class="loading">❌ Failed to load comments</div>';
                 }
             } catch (error) {
                 console.error('Failed to load comments:', error);
+                commentsSection.innerHTML = '<div class="loading">❌ Network error</div>';
             }
         }
 
@@ -1387,25 +2413,34 @@
             
             if (comments.length === 0) {
                 container.innerHTML = `
-                    <p>No comments yet.</p>
+                    <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                        💬 No comments yet
+                    </div>
                     ${currentUser ? `
                         <form class="comment-form" onsubmit="addComment(event, ${postId})">
-                            <textarea placeholder="Add a comment..." required></textarea>
-                            <button type="submit" class="btn btn-primary btn-small" style="margin-top: 0.5rem;">Comment</button>
+                            <textarea placeholder="💭 Share your thoughts..." required maxlength="5000"></textarea>
+                            <div style="margin-top: 1rem; display: flex; justify-content: flex-end;">
+                                <button type="submit" class="btn btn-primary">💬 Comment</button>
+                            </div>
                         </form>
-                    ` : '<p><em>Login to add comments</em></p>'}
+                    ` : '<div style="text-align: center; color: var(--text-muted);"><em>👤 Login to add comments</em></div>'}
                 `;
                 return;
             }
             
             container.innerHTML = `
+                <div style="margin-bottom: 1.5rem;">
+                    <strong>💬 ${comments.length} Comment${comments.length === 1 ? '' : 's'}</strong>
+                </div>
                 ${renderCommentsRecursive(comments, postId)}
                 ${currentUser ? `
                     <form class="comment-form" onsubmit="addComment(event, ${postId})">
-                        <textarea placeholder="Add a comment..." required></textarea>
-                        <button type="submit" class="btn btn-primary btn-small" style="margin-top: 0.5rem;">Comment</button>
+                        <textarea placeholder="💭 Share your thoughts..." required maxlength="5000"></textarea>
+                        <div style="margin-top: 1rem; display: flex; justify-content: flex-end;">
+                            <button type="submit" class="btn btn-primary">💬 Comment</button>
+                        </div>
                     </form>
-                ` : '<p><em>Login to add comments</em></p>'}
+                ` : '<div style="text-align: center; color: var(--text-muted); margin-top: 1rem;"><em>👤 Login to add comments</em></div>'}
             `;
         }
 
@@ -1414,25 +2449,27 @@
                 <div class="comment" style="margin-left: ${depth * 1.5}rem;">
                     <div class="comment-header">
                         <div class="comment-meta">
-                            <strong>${escapeHtml(comment.username)}</strong>
-                            <span>${formatDate(comment.created_at)}</span>
+                            <strong class="author">👤 ${escapeHtml(comment.username)}</strong>
+                            <span class="date">📅 ${formatDate(comment.created_at)}</span>
                         </div>
                         ${currentUser && currentUser.id === comment.user_id ? `
-                            <div>
-                                <button class="btn btn-small btn-danger" onclick="deleteComment(${comment.id}, ${postId})">Delete</button>
+                            <div class="comment-actions">
+                                <button class="btn btn-small btn-danger" onclick="deleteComment(${comment.id}, ${postId})" title="Delete comment">🗑️</button>
                             </div>
                         ` : ''}
                     </div>
                     <div class="comment-content">${escapeHtml(comment.content)}</div>
                     ${currentUser ? `
-                        <button class="btn btn-small btn-secondary" onclick="showReplyForm(${comment.id}, ${postId})" style="margin-top: 0.5rem;">Reply</button>
+                        <div class="comment-actions" style="margin-top: 0.75rem;">
+                            <button class="btn btn-small btn-outline" onclick="showReplyForm(${comment.id}, ${postId})">↩️ Reply</button>
+                        </div>
                     ` : ''}
-                    <div id="reply-form-${comment.id}" style="display: none; margin-top: 0.5rem;">
+                    <div id="reply-form-${comment.id}" class="reply-form">
                         <form onsubmit="addComment(event, ${postId}, ${comment.id})">
-                            <textarea placeholder="Reply..." required></textarea>
-                            <div style="margin-top: 0.5rem;">
-                                <button type="submit" class="btn btn-primary btn-small">Reply</button>
-                                <button type="button" class="btn btn-secondary btn-small" onclick="hideReplyForm(${comment.id})">Cancel</button>
+                            <textarea placeholder="💭 Reply..." required maxlength="5000"></textarea>
+                            <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                                <button type="button" class="btn btn-small btn-secondary" onclick="hideReplyForm(${comment.id})">❌ Cancel</button>
+                                <button type="submit" class="btn btn-small btn-primary">↩️ Reply</button>
                             </div>
                         </form>
                     </div>
@@ -1446,11 +2483,12 @@
         }
 
         function showReplyForm(commentId, postId) {
-            document.getElementById(`reply-form-${commentId}`).style.display = 'block';
+            document.getElementById(`reply-form-${commentId}`).classList.add('visible');
+            document.querySelector(`#reply-form-${commentId} textarea`).focus();
         }
 
         function hideReplyForm(commentId) {
-            document.getElementById(`reply-form-${commentId}`).style.display = 'none';
+            document.getElementById(`reply-form-${commentId}`).classList.remove('visible');
         }
 
         async function addComment(event, postId, parentCommentId = null) {
@@ -1459,8 +2497,13 @@
             const form = event.target;
             const textarea = form.querySelector('textarea');
             const content = textarea.value.trim();
+            const submitBtn = form.querySelector('button[type="submit"]');
             
             if (!content) return;
+            
+            submitBtn.disabled = true;
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<span class="spinner"></span> Posting...';
             
             try {
                 const response = await fetch(`${API_BASE}/posts/${postId}/comments`, {
@@ -1483,17 +2526,21 @@
                         hideReplyForm(parentCommentId);
                     }
                     await loadComments(postId);
-                    showNotification('Comment added!', 'success');
+                    showNotification('💬 Comment added!', 'success');
                 } else {
-                    showNotification(data.error || 'Failed to add comment', 'error');
+                    showNotification(`❌ ${data.error || 'Failed to add comment'}`, 'error');
                 }
             } catch (error) {
-                showNotification('Network error', 'error');
+                console.error('Add comment error:', error);
+                showNotification('❌ Network error', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
             }
         }
 
         async function deleteComment(commentId, postId) {
-            if (!confirm('Delete this comment?')) return;
+            if (!confirm('🗑️ Delete this comment?')) return;
             
             try {
                 const response = await fetch(`${API_BASE}/comments/${commentId}`, {
@@ -1505,10 +2552,13 @@
                 
                 if (response.ok) {
                     await loadComments(postId);
-                    showNotification('Comment deleted', 'success');
+                    showNotification('🗑️ Comment deleted', 'success');
+                } else {
+                    showNotification('❌ Failed to delete comment', 'error');
                 }
             } catch (error) {
-                showNotification('Network error', 'error');
+                console.error('Delete comment error:', error);
+                showNotification('❌ Network error', 'error');
             }
         }
 
@@ -1518,8 +2568,9 @@
             if (post) {
                 document.getElementById('proposalTitle').value = post.title;
                 document.getElementById('proposalContent').value = post.content;
-                document.getElementById('proposalModal').style.display = 'block';
+                document.getElementById('proposalModal').classList.add('visible');
                 document.getElementById('proposalForm').dataset.postId = postId;
+                setTimeout(() => document.getElementById('proposerName').focus(), 100);
             }
         }
 
@@ -1528,12 +2579,17 @@
             
             const form = event.target;
             const postId = form.dataset.postId;
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const spinner = document.getElementById('proposalSpinner');
             
-            const proposerName = document.getElementById('proposerName').value;
-            const proposerEmail = document.getElementById('proposerEmail').value;
-            const title = document.getElementById('proposalTitle').value;
-            const content = document.getElementById('proposalContent').value;
-            const reason = document.getElementById('proposalReason').value;
+            const proposerName = document.getElementById('proposerName').value.trim();
+            const proposerEmail = document.getElementById('proposerEmail').value.trim();
+            const title = document.getElementById('proposalTitle').value.trim();
+            const content = document.getElementById('proposalContent').value.trim();
+            const reason = document.getElementById('proposalReason').value.trim();
+            
+            submitBtn.disabled = true;
+            spinner.style.display = 'inline-block';
             
             try {
                 const response = await fetch(`${API_BASE}/posts/${postId}/proposals`, {
@@ -1554,76 +2610,98 @@
                 
                 if (response.ok) {
                     closeModal('proposalModal');
-                    showNotification('Edit proposal submitted! The post owner will review it.', 'success');
+                    showNotification('✅ Edit proposal submitted! The post owner will review it.', 'success');
                     form.reset();
                 } else {
-                    showNotification(data.error || 'Failed to submit proposal', 'error');
+                    showNotification(`❌ ${data.error || 'Failed to submit proposal'}`, 'error');
                 }
             } catch (error) {
-                showNotification('Network error', 'error');
+                console.error('Submit proposal error:', error);
+                showNotification('❌ Network error', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                spinner.style.display = 'none';
             }
         }
 
         async function loadProposals(postId) {
             const proposalsSection = document.getElementById(`proposals-${postId}`);
             
-            if (proposalsSection.style.display === 'none') {
-                proposalsSection.style.display = 'block';
-                
-                try {
-                    const response = await fetch(`${API_BASE}/posts/${postId}/proposals`, {
-                        headers: {
-                            'Authorization': `Bearer ${localStorage.getItem('token')}`
-                        }
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (response.ok) {
-                        renderProposals(postId, data.proposals);
+            if (proposalsSection.classList.contains('visible')) {
+                proposalsSection.classList.remove('visible');
+                return;
+            }
+            
+            proposalsSection.classList.add('visible');
+            
+            try {
+                const response = await fetch(`${API_BASE}/posts/${postId}/proposals`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
                     }
-                } catch (error) {
-                    proposalsSection.innerHTML = '<p>Failed to load proposals</p>';
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    renderProposals(postId, data.proposals);
+                } else {
+                    proposalsSection.innerHTML = '<div class="loading">❌ Failed to load proposals</div>';
                 }
-            } else {
-                proposalsSection.style.display = 'none';
+            } catch (error) {
+                console.error('Load proposals error:', error);
+                proposalsSection.innerHTML = '<div class="loading">❌ Network error</div>';
             }
         }
 
         function renderProposals(postId, proposals) {
             const container = document.getElementById(`proposals-${postId}`);
             
-            if (proposals.length === 0) {
-                container.innerHTML = '<p>No pending proposals.</p>';
+            const pendingProposals = proposals.filter(p => p.status === 'pending');
+            
+            if (pendingProposals.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                        📝 No pending proposals
+                    </div>
+                `;
                 return;
             }
             
-            container.innerHTML = proposals.filter(p => p.status === 'pending').map(proposal => `
-                <div class="proposal">
-                    <div class="proposal-header">
-                        <div class="proposal-meta">
-                            <strong>${escapeHtml(proposal.proposer_name)}</strong>
-                            <span>${formatDate(proposal.created_at)}</span>
-                        </div>
-                        <div class="proposal-actions">
-                            <button class="btn btn-small btn-success" onclick="approveProposal(${proposal.id})">Approve</button>
-                            <button class="btn btn-small btn-danger" onclick="rejectProposal(${proposal.id})">Reject</button>
-                        </div>
-                    </div>
-                    <p><strong>Proposed Title:</strong> ${escapeHtml(proposal.title)}</p>
-                    <p><strong>Reason:</strong> ${escapeHtml(proposal.reason || 'No reason provided')}</p>
-                    <details>
-                        <summary>View proposed content</summary>
-                        <div style="margin-top: 0.5rem; padding: 0.5rem; background: white; border-radius: 4px;">
-                            ${renderMarkdown(proposal.content)}
-                        </div>
-                    </details>
+            container.innerHTML = `
+                <div style="margin-bottom: 1.5rem;">
+                    <strong>📝 ${pendingProposals.length} Pending Proposal${pendingProposals.length === 1 ? '' : 's'}</strong>
                 </div>
-            `).join('');
+                ${pendingProposals.map(proposal => `
+                    <div class="proposal">
+                        <div class="proposal-header">
+                            <div class="proposal-meta">
+                                <strong>👤 ${escapeHtml(proposal.proposer_name)}</strong>
+                                <span>📧 ${escapeHtml(proposal.proposer_email)}</span>
+                                <span>📅 ${formatDate(proposal.created_at)}</span>
+                            </div>
+                            <div class="proposal-actions">
+                                <button class="btn btn-small btn-success" onclick="approveProposal(${proposal.id})">✅ Approve</button>
+                                <button class="btn btn-small btn-danger" onclick="rejectProposal(${proposal.id})">❌ Reject</button>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <p><strong>📝 Proposed Title:</strong> ${escapeHtml(proposal.title)}</p>
+                            ${proposal.reason ? `<p><strong>💭 Reason:</strong> ${escapeHtml(proposal.reason)}</p>` : ''}
+                        </div>
+                        <details style="background: white; padding: 1rem; border-radius: 6px; border: 1px solid #ddd;">
+                            <summary style="cursor: pointer; font-weight: 500;">👁️ View proposed content</summary>
+                            <div style="margin-top: 1rem; max-height: 300px; overflow-y: auto;">
+                                ${renderMarkdown(proposal.content)}
+                            </div>
+                        </details>
+                    </div>
+                `).join('')}
+            `;
         }
 
         async function approveProposal(proposalId) {
-            if (!confirm('Approve this edit proposal? This will update your post.')) return;
+            if (!confirm('✅ Approve this edit proposal? This will update your post with the proposed changes.')) return;
             
             try {
                 const response = await fetch(`${API_BASE}/proposals/${proposalId}/approve`, {
@@ -1634,16 +2712,19 @@
                 });
                 
                 if (response.ok) {
-                    showNotification('Proposal approved and applied!', 'success');
+                    showNotification('✅ Proposal approved and applied!', 'success');
                     loadPosts(currentPage);
+                } else {
+                    showNotification('❌ Failed to approve proposal', 'error');
                 }
             } catch (error) {
-                showNotification('Network error', 'error');
+                console.error('Approve proposal error:', error);
+                showNotification('❌ Network error', 'error');
             }
         }
 
         async function rejectProposal(proposalId) {
-            if (!confirm('Reject this edit proposal?')) return;
+            if (!confirm('❌ Reject this edit proposal?')) return;
             
             try {
                 const response = await fetch(`${API_BASE}/proposals/${proposalId}/reject`, {
@@ -1654,12 +2735,16 @@
                 });
                 
                 if (response.ok) {
-                    showNotification('Proposal rejected', 'info');
+                    showNotification('❌ Proposal rejected', 'info');
                     // Reload proposals to update UI
-                    location.reload();
+                    const postId = document.querySelector('.proposals-section.visible').id.split('-')[1];
+                    loadProposals(postId);
+                } else {
+                    showNotification('❌ Failed to reject proposal', 'error');
                 }
             } catch (error) {
-                showNotification('Network error', 'error');
+                console.error('Reject proposal error:', error);
+                showNotification('❌ Network error', 'error');
             }
         }
 
@@ -1681,20 +2766,61 @@
         }
 
         function renderMarkdown(text) {
+            if (!text) return '';
+            
+            // Basic markdown rendering with improved handling
             return text
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                .replace(/`(.*?)`/g, '<code>$1</code>')
-                .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+                // Headers
                 .replace(/^### (.*$)/gim, '<h3>$1</h3>')
                 .replace(/^## (.*$)/gim, '<h2>$1</h2>')
                 .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-                .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto;">')
-                .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>')
-                .replace(/\n/g, '<br>');
+                
+                // Code blocks (must come before inline code)
+                .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+                
+                // Bold and italic
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                
+                // Inline code
+                .replace(/`(.*?)`/g, '<code>$1</code>')
+                
+                // Links and images
+                .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto; border-radius: 6px; margin: 1rem 0;">')
+                .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+                
+                // Blockquotes
+                .replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>')
+                
+                // Lists
+                .replace(/^\- (.*$)/gim, '<li>$1</li>')
+                .replace(/^\d+\. (.*$)/gim, '<li>$1</li>')
+                
+                // Tables (basic)
+                .replace(/\|(.+)\|/g, function(match, content) {
+                    const cells = content.split('|').map(cell => cell.trim());
+                    return '<tr>' + cells.map(cell => `<td>${cell}</td>`).join('') + '</tr>';
+                })
+                
+                // Line breaks
+                .replace(/\n/g, '<br>')
+                
+                // Wrap list items in ul tags
+                .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+                
+                // Clean up multiple br tags
+                .replace(/<br>\s*<br>/g, '<br>')
+                
+                // Clean up blockquotes
+                .replace(/(<blockquote>.*?<\/blockquote>)/gs, function(match) {
+                    return match.replace(/<br>/g, ' ');
+                });
         }
 
         function showNotification(message, type = 'info') {
+            // Remove existing notifications
+            document.querySelectorAll('.notification').forEach(n => n.remove());
+            
             const notification = document.createElement('div');
             notification.className = `notification ${type}`;
             notification.textContent = message;
@@ -1708,10 +2834,110 @@
             setTimeout(() => {
                 notification.classList.remove('show');
                 setTimeout(() => {
-                    document.body.removeChild(notification);
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
                 }, 300);
-            }, 3000);
+            }, 4000);
         }
+
+        // Auto-save draft functionality
+        let autoSaveTimeout;
+        function autoSaveDraft() {
+            clearTimeout(autoSaveTimeout);
+            autoSaveTimeout = setTimeout(() => {
+                const title = document.getElementById('postTitle').value;
+                const content = document.getElementById('postContent').value;
+                const tags = document.getElementById('postTags').value;
+                
+                if (title || content || tags) {
+                    localStorage.setItem('draft', JSON.stringify({ title, content, tags }));
+                }
+            }, 2000);
+        }
+
+        function loadDraft() {
+            const draft = localStorage.getItem('draft');
+            if (draft) {
+                try {
+                    const { title, content, tags } = JSON.parse(draft);
+                    if (title || content || tags) {
+                        if (confirm('📝 Load saved draft?')) {
+                            document.getElementById('postTitle').value = title || '';
+                            document.getElementById('postContent').value = content || '';
+                            document.getElementById('postTags').value = tags || '';
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to load draft:', e);
+                }
+            }
+        }
+
+        function clearDraft() {
+            localStorage.removeItem('draft');
+        }
+
+        // Auto-save when typing in editor
+        ['postTitle', 'postContent', 'postTags'].forEach(id => {
+            document.addEventListener('DOMContentLoaded', () => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('input', autoSaveDraft);
+                }
+            });
+        });
+
+        // Real-time preview update
+        document.addEventListener('DOMContentLoaded', () => {
+            const contentTextarea = document.getElementById('postContent');
+            if (contentTextarea) {
+                contentTextarea.addEventListener('input', function() {
+                    if (document.getElementById('postPreview').classList.contains('visible') || isSplitView) {
+                        updatePreview();
+                    }
+                });
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Ctrl/Cmd + Enter to save post
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                if (document.getElementById('editorContainer').style.display === 'block') {
+                    e.preventDefault();
+                    savePost();
+                }
+            }
+            
+            // Escape to close modals
+            if (e.key === 'Escape') {
+                if (document.getElementById('editorContainer').style.display === 'block') {
+                    closeEditor();
+                } else if (document.querySelector('.modal.visible')) {
+                    document.querySelectorAll('.modal.visible').forEach(modal => {
+                        modal.classList.remove('visible');
+                    });
+                }
+            }
+        });
+
+        // Load draft when editor opens
+        const originalShowEditor = showEditor;
+        showEditor = function() {
+            originalShowEditor();
+            setTimeout(loadDraft, 100);
+        };
+
+        // Clear draft when post is saved
+        const originalSavePost = savePost;
+        savePost = async function() {
+            const result = await originalSavePost();
+            clearDraft();
+            return result;
+        };
+
+        console.log('🎉 Posts Platform initialized successfully!');
     </script>
 </body>
 </html>

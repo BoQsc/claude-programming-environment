@@ -34,6 +34,11 @@ import uuid
 import mimetypes
 from pathlib import Path
 import shutil
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 DB_PATH = "auth.db"
 UPLOAD_DIR = Path("uploads")
@@ -59,89 +64,165 @@ class DB:
     
     @staticmethod
     async def init():
-        await DB._execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, salt TEXT, password_hash TEXT, created_at REAL, last_login REAL)")
-        await DB._execute("CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, user_id INTEGER, created_at REAL, expires_at REAL, ip_address TEXT, user_agent TEXT, FOREIGN KEY (user_id) REFERENCES users (id))")
-        
-        # ===== ISOLATED SECTION: POSTS ENDPOINTS AND POSTS DATABASE IMPLEMENTATION =====
-        await DB._execute("""CREATE TABLE IF NOT EXISTS posts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, 
-            user_id INTEGER NOT NULL, 
-            title TEXT NOT NULL, 
-            content TEXT NOT NULL, 
-            created_at REAL NOT NULL, 
-            updated_at REAL NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-        )""")
-        # ===== END ISOLATED SECTION: POSTS =====
+        async with aiosqlite.connect(DB_PATH) as db:
+            # Core tables
+            await db.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, salt TEXT, password_hash TEXT, created_at REAL, last_login REAL)")
+            await db.execute("CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, user_id INTEGER, created_at REAL, expires_at REAL, ip_address TEXT, user_agent TEXT, FOREIGN KEY (user_id) REFERENCES users (id))")
+            
+            # ===== ISOLATED SECTION: POSTS ENDPOINTS AND POSTS DATABASE IMPLEMENTATION =====
+            await db.execute("""CREATE TABLE IF NOT EXISTS posts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                user_id INTEGER NOT NULL, 
+                title TEXT NOT NULL, 
+                content TEXT NOT NULL, 
+                created_at REAL NOT NULL, 
+                updated_at REAL NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+            )""")
+            
+            # Create indices for performance
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id)")
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at)")
+            # ===== END ISOLATED SECTION: POSTS =====
 
-        # ===== ISOLATED SECTION: COMMENTS SYSTEM =====
-        await DB._execute("""CREATE TABLE IF NOT EXISTS comments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            post_id INTEGER NOT NULL,
-            user_id INTEGER NOT NULL,
-            parent_comment_id INTEGER,
-            content TEXT NOT NULL,
-            created_at REAL NOT NULL,
-            updated_at REAL NOT NULL,
-            FOREIGN KEY (post_id) REFERENCES posts (id) ON DELETE CASCADE,
-            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-            FOREIGN KEY (parent_comment_id) REFERENCES comments (id) ON DELETE CASCADE
-        )""")
-        # ===== END ISOLATED SECTION: COMMENTS =====
+            # ===== ISOLATED SECTION: COMMENTS SYSTEM =====
+            await db.execute("""CREATE TABLE IF NOT EXISTS comments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                post_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                parent_comment_id INTEGER,
+                content TEXT NOT NULL,
+                created_at REAL NOT NULL,
+                updated_at REAL NOT NULL,
+                FOREIGN KEY (post_id) REFERENCES posts (id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+                FOREIGN KEY (parent_comment_id) REFERENCES comments (id) ON DELETE CASCADE
+            )""")
+            
+            # Create indices for comments
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_comments_post_id ON comments(post_id)")
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_comments_user_id ON comments(user_id)")
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_comments_parent ON comments(parent_comment_id)")
+            # ===== END ISOLATED SECTION: COMMENTS =====
 
-        # ===== ISOLATED SECTION: FILE UPLOAD SYSTEM =====
-        await DB._execute("""CREATE TABLE IF NOT EXISTS files (
-            id TEXT PRIMARY KEY,
-            user_id INTEGER NOT NULL,
-            original_name TEXT NOT NULL,
-            filename TEXT NOT NULL,
-            file_path TEXT NOT NULL,
-            mime_type TEXT NOT NULL,
-            file_size INTEGER NOT NULL,
-            created_at REAL NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-        )""")
-        # ===== END ISOLATED SECTION: FILES =====
+            # ===== ISOLATED SECTION: FILE UPLOAD SYSTEM =====
+            await db.execute("""CREATE TABLE IF NOT EXISTS files (
+                id TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                original_name TEXT NOT NULL,
+                filename TEXT NOT NULL,
+                file_path TEXT NOT NULL,
+                mime_type TEXT NOT NULL,
+                file_size INTEGER NOT NULL,
+                created_at REAL NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+            )""")
+            
+            # Create index for files
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_files_user_id ON files(user_id)")
+            # ===== END ISOLATED SECTION: FILES =====
 
-        # ===== ISOLATED SECTION: TAGS SYSTEM =====
-        await DB._execute("""CREATE TABLE IF NOT EXISTS tags (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE NOT NULL,
-            created_at REAL NOT NULL
-        )""")
-        await DB._execute("""CREATE TABLE IF NOT EXISTS post_tags (
-            post_id INTEGER NOT NULL,
-            tag_id INTEGER NOT NULL,
-            PRIMARY KEY (post_id, tag_id),
-            FOREIGN KEY (post_id) REFERENCES posts (id) ON DELETE CASCADE,
-            FOREIGN KEY (tag_id) REFERENCES tags (id) ON DELETE CASCADE
-        )""")
-        # ===== END ISOLATED SECTION: TAGS =====
+            # ===== ISOLATED SECTION: TAGS SYSTEM =====
+            await db.execute("""CREATE TABLE IF NOT EXISTS tags (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE NOT NULL,
+                created_at REAL NOT NULL
+            )""")
+            await db.execute("""CREATE TABLE IF NOT EXISTS post_tags (
+                post_id INTEGER NOT NULL,
+                tag_id INTEGER NOT NULL,
+                PRIMARY KEY (post_id, tag_id),
+                FOREIGN KEY (post_id) REFERENCES posts (id) ON DELETE CASCADE,
+                FOREIGN KEY (tag_id) REFERENCES tags (id) ON DELETE CASCADE
+            )""")
+            
+            # Create indices for tags
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_post_tags_post_id ON post_tags(post_id)")
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_post_tags_tag_id ON post_tags(tag_id)")
+            # ===== END ISOLATED SECTION: TAGS =====
 
-        # ===== ISOLATED SECTION: EDIT PROPOSALS SYSTEM =====
-        await DB._execute("""CREATE TABLE IF NOT EXISTS post_edit_proposals (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            post_id INTEGER NOT NULL,
-            proposer_name TEXT,
-            proposer_email TEXT,
-            title TEXT NOT NULL,
-            content TEXT NOT NULL,
-            reason TEXT,
-            status TEXT DEFAULT 'pending',
-            created_at REAL NOT NULL,
-            reviewed_at REAL,
-            reviewed_by INTEGER,
-            FOREIGN KEY (post_id) REFERENCES posts (id) ON DELETE CASCADE,
-            FOREIGN KEY (reviewed_by) REFERENCES users (id)
-        )""")
-        # ===== END ISOLATED SECTION: EDIT PROPOSALS =====
+            # ===== ISOLATED SECTION: EDIT PROPOSALS SYSTEM =====
+            await db.execute("""CREATE TABLE IF NOT EXISTS post_edit_proposals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                post_id INTEGER NOT NULL,
+                proposer_name TEXT,
+                proposer_email TEXT,
+                title TEXT NOT NULL,
+                content TEXT NOT NULL,
+                reason TEXT,
+                status TEXT DEFAULT 'pending',
+                created_at REAL NOT NULL,
+                reviewed_at REAL,
+                reviewed_by INTEGER,
+                FOREIGN KEY (post_id) REFERENCES posts (id) ON DELETE CASCADE,
+                FOREIGN KEY (reviewed_by) REFERENCES users (id)
+            )""")
+            
+            # Create index for proposals
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_proposals_post_id ON post_edit_proposals(post_id)")
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_proposals_status ON post_edit_proposals(status)")
+            # ===== END ISOLATED SECTION: EDIT PROPOSALS =====
 
-        # ===== ISOLATED SECTION: SEARCH INDICES =====
-        # Create FTS virtual table for full-text search
-        await DB._execute("""CREATE VIRTUAL TABLE IF NOT EXISTS posts_fts USING fts5(
-            title, content, username, tags, content=posts
-        )""")
-        # ===== END ISOLATED SECTION: SEARCH =====
+            # ===== ISOLATED SECTION: SEARCH INDICES =====
+            # Create FTS virtual table for full-text search
+            try:
+                await db.execute("""CREATE VIRTUAL TABLE IF NOT EXISTS posts_fts USING fts5(
+                    title, content, username, tags,
+                    content='',
+                    tokenize='porter'
+                )""")
+                logger.info("FTS5 table created successfully")
+            except Exception as e:
+                logger.error(f"Failed to create FTS5 table: {e}")
+                
+            # Create triggers to keep FTS table in sync
+            await db.execute("""
+                CREATE TRIGGER IF NOT EXISTS posts_fts_insert AFTER INSERT ON posts BEGIN
+                    INSERT INTO posts_fts(rowid, title, content, username, tags) 
+                    SELECT NEW.id, NEW.title, NEW.content, 
+                           (SELECT username FROM users WHERE id = NEW.user_id),
+                           (SELECT GROUP_CONCAT(t.name, ' ') FROM tags t 
+                            JOIN post_tags pt ON t.id = pt.tag_id 
+                            WHERE pt.post_id = NEW.id);
+                END
+            """)
+            
+            await db.execute("""
+                CREATE TRIGGER IF NOT EXISTS posts_fts_update AFTER UPDATE ON posts BEGIN
+                    UPDATE posts_fts SET 
+                        title = NEW.title, 
+                        content = NEW.content, 
+                        username = (SELECT username FROM users WHERE id = NEW.user_id),
+                        tags = (SELECT GROUP_CONCAT(t.name, ' ') FROM tags t 
+                                JOIN post_tags pt ON t.id = pt.tag_id 
+                                WHERE pt.post_id = NEW.id)
+                    WHERE rowid = NEW.id;
+                END
+            """)
+            
+            await db.execute("""
+                CREATE TRIGGER IF NOT EXISTS posts_fts_delete AFTER DELETE ON posts BEGIN
+                    DELETE FROM posts_fts WHERE rowid = OLD.id;
+                END
+            """)
+            
+            # Trigger for tag updates
+            await db.execute("""
+                CREATE TRIGGER IF NOT EXISTS posts_fts_tag_update AFTER INSERT ON post_tags BEGIN
+                    UPDATE posts_fts SET 
+                        tags = (SELECT GROUP_CONCAT(t.name, ' ') FROM tags t 
+                                JOIN post_tags pt ON t.id = pt.tag_id 
+                                WHERE pt.post_id = NEW.post_id)
+                    WHERE rowid = NEW.post_id;
+                END
+            """)
+            # ===== END ISOLATED SECTION: SEARCH =====
+
+            # Create session cleanup index
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at)")
+            
+            await db.commit()
+            logger.info("Database initialization completed")
     
     @staticmethod
     async def create_user(username, salt, password_hash):
@@ -203,32 +284,20 @@ class DB:
     
     @staticmethod
     async def cleanup_sessions():
-        await DB._execute("DELETE FROM sessions WHERE expires_at < ?", (time.time(),))
+        result = await DB._execute("DELETE FROM sessions WHERE expires_at < ?", (time.time(),))
+        logger.info(f"Cleaned up expired sessions")
 
     # ===== ISOLATED SECTION: POSTS ENDPOINTS AND POSTS DATABASE IMPLEMENTATION =====
     @staticmethod
     async def create_post(user_id, title, content):
         """Create a new post for the specified user"""
         async with aiosqlite.connect(DB_PATH) as db:
-            db.row_factory = aiosqlite.Row
             cursor = await db.execute(
                 "INSERT INTO posts (user_id, title, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?)", 
                 (user_id, title, content, time.time(), time.time())
             )
-            post_id = cursor.lastrowid
-            
-            # Get username for FTS index
-            user_result = await db.execute("SELECT username FROM users WHERE id = ?", (user_id,))
-            user_row = await user_result.fetchone()
-            username = user_row['username'] if user_row else ''
-            
-            # Update FTS index
-            await db.execute(
-                "INSERT INTO posts_fts(rowid, title, content, username) VALUES (?, ?, ?, ?)",
-                (post_id, title, content, username)
-            )
             await db.commit()
-            return post_id
+            return cursor.lastrowid
     
     @staticmethod
     async def get_post_by_id(post_id):
@@ -292,21 +361,6 @@ class DB:
             
             query = f"UPDATE posts SET {', '.join(updates)} WHERE id = ?"
             await db.execute(query, params)
-            
-            # Update FTS index - get current post data
-            post_data = await db.execute("""
-                SELECT p.title, p.content, u.username 
-                FROM posts p JOIN users u ON p.user_id = u.id 
-                WHERE p.id = ?
-            """, (post_id,))
-            current_post = await post_data.fetchone()
-            
-            if current_post:
-                await db.execute(
-                    "UPDATE posts_fts SET title = ?, content = ?, username = ? WHERE rowid = ?",
-                    (current_post[0], current_post[1], current_post[2], post_id)
-                )
-            
             await db.commit()
             return True
     
@@ -316,12 +370,8 @@ class DB:
         async with aiosqlite.connect(DB_PATH) as db:
             # Verify ownership and delete in one query
             result = await db.execute("DELETE FROM posts WHERE id = ? AND user_id = ?", (post_id, user_id))
-            if result.rowcount > 0:
-                # Remove from FTS index
-                await db.execute("DELETE FROM posts_fts WHERE rowid = ?", (post_id,))
-                await db.commit()
-                return True
-            return False
+            await db.commit()
+            return result.rowcount > 0
     
     @staticmethod
     async def get_posts_count():
@@ -469,21 +519,6 @@ class DB:
         """, (post_id,), 'all')
 
     @staticmethod
-    async def add_tag_to_post(post_id, tag_id):
-        """Add a tag to a post"""
-        try:
-            await DB._execute("INSERT INTO post_tags (post_id, tag_id) VALUES (?, ?)", (post_id, tag_id))
-            return True
-        except aiosqlite.IntegrityError:
-            return False  # Tag already associated with post
-
-    @staticmethod
-    async def remove_tag_from_post(post_id, tag_id):
-        """Remove a tag from a post"""
-        result = await DB._execute("DELETE FROM post_tags WHERE post_id = ? AND tag_id = ?", (post_id, tag_id))
-        return True
-
-    @staticmethod
     async def update_post_tags(post_id, tag_names):
         """Update all tags for a post"""
         async with aiosqlite.connect(DB_PATH) as db:
@@ -577,25 +612,47 @@ class DB:
     @staticmethod
     async def search_posts(query, limit=50, offset=0):
         """Full-text search across posts"""
-        return await DB._execute("""
-            SELECT p.*, u.username, 
-                   snippet(posts_fts, 1, '<mark>', '</mark>', '...', 32) as content_snippet
-            FROM posts_fts 
-            JOIN posts p ON posts_fts.rowid = p.id 
-            JOIN users u ON p.user_id = u.id 
-            WHERE posts_fts MATCH ? 
-            ORDER BY rank 
-            LIMIT ? OFFSET ?
-        """, (query, limit, offset), 'all')
+        try:
+            return await DB._execute("""
+                SELECT p.*, u.username, 
+                       snippet(posts_fts, 1, '<mark>', '</mark>', '...', 32) as content_snippet,
+                       bm25(posts_fts) as rank
+                FROM posts_fts 
+                JOIN posts p ON posts_fts.rowid = p.id 
+                JOIN users u ON p.user_id = u.id 
+                WHERE posts_fts MATCH ? 
+                ORDER BY rank 
+                LIMIT ? OFFSET ?
+            """, (query, limit, offset), 'all')
+        except Exception as e:
+            logger.error(f"Search error: {e}")
+            # Fallback to simple LIKE search
+            return await DB._execute("""
+                SELECT p.*, u.username, '' as content_snippet, 0 as rank
+                FROM posts p 
+                JOIN users u ON p.user_id = u.id 
+                WHERE p.title LIKE ? OR p.content LIKE ?
+                ORDER BY p.created_at DESC 
+                LIMIT ? OFFSET ?
+            """, (f'%{query}%', f'%{query}%', limit, offset), 'all')
 
     @staticmethod
     async def search_posts_count(query):
         """Get total count of search results"""
-        result = await DB._execute(
-            "SELECT COUNT(*) as count FROM posts_fts WHERE posts_fts MATCH ?",
-            (query,), 'one'
-        )
-        return result['count'] if result else 0
+        try:
+            result = await DB._execute(
+                "SELECT COUNT(*) as count FROM posts_fts WHERE posts_fts MATCH ?",
+                (query,), 'one'
+            )
+            return result['count'] if result else 0
+        except Exception as e:
+            logger.error(f"Search count error: {e}")
+            # Fallback to simple LIKE search count
+            result = await DB._execute(
+                "SELECT COUNT(*) as count FROM posts WHERE title LIKE ? OR content LIKE ?",
+                (f'%{query}%', f'%{query}%'), 'one'
+            )
+            return result['count'] if result else 0
     # ===== END ISOLATED SECTION: SEARCH =====
 
 # Async password functions - single line implementations
@@ -630,12 +687,31 @@ def check_ssl_certificates():
     
     return None, None
 
+def validate_input(data, required_fields, max_lengths=None):
+    """Validate input data"""
+    errors = []
+    
+    for field in required_fields:
+        if field not in data or not data[field] or not str(data[field]).strip():
+            errors.append(f"{field} is required")
+    
+    if max_lengths:
+        for field, max_len in max_lengths.items():
+            if field in data and len(str(data[field])) > max_len:
+                errors.append(f"{field} too long (max {max_len} chars)")
+    
+    return errors
+
 @web.middleware
 async def cors_middleware(request, handler):
     if request.method == 'OPTIONS':
         response = web.Response()
     else:
-        response = await handler(request)
+        try:
+            response = await handler(request)
+        except Exception as e:
+            logger.error(f"Request error: {e}")
+            response = web.json_response({'error': 'Internal server error'}, status=500)
     
     response.headers['Access-Control-Allow-Origin'] = '*'
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
@@ -647,12 +723,12 @@ def require_auth(handler):
     async def wrapper(request):
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
-            return web.Response(text='Unauthorized', status=401)
+            return web.json_response({'error': 'Unauthorized'}, status=401)
         
         token = auth_header[7:]
         user = await DB.get_user_by_token(token)
         if not user:
-            return web.Response(text='Invalid token', status=401)
+            return web.json_response({'error': 'Invalid token'}, status=401)
         
         request['user'] = user
         request['token'] = token
@@ -675,30 +751,47 @@ def optional_auth(handler):
 async def post_register(request):
     try:
         data = await request.json()
-        username, password = data['username'], data['password']
+        username = str(data.get('username', '')).strip()
+        password = str(data.get('password', '')).strip()
         
-        if len(username) < 3 or len(password) < 6:
-            return web.json_response({'error': 'Username min 3 chars, password min 6'}, status=400)
+        # Validate input
+        errors = validate_input(data, ['username', 'password'])
+        if len(username) < 3:
+            errors.append('Username must be at least 3 characters')
+        if len(password) < 6:
+            errors.append('Password must be at least 6 characters')
+        if len(username) > 50:
+            errors.append('Username too long (max 50 chars)')
+        
+        if errors:
+            return web.json_response({'error': '; '.join(errors)}, status=400)
         
         if await DB.user_exists(username):
-            return web.json_response({'error': 'User exists'}, status=400)
+            return web.json_response({'error': 'Username already exists'}, status=400)
         
         salt, hash_val = await hash_password(password)
         user_id = await DB.create_user(username, salt, hash_val)
         
         return web.json_response({
-            'message': 'User created',
+            'message': 'User created successfully',
             'user_id': user_id,
             'username': username
         })
     
-    except (KeyError, json.JSONDecodeError):
-        return web.json_response({'error': 'Invalid request'}, status=400)
+    except (KeyError, json.JSONDecodeError, ValueError):
+        return web.json_response({'error': 'Invalid request format'}, status=400)
+    except Exception as e:
+        logger.error(f"Registration error: {e}")
+        return web.json_response({'error': 'Registration failed'}, status=500)
 
 async def get_checkusername(request):
-    username = request.query.get('username')
+    username = request.query.get('username', '').strip()
     if not username:
-        return web.json_response({'error': 'Username required'}, status=400)
+        return web.json_response({'error': 'Username parameter required'}, status=400)
+    
+    if len(username) < 3 or len(username) > 50:
+        return web.json_response({'available': False, 'reason': 'Invalid length'})
+    
     exists = await DB.user_exists(username)
     return web.json_response({'available': not exists})
 
@@ -706,30 +799,43 @@ async def get_checkusername(request):
 async def put_changepassword(request):
     try:
         data = await request.json()
-        current_password, new_password = data['current_password'], data['new_password']
+        current_password = str(data.get('current_password', '')).strip()
+        new_password = str(data.get('new_password', '')).strip()
+        
+        errors = validate_input(data, ['current_password', 'new_password'])
+        if len(new_password) < 6:
+            errors.append('New password must be at least 6 characters')
+        
+        if errors:
+            return web.json_response({'error': '; '.join(errors)}, status=400)
         
         user = request['user']
         if not await verify_password(current_password, user['salt'], user['password_hash']):
-            return web.json_response({'error': 'Current password incorrect'}, status=400)
-        
-        if len(new_password) < 6:
-            return web.json_response({'error': 'New password min 6 chars'}, status=400)
+            return web.json_response({'error': 'Current password is incorrect'}, status=400)
         
         salt, hash_val = await hash_password(new_password)
         await DB.update_user_password(user['id'], salt, hash_val)
-        return web.json_response({'message': 'Password changed'})
+        return web.json_response({'message': 'Password changed successfully'})
     
-    except (KeyError, json.JSONDecodeError):
-        return web.json_response({'error': 'Invalid request'}, status=400)
+    except (KeyError, json.JSONDecodeError, ValueError):
+        return web.json_response({'error': 'Invalid request format'}, status=400)
+    except Exception as e:
+        logger.error(f"Password change error: {e}")
+        return web.json_response({'error': 'Password change failed'}, status=500)
 
 async def post_login(request):
     try:
         data = await request.json()
-        username, password = data['username'], data['password']
+        username = str(data.get('username', '')).strip()
+        password = str(data.get('password', '')).strip()
+        
+        errors = validate_input(data, ['username', 'password'])
+        if errors:
+            return web.json_response({'error': '; '.join(errors)}, status=400)
         
         user = await DB.get_user_by_username(username)
         if not user or not await verify_password(password, user['salt'], user['password_hash']):
-            return web.json_response({'error': 'Invalid credentials'}, status=401)
+            return web.json_response({'error': 'Invalid username or password'}, status=401)
         
         token = generate_token()
         await DB.create_session(token, user['id'], time.time() + 3600, request.remote, request.headers.get('User-Agent'))
@@ -742,14 +848,17 @@ async def post_login(request):
             'username': user['username']
         })
     
-    except (KeyError, json.JSONDecodeError):
-        return web.json_response({'error': 'Invalid request'}, status=400)
+    except (KeyError, json.JSONDecodeError, ValueError):
+        return web.json_response({'error': 'Invalid request format'}, status=400)
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        return web.json_response({'error': 'Login failed'}, status=500)
 
 async def post_logout(request):
     auth_header = request.headers.get('Authorization')
     if auth_header and auth_header.startswith('Bearer '):
         await DB.delete_session(auth_header[7:])
-    return web.json_response({'message': 'Logged out'})
+    return web.json_response({'message': 'Logged out successfully'})
 
 @require_auth
 async def get_profile(request):
@@ -771,7 +880,7 @@ async def get_users_id(request):
     try:
         user_id = int(request.match_info['id'])
     except ValueError:
-        return web.json_response({'error': 'Invalid user ID'}, status=400)
+        return web.json_response({'error': 'Invalid user ID format'}, status=400)
     
     user = await DB.get_user_by_id(user_id)
     if not user:
@@ -791,24 +900,18 @@ async def delete_users_id(request):
     try:
         user_id = int(request.match_info['id'])
     except ValueError:
-        return web.json_response({'error': 'Invalid user ID'}, status=400)
-    
-    print(f"🗑️  Delete request: current_user_id={current_user['id']}, target_id={user_id}")
+        return web.json_response({'error': 'Invalid user ID format'}, status=400)
     
     # Check if the current user is trying to delete themselves
     if current_user['id'] != user_id:
-        print(f"❌ User {current_user['id']} cannot delete user {user_id}")
         return web.json_response({'error': 'Forbidden: Can only delete your own account'}, status=403)
     
-    print(f"✅ Deleting user {user_id}")
     deleted = await DB.delete_user(user_id)
     
     if not deleted:
-        print(f"❌ User {user_id} not found")
         return web.json_response({'error': 'User not found'}, status=404)
     
-    print(f"✅ User {user_id} deleted successfully")
-    return web.json_response({'message': 'User deleted'})
+    return web.json_response({'message': 'User account deleted successfully'})
 
 # ===== ISOLATED SECTION: POSTS ENDPOINTS AND POSTS DATABASE IMPLEMENTATION =====
 @require_auth
@@ -816,34 +919,39 @@ async def post_posts(request):
     """Create a new post"""
     try:
         data = await request.json()
-        title = data.get('title', '').strip()
-        content = data.get('content', '').strip()
+        title = str(data.get('title', '')).strip()
+        content = str(data.get('content', '')).strip()
         tags = data.get('tags', [])
         
-        if not title or not content:
-            return web.json_response({'error': 'Title and content are required'}, status=400)
+        # Validate input
+        errors = validate_input(data, ['title', 'content'], {
+            'title': 200, 
+            'content': 50000
+        })
         
-        if len(title) > 200:
-            return web.json_response({'error': 'Title too long (max 200 chars)'}, status=400)
-        
-        if len(content) > 50000:
-            return web.json_response({'error': 'Content too long (max 50000 chars)'}, status=400)
+        if errors:
+            return web.json_response({'error': '; '.join(errors)}, status=400)
         
         user = request['user']
         post_id = await DB.create_post(user['id'], title, content)
         
         # Add tags if provided
-        if tags:
-            await DB.update_post_tags(post_id, tags)
+        if tags and isinstance(tags, list):
+            valid_tags = [tag.strip() for tag in tags if isinstance(tag, str) and tag.strip()]
+            if valid_tags:
+                await DB.update_post_tags(post_id, valid_tags)
         
         return web.json_response({
-            'message': 'Post created',
+            'message': 'Post created successfully',
             'post_id': post_id,
             'title': title
         }, status=201)
     
-    except (KeyError, json.JSONDecodeError):
-        return web.json_response({'error': 'Invalid request'}, status=400)
+    except (KeyError, json.JSONDecodeError, ValueError):
+        return web.json_response({'error': 'Invalid request format'}, status=400)
+    except Exception as e:
+        logger.error(f"Post creation error: {e}")
+        return web.json_response({'error': 'Failed to create post'}, status=500)
 
 @optional_auth
 async def get_posts(request):
@@ -861,13 +969,15 @@ async def get_posts(request):
             total_count = await DB.get_posts_count()
         
         # Add tags to each post
+        posts_with_tags = []
         for post in posts:
             post_dict = dict(post)
             tags = await DB.get_tags_by_post(post_dict['id'])
             post_dict['tags'] = [dict(tag) for tag in tags]
+            posts_with_tags.append(post_dict)
         
         return web.json_response({
-            'posts': [dict(post) for post in posts],
+            'posts': posts_with_tags,
             'pagination': {
                 'limit': limit,
                 'offset': offset,
@@ -878,6 +988,9 @@ async def get_posts(request):
     
     except ValueError:
         return web.json_response({'error': 'Invalid pagination parameters'}, status=400)
+    except Exception as e:
+        logger.error(f"Get posts error: {e}")
+        return web.json_response({'error': 'Failed to retrieve posts'}, status=500)
 
 @optional_auth
 async def get_posts_id(request):
@@ -885,7 +998,7 @@ async def get_posts_id(request):
     try:
         post_id = int(request.match_info['id'])
     except ValueError:
-        return web.json_response({'error': 'Invalid post ID'}, status=400)
+        return web.json_response({'error': 'Invalid post ID format'}, status=400)
     
     post = await DB.get_post_by_id(post_id)
     if not post:
@@ -905,15 +1018,19 @@ async def put_posts_id(request):
         post_id = int(request.match_info['id'])
         data = await request.json()
         
-        title = data.get('title', '').strip() if 'title' in data else None
-        content = data.get('content', '').strip() if 'content' in data else None
+        title = str(data.get('title', '')).strip() if 'title' in data else None
+        content = str(data.get('content', '')).strip() if 'content' in data else None
         tags = data.get('tags', None)
         
+        # Validate input
+        errors = []
         if title is not None and (not title or len(title) > 200):
-            return web.json_response({'error': 'Invalid title (1-200 chars)'}, status=400)
-        
+            errors.append('Invalid title (1-200 chars)')
         if content is not None and (not content or len(content) > 50000):
-            return web.json_response({'error': 'Invalid content (1-50000 chars)'}, status=400)
+            errors.append('Invalid content (1-50000 chars)')
+        
+        if errors:
+            return web.json_response({'error': '; '.join(errors)}, status=400)
         
         user = request['user']
         updated = await DB.update_post(post_id, user['id'], title, content)
@@ -922,15 +1039,19 @@ async def put_posts_id(request):
             return web.json_response({'error': 'Post not found or unauthorized'}, status=404)
         
         # Update tags if provided
-        if tags is not None:
-            await DB.update_post_tags(post_id, tags)
+        if tags is not None and isinstance(tags, list):
+            valid_tags = [tag.strip() for tag in tags if isinstance(tag, str) and tag.strip()]
+            await DB.update_post_tags(post_id, valid_tags)
         
-        return web.json_response({'message': 'Post updated'})
+        return web.json_response({'message': 'Post updated successfully'})
     
     except ValueError:
-        return web.json_response({'error': 'Invalid post ID'}, status=400)
+        return web.json_response({'error': 'Invalid post ID format'}, status=400)
     except (KeyError, json.JSONDecodeError):
-        return web.json_response({'error': 'Invalid request'}, status=400)
+        return web.json_response({'error': 'Invalid request format'}, status=400)
+    except Exception as e:
+        logger.error(f"Post update error: {e}")
+        return web.json_response({'error': 'Failed to update post'}, status=500)
 
 @require_auth
 async def delete_posts_id(request):
@@ -938,7 +1059,7 @@ async def delete_posts_id(request):
     try:
         post_id = int(request.match_info['id'])
     except ValueError:
-        return web.json_response({'error': 'Invalid post ID'}, status=400)
+        return web.json_response({'error': 'Invalid post ID format'}, status=400)
     
     user = request['user']
     deleted = await DB.delete_post(post_id, user['id'])
@@ -946,7 +1067,7 @@ async def delete_posts_id(request):
     if not deleted:
         return web.json_response({'error': 'Post not found or unauthorized'}, status=404)
     
-    return web.json_response({'message': 'Post deleted'})
+    return web.json_response({'message': 'Post deleted successfully'})
 
 @require_auth
 async def get_posts_my(request):
@@ -959,8 +1080,16 @@ async def get_posts_my(request):
         posts = await DB.get_posts_by_user(user['id'], limit, offset)
         total_count = await DB.get_user_posts_count(user['id'])
         
+        # Add tags to each post
+        posts_with_tags = []
+        for post in posts:
+            post_dict = dict(post)
+            tags = await DB.get_tags_by_post(post_dict['id'])
+            post_dict['tags'] = [dict(tag) for tag in tags]
+            posts_with_tags.append(post_dict)
+        
         return web.json_response({
-            'posts': [dict(post) for post in posts],
+            'posts': posts_with_tags,
             'pagination': {
                 'limit': limit,
                 'offset': offset,
@@ -971,11 +1100,18 @@ async def get_posts_my(request):
     
     except ValueError:
         return web.json_response({'error': 'Invalid pagination parameters'}, status=400)
+    except Exception as e:
+        logger.error(f"Get my posts error: {e}")
+        return web.json_response({'error': 'Failed to retrieve posts'}, status=500)
 
 async def get_posts_stats(request):
     """Get post statistics for sidebar"""
-    stats = await DB.get_posts_stats()
-    return web.json_response({'stats': [dict(stat) for stat in stats]})
+    try:
+        stats = await DB.get_posts_stats()
+        return web.json_response({'stats': [dict(stat) for stat in stats]})
+    except Exception as e:
+        logger.error(f"Get stats error: {e}")
+        return web.json_response({'error': 'Failed to retrieve statistics'}, status=500)
 # ===== END ISOLATED SECTION: POSTS =====
 
 # ===== ISOLATED SECTION: COMMENTS SYSTEM =====
@@ -985,27 +1121,34 @@ async def post_posts_id_comments(request):
     try:
         post_id = int(request.match_info['id'])
         data = await request.json()
-        content = data.get('content', '').strip()
+        content = str(data.get('content', '')).strip()
         parent_comment_id = data.get('parent_comment_id')
         
-        if not content:
-            return web.json_response({'error': 'Content is required'}, status=400)
+        errors = validate_input(data, ['content'], {'content': 5000})
+        if errors:
+            return web.json_response({'error': '; '.join(errors)}, status=400)
         
-        if len(content) > 5000:
-            return web.json_response({'error': 'Content too long (max 5000 chars)'}, status=400)
+        if parent_comment_id is not None:
+            try:
+                parent_comment_id = int(parent_comment_id)
+            except ValueError:
+                return web.json_response({'error': 'Invalid parent comment ID'}, status=400)
         
         user = request['user']
         comment_id = await DB.create_comment(post_id, user['id'], content, parent_comment_id)
         
         return web.json_response({
-            'message': 'Comment created',
+            'message': 'Comment created successfully',
             'comment_id': comment_id
         }, status=201)
     
     except ValueError:
-        return web.json_response({'error': 'Invalid post ID'}, status=400)
+        return web.json_response({'error': 'Invalid post ID format'}, status=400)
     except (KeyError, json.JSONDecodeError):
-        return web.json_response({'error': 'Invalid request'}, status=400)
+        return web.json_response({'error': 'Invalid request format'}, status=400)
+    except Exception as e:
+        logger.error(f"Comment creation error: {e}")
+        return web.json_response({'error': 'Failed to create comment'}, status=500)
 
 @optional_auth
 async def get_posts_id_comments(request):
@@ -1013,27 +1156,31 @@ async def get_posts_id_comments(request):
     try:
         post_id = int(request.match_info['id'])
     except ValueError:
-        return web.json_response({'error': 'Invalid post ID'}, status=400)
+        return web.json_response({'error': 'Invalid post ID format'}, status=400)
     
-    comments = await DB.get_comments_by_post(post_id)
-    
-    # Build nested structure
-    comment_dict = {}
-    root_comments = []
-    
-    for comment in comments:
-        comment_data = dict(comment)
-        comment_data['replies'] = []
-        comment_dict[comment_data['id']] = comment_data
+    try:
+        comments = await DB.get_comments_by_post(post_id)
         
-        if comment_data['parent_comment_id'] is None:
-            root_comments.append(comment_data)
-        else:
-            parent = comment_dict.get(comment_data['parent_comment_id'])
-            if parent:
-                parent['replies'].append(comment_data)
-    
-    return web.json_response({'comments': root_comments})
+        # Build nested structure
+        comment_dict = {}
+        root_comments = []
+        
+        for comment in comments:
+            comment_data = dict(comment)
+            comment_data['replies'] = []
+            comment_dict[comment_data['id']] = comment_data
+            
+            if comment_data['parent_comment_id'] is None:
+                root_comments.append(comment_data)
+            else:
+                parent = comment_dict.get(comment_data['parent_comment_id'])
+                if parent:
+                    parent['replies'].append(comment_data)
+        
+        return web.json_response({'comments': root_comments})
+    except Exception as e:
+        logger.error(f"Get comments error: {e}")
+        return web.json_response({'error': 'Failed to retrieve comments'}, status=500)
 
 @require_auth
 async def put_comments_id(request):
@@ -1041,13 +1188,11 @@ async def put_comments_id(request):
     try:
         comment_id = int(request.match_info['id'])
         data = await request.json()
-        content = data.get('content', '').strip()
+        content = str(data.get('content', '')).strip()
         
-        if not content:
-            return web.json_response({'error': 'Content is required'}, status=400)
-        
-        if len(content) > 5000:
-            return web.json_response({'error': 'Content too long (max 5000 chars)'}, status=400)
+        errors = validate_input(data, ['content'], {'content': 5000})
+        if errors:
+            return web.json_response({'error': '; '.join(errors)}, status=400)
         
         user = request['user']
         updated = await DB.update_comment(comment_id, user['id'], content)
@@ -1055,12 +1200,15 @@ async def put_comments_id(request):
         if not updated:
             return web.json_response({'error': 'Comment not found or unauthorized'}, status=404)
         
-        return web.json_response({'message': 'Comment updated'})
+        return web.json_response({'message': 'Comment updated successfully'})
     
     except ValueError:
-        return web.json_response({'error': 'Invalid comment ID'}, status=400)
+        return web.json_response({'error': 'Invalid comment ID format'}, status=400)
     except (KeyError, json.JSONDecodeError):
-        return web.json_response({'error': 'Invalid request'}, status=400)
+        return web.json_response({'error': 'Invalid request format'}, status=400)
+    except Exception as e:
+        logger.error(f"Comment update error: {e}")
+        return web.json_response({'error': 'Failed to update comment'}, status=500)
 
 @require_auth
 async def delete_comments_id(request):
@@ -1068,7 +1216,7 @@ async def delete_comments_id(request):
     try:
         comment_id = int(request.match_info['id'])
     except ValueError:
-        return web.json_response({'error': 'Invalid comment ID'}, status=400)
+        return web.json_response({'error': 'Invalid comment ID format'}, status=400)
     
     user = request['user']
     deleted = await DB.delete_comment(comment_id, user['id'])
@@ -1076,7 +1224,7 @@ async def delete_comments_id(request):
     if not deleted:
         return web.json_response({'error': 'Comment not found or unauthorized'}, status=404)
     
-    return web.json_response({'message': 'Comment deleted'})
+    return web.json_response({'message': 'Comment deleted successfully'})
 # ===== END ISOLATED SECTION: COMMENTS =====
 
 # ===== ISOLATED SECTION: FILE UPLOAD SYSTEM =====
@@ -1094,9 +1242,17 @@ async def post_files(request):
         if not filename:
             return web.json_response({'error': 'Filename required'}, status=400)
         
+        # Validate file type
+        allowed_types = {
+            'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+            'video/mp4', 'video/webm', 'video/quicktime',
+            'application/pdf', 'text/plain', 'text/markdown',
+            'application/json', 'text/csv'
+        }
+        
         # Generate unique file ID and path
         file_id = str(uuid.uuid4())
-        file_ext = Path(filename).suffix
+        file_ext = Path(filename).suffix.lower()
         unique_filename = f"{file_id}{file_ext}"
         
         # Create year/month directory structure
@@ -1107,21 +1263,23 @@ async def post_files(request):
         
         file_path = upload_path / unique_filename
         
-        # Save file
+        # Save file with size limit
         size = 0
+        max_size = 50 * 1024 * 1024  # 50MB
+        
         with open(file_path, 'wb') as f:
             while True:
                 chunk = await field.read_chunk()
                 if not chunk:
                     break
                 size += len(chunk)
-                f.write(chunk)
                 
-                # Limit file size to 50MB
-                if size > 50 * 1024 * 1024:
+                if size > max_size:
                     f.close()
                     file_path.unlink()  # Delete partial file
                     return web.json_response({'error': 'File too large (max 50MB)'}, status=400)
+                
+                f.write(chunk)
         
         # Determine MIME type
         mime_type, _ = mimetypes.guess_type(filename)
@@ -1133,14 +1291,16 @@ async def post_files(request):
         await DB.create_file(file_id, user['id'], filename, unique_filename, str(file_path), mime_type, size)
         
         return web.json_response({
-            'message': 'File uploaded',
+            'message': 'File uploaded successfully',
             'file_id': file_id,
             'filename': filename,
             'size': size,
-            'mime_type': mime_type
+            'mime_type': mime_type,
+            'url': f'/files/{file_id}'
         }, status=201)
     
     except Exception as e:
+        logger.error(f"File upload error: {e}")
         return web.json_response({'error': f'Upload failed: {str(e)}'}, status=500)
 
 async def get_files_id(request):
@@ -1158,11 +1318,16 @@ async def get_files_id(request):
     if not file_path.exists():
         return web.json_response({'error': 'File not found on disk'}, status=404)
     
+    # Determine if file should be inline or attachment
+    inline_types = {'image/', 'text/', 'application/pdf', 'video/'}
+    disposition = 'inline' if any(file_record['mime_type'].startswith(t) for t in inline_types) else 'attachment'
+    
     response = web.FileResponse(
         file_path,
         headers={
             'Content-Type': file_record['mime_type'],
-            'Content-Disposition': f'inline; filename="{file_record["original_name"]}"'
+            'Content-Disposition': f'{disposition}; filename="{file_record["original_name"]}"',
+            'Cache-Control': 'public, max-age=86400'  # Cache for 1 day
         }
     )
     return response
@@ -1189,9 +1354,12 @@ async def delete_files_id(request):
     # Delete actual file
     file_path = Path(file_record['file_path'])
     if file_path.exists():
-        file_path.unlink()
+        try:
+            file_path.unlink()
+        except Exception as e:
+            logger.error(f"Failed to delete file {file_path}: {e}")
     
-    return web.json_response({'message': 'File deleted'})
+    return web.json_response({'message': 'File deleted successfully'})
 
 @require_auth
 async def get_files_my(request):
@@ -1203,43 +1371,55 @@ async def get_files_my(request):
         user = request['user']
         files = await DB.get_files_by_user(user['id'], limit, offset)
         
-        return web.json_response({
-            'files': [dict(file) for file in files]
-        })
+        files_list = []
+        for file in files:
+            file_dict = dict(file)
+            file_dict['url'] = f'/files/{file_dict["id"]}'
+            files_list.append(file_dict)
+        
+        return web.json_response({'files': files_list})
     
     except ValueError:
         return web.json_response({'error': 'Invalid pagination parameters'}, status=400)
+    except Exception as e:
+        logger.error(f"Get my files error: {e}")
+        return web.json_response({'error': 'Failed to retrieve files'}, status=500)
 # ===== END ISOLATED SECTION: FILES =====
 
 # ===== ISOLATED SECTION: TAGS SYSTEM =====
 async def get_tags(request):
     """Get all tags"""
-    tags = await DB.get_all_tags()
-    return web.json_response({'tags': [dict(tag) for tag in tags]})
+    try:
+        tags = await DB.get_all_tags()
+        return web.json_response({'tags': [dict(tag) for tag in tags]})
+    except Exception as e:
+        logger.error(f"Get tags error: {e}")
+        return web.json_response({'error': 'Failed to retrieve tags'}, status=500)
 
 @require_auth
 async def post_tags(request):
     """Create a new tag"""
     try:
         data = await request.json()
-        name = data.get('name', '').strip().lower()
+        name = str(data.get('name', '')).strip().lower()
         
-        if not name:
-            return web.json_response({'error': 'Tag name is required'}, status=400)
-        
-        if len(name) > 50:
-            return web.json_response({'error': 'Tag name too long (max 50 chars)'}, status=400)
+        errors = validate_input(data, ['name'], {'name': 50})
+        if errors:
+            return web.json_response({'error': '; '.join(errors)}, status=400)
         
         tag_id = await DB.create_tag(name)
         
         return web.json_response({
-            'message': 'Tag created',
+            'message': 'Tag created successfully',
             'tag_id': tag_id,
             'name': name
         }, status=201)
     
     except (KeyError, json.JSONDecodeError):
-        return web.json_response({'error': 'Invalid request'}, status=400)
+        return web.json_response({'error': 'Invalid request format'}, status=400)
+    except Exception as e:
+        logger.error(f"Tag creation error: {e}")
+        return web.json_response({'error': 'Failed to create tag'}, status=500)
 
 @require_auth
 async def put_posts_id_tags(request):
@@ -1248,6 +1428,9 @@ async def put_posts_id_tags(request):
         post_id = int(request.match_info['id'])
         data = await request.json()
         tags = data.get('tags', [])
+        
+        if not isinstance(tags, list):
+            return web.json_response({'error': 'Tags must be an array'}, status=400)
         
         # Verify post ownership
         post = await DB.get_post_by_id(post_id)
@@ -1258,14 +1441,18 @@ async def put_posts_id_tags(request):
         if post['user_id'] != user['id']:
             return web.json_response({'error': 'Unauthorized'}, status=403)
         
-        await DB.update_post_tags(post_id, tags)
+        valid_tags = [tag.strip() for tag in tags if isinstance(tag, str) and tag.strip()]
+        await DB.update_post_tags(post_id, valid_tags)
         
-        return web.json_response({'message': 'Tags updated'})
+        return web.json_response({'message': 'Tags updated successfully'})
     
     except ValueError:
-        return web.json_response({'error': 'Invalid post ID'}, status=400)
+        return web.json_response({'error': 'Invalid post ID format'}, status=400)
     except (KeyError, json.JSONDecodeError):
-        return web.json_response({'error': 'Invalid request'}, status=400)
+        return web.json_response({'error': 'Invalid request format'}, status=400)
+    except Exception as e:
+        logger.error(f"Tag update error: {e}")
+        return web.json_response({'error': 'Failed to update tags'}, status=500)
 # ===== END ISOLATED SECTION: TAGS =====
 
 # ===== ISOLATED SECTION: EDIT PROPOSALS SYSTEM =====
@@ -1275,29 +1462,41 @@ async def post_posts_id_proposals(request):
         post_id = int(request.match_info['id'])
         data = await request.json()
         
-        proposer_name = data.get('proposer_name', '').strip()
-        proposer_email = data.get('proposer_email', '').strip()
-        title = data.get('title', '').strip()
-        content = data.get('content', '').strip()
-        reason = data.get('reason', '').strip()
+        proposer_name = str(data.get('proposer_name', '')).strip()
+        proposer_email = str(data.get('proposer_email', '')).strip()
+        title = str(data.get('title', '')).strip()
+        content = str(data.get('content', '')).strip()
+        reason = str(data.get('reason', '')).strip()
         
-        if not all([proposer_name, proposer_email, title, content]):
-            return web.json_response({'error': 'All fields are required'}, status=400)
+        errors = validate_input(data, ['proposer_name', 'proposer_email', 'title', 'content'], {
+            'proposer_name': 100,
+            'proposer_email': 100,
+            'title': 200,
+            'content': 50000,
+            'reason': 1000
+        })
         
-        if len(title) > 200 or len(content) > 50000:
-            return web.json_response({'error': 'Title or content too long'}, status=400)
+        # Basic email validation
+        if '@' not in proposer_email or '.' not in proposer_email:
+            errors.append('Invalid email format')
+        
+        if errors:
+            return web.json_response({'error': '; '.join(errors)}, status=400)
         
         proposal_id = await DB.create_edit_proposal(post_id, proposer_name, proposer_email, title, content, reason)
         
         return web.json_response({
-            'message': 'Edit proposal submitted',
+            'message': 'Edit proposal submitted successfully',
             'proposal_id': proposal_id
         }, status=201)
     
     except ValueError:
-        return web.json_response({'error': 'Invalid post ID'}, status=400)
+        return web.json_response({'error': 'Invalid post ID format'}, status=400)
     except (KeyError, json.JSONDecodeError):
-        return web.json_response({'error': 'Invalid request'}, status=400)
+        return web.json_response({'error': 'Invalid request format'}, status=400)
+    except Exception as e:
+        logger.error(f"Proposal creation error: {e}")
+        return web.json_response({'error': 'Failed to submit proposal'}, status=500)
 
 @require_auth
 async def get_posts_id_proposals(request):
@@ -1305,7 +1504,7 @@ async def get_posts_id_proposals(request):
     try:
         post_id = int(request.match_info['id'])
     except ValueError:
-        return web.json_response({'error': 'Invalid post ID'}, status=400)
+        return web.json_response({'error': 'Invalid post ID format'}, status=400)
     
     # Verify post ownership
     post = await DB.get_post_by_id(post_id)
@@ -1316,9 +1515,12 @@ async def get_posts_id_proposals(request):
     if post['user_id'] != user['id']:
         return web.json_response({'error': 'Unauthorized'}, status=403)
     
-    proposals = await DB.get_proposals_by_post(post_id)
-    
-    return web.json_response({'proposals': [dict(proposal) for proposal in proposals]})
+    try:
+        proposals = await DB.get_proposals_by_post(post_id)
+        return web.json_response({'proposals': [dict(proposal) for proposal in proposals]})
+    except Exception as e:
+        logger.error(f"Get proposals error: {e}")
+        return web.json_response({'error': 'Failed to retrieve proposals'}, status=500)
 
 @require_auth
 async def put_proposals_id_approve(request):
@@ -1326,7 +1528,7 @@ async def put_proposals_id_approve(request):
     try:
         proposal_id = int(request.match_info['id'])
     except ValueError:
-        return web.json_response({'error': 'Invalid proposal ID'}, status=400)
+        return web.json_response({'error': 'Invalid proposal ID format'}, status=400)
     
     proposal = await DB.get_proposal_by_id(proposal_id)
     if not proposal:
@@ -1343,7 +1545,7 @@ async def put_proposals_id_approve(request):
     if not approved:
         return web.json_response({'error': 'Could not approve proposal'}, status=400)
     
-    return web.json_response({'message': 'Proposal approved and applied'})
+    return web.json_response({'message': 'Proposal approved and applied successfully'})
 
 @require_auth
 async def put_proposals_id_reject(request):
@@ -1351,7 +1553,7 @@ async def put_proposals_id_reject(request):
     try:
         proposal_id = int(request.match_info['id'])
     except ValueError:
-        return web.json_response({'error': 'Invalid proposal ID'}, status=400)
+        return web.json_response({'error': 'Invalid proposal ID format'}, status=400)
     
     proposal = await DB.get_proposal_by_id(proposal_id)
     if not proposal:
@@ -1365,7 +1567,7 @@ async def put_proposals_id_reject(request):
     
     await DB.reject_proposal(proposal_id, user['id'])
     
-    return web.json_response({'message': 'Proposal rejected'})
+    return web.json_response({'message': 'Proposal rejected successfully'})
 # ===== END ISOLATED SECTION: EDIT PROPOSALS =====
 
 # ===== ISOLATED SECTION: SEARCH FUNCTIONALITY =====
@@ -1383,8 +1585,16 @@ async def get_search(request):
         posts = await DB.search_posts(query, limit, offset)
         total_count = await DB.search_posts_count(query)
         
+        # Add tags to each post
+        posts_with_tags = []
+        for post in posts:
+            post_dict = dict(post)
+            tags = await DB.get_tags_by_post(post_dict['id'])
+            post_dict['tags'] = [dict(tag) for tag in tags]
+            posts_with_tags.append(post_dict)
+        
         return web.json_response({
-            'posts': [dict(post) for post in posts],
+            'posts': posts_with_tags,
             'pagination': {
                 'limit': limit,
                 'offset': offset,
@@ -1396,29 +1606,36 @@ async def get_search(request):
     
     except ValueError:
         return web.json_response({'error': 'Invalid pagination parameters'}, status=400)
+    except Exception as e:
+        logger.error(f"Search error: {e}")
+        return web.json_response({'error': 'Search failed'}, status=500)
 # ===== END ISOLATED SECTION: SEARCH =====
 
 async def cleanup_task():
     while True:
-        await asyncio.sleep(300)
-        await DB.cleanup_sessions()
+        await asyncio.sleep(300)  # Run every 5 minutes
+        try:
+            await DB.cleanup_sessions()
+        except Exception as e:
+            logger.error(f"Cleanup task error: {e}")
 
 # File watching for development
 import sys
 import threading
 
 def watch_file():
-    original_hash = hashlib.md5(open(__file__, 'rb').read()).hexdigest()
-    while True: 
-        time.sleep(2)
-        current_hash = hashlib.md5(open(__file__, 'rb').read()).hexdigest()
-        if current_hash != original_hash:
-            os.execv(sys.executable, ['python'] + sys.argv)
+    try:
+        original_hash = hashlib.md5(open(__file__, 'rb').read()).hexdigest()
+        while True: 
+            time.sleep(2)
+            current_hash = hashlib.md5(open(__file__, 'rb').read()).hexdigest()
+            if current_hash != original_hash:
+                logger.info("File changed, restarting...")
+                os.execv(sys.executable, ['python'] + sys.argv)
+    except Exception as e:
+        logger.error(f"File watcher error: {e}")
 
 # Auto-routing system
-import re
-import inspect
-
 app = web.Application(middlewares=[cors_middleware])
 
 async def init_app():
@@ -1459,12 +1676,15 @@ app.router.add_route('PUT', '/proposals/{id}/reject', put_proposals_id_reject)
 # ===== END ISOLATED SECTION: EDIT PROPOSALS =====
 
 # Auto-register other routes
+excluded_routes = [
+    'get_users_id', 'delete_users_id', 'get_posts_id', 'put_posts_id', 'delete_posts_id', 
+    'put_posts_id_tags', 'post_posts_id_comments', 'get_posts_id_comments', 
+    'put_comments_id', 'delete_comments_id', 'get_files_id', 'delete_files_id',
+    'post_posts_id_proposals', 'get_posts_id_proposals', 'put_proposals_id_approve', 'put_proposals_id_reject'
+]
+
 for name, handler in list(globals().items()):
-    # Skip manually registered routes
-    if name in ['get_users_id', 'delete_users_id', 'get_posts_id', 'put_posts_id', 'delete_posts_id', 
-                'put_posts_id_tags', 'post_posts_id_comments', 'get_posts_id_comments', 
-                'put_comments_id', 'delete_comments_id', 'get_files_id', 'delete_files_id',
-                'post_posts_id_proposals', 'get_posts_id_proposals', 'put_proposals_id_approve', 'put_proposals_id_reject']:
+    if name in excluded_routes:
         continue
         
     for method in ['get', 'post', 'put', 'delete', 'patch']:
@@ -1520,7 +1740,6 @@ if __name__ == '__main__':
     print(f"  GET    /users/{{id}}     - Get specific user by ID")
     print(f"  DELETE /users/{{id}}     - Delete user account (own only)")
     
-    # ===== ISOLATED SECTION: POSTS ENDPOINTS AND POSTS DATABASE IMPLEMENTATION =====
     print(f"\n📝 Posts API endpoints:")
     print(f"  POST   /posts          - Create new post")
     print(f"  GET    /posts          - List all posts (with pagination)")
@@ -1530,42 +1749,31 @@ if __name__ == '__main__':
     print(f"  DELETE /posts/{{id}}     - Delete specific post (owner only)")
     print(f"  GET    /posts/stats    - Get post statistics by year/month")
     print(f"  PUT    /posts/{{id}}/tags - Update post tags")
-    # ===== END ISOLATED SECTION: POSTS =====
     
-    # ===== ISOLATED SECTION: COMMENTS SYSTEM =====
     print(f"\n💬 Comments API endpoints:")
     print(f"  POST   /posts/{{id}}/comments - Add comment to post")
     print(f"  GET    /posts/{{id}}/comments - Get comments for post")
     print(f"  PUT    /comments/{{id}}      - Update comment (owner only)")
     print(f"  DELETE /comments/{{id}}      - Delete comment (owner only)")
-    # ===== END ISOLATED SECTION: COMMENTS =====
     
-    # ===== ISOLATED SECTION: FILE UPLOAD SYSTEM =====
     print(f"\n📁 File API endpoints:")
     print(f"  POST   /files          - Upload file")
     print(f"  GET    /files/{{id}}     - Download/serve file")
     print(f"  DELETE /files/{{id}}     - Delete file (owner only)")
     print(f"  GET    /files/my       - Get current user's files")
-    # ===== END ISOLATED SECTION: FILES =====
     
-    # ===== ISOLATED SECTION: TAGS SYSTEM =====
     print(f"\n🏷️  Tags API endpoints:")
     print(f"  GET    /tags           - Get all tags")
     print(f"  POST   /tags           - Create new tag")
-    # ===== END ISOLATED SECTION: TAGS =====
     
-    # ===== ISOLATED SECTION: EDIT PROPOSALS SYSTEM =====
     print(f"\n✏️  Edit Proposals API endpoints:")
     print(f"  POST   /posts/{{id}}/proposals    - Submit edit proposal")
     print(f"  GET    /posts/{{id}}/proposals    - Get proposals (owner only)")
     print(f"  PUT    /proposals/{{id}}/approve  - Approve proposal")
     print(f"  PUT    /proposals/{{id}}/reject   - Reject proposal")
-    # ===== END ISOLATED SECTION: EDIT PROPOSALS =====
     
-    # ===== ISOLATED SECTION: SEARCH FUNCTIONALITY =====
     print(f"\n🔍 Search API endpoints:")
     print(f"  GET    /search         - Search posts (query parameter 'q')")
-    # ===== END ISOLATED SECTION: SEARCH =====
     
     print(f"\n🔧 Example API usage:")
     base_url = f"{protocol}://{host}:{port}"
