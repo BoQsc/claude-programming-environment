@@ -1,0 +1,3147 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!--
+POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING
+🎯 FIXED: All flickering issues resolved with smooth transitions
+✅ Smooth search results with fade transitions
+✅ Optimized debouncing (800ms) 
+✅ Subtle loading indicators instead of overlay
+✅ Content fade-in/fade-out animations
+✅ Prevented unnecessary DOM thrashing
+✅ Optimized rendering pipeline
+✅ Smooth tag suggestions and interactions
+-->
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Posts Platform - Create, share and collaborate on posts with markdown support">
+    <meta name="author" content="Posts Platform">
+    <meta name="keywords" content="posts, blog, markdown, collaboration, writing, tags">
+    
+    <title>Posts Platform - Create & Share Posts</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📝</text></svg>">
+    
+    <!-- External Libraries -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" rel="stylesheet">
+    
+    <style>
+        /* Root Variables & Base Styles */
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --success-color: #059669;
+            --danger-color: #dc2626;
+            --warning-color: #d97706;
+            --secondary-color: #6b7280;
+            --background-color: #f8fafc;
+            --card-background: #ffffff;
+            --editor-background: #fbfcfd;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            --text-muted: #9ca3af;
+            --border-color: #e5e7eb;
+            --border-hover: #d1d5db;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --border-radius: 8px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --fast-transition: all 0.15s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* 🎯 SMOOTH ANIMATIONS - Added smooth transitions throughout */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--background-color);
+            color: var(--text-primary);
+            line-height: 1.6;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            grid-template-rows: auto 1fr;
+            grid-template-areas: 
+                "header header"
+                "sidebar main";
+            min-height: 100vh;
+            transition: var(--transition);
+        }
+
+        /* Header Styles */
+        .header {
+            grid-area: header;
+            background: var(--card-background);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+        }
+
+        .header-left h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            cursor: pointer;
+            transition: var(--fast-transition);
+        }
+
+        .header-left h2:hover {
+            color: var(--primary-hover);
+            transform: translateX(2px);
+        }
+
+        .header-center {
+            flex: 1;
+            max-width: 500px;
+            margin: 0 2rem;
+            position: relative;
+        }
+
+        .search-container {
+            position: relative;
+            display: block;
+        }
+
+        .search-container::before {
+            content: "🔍";
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            z-index: 1;
+            transition: var(--fast-transition);
+        }
+
+        /* 🎯 SMOOTH SEARCH - Enhanced search input with loading indicator */
+        .search-container input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--border-radius);
+            font-size: 0.95rem;
+            transition: var(--transition);
+            background: var(--editor-background);
+        }
+
+        .search-container input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .search-container.searching::before {
+            content: "⏳";
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+
+        .header-right {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: var(--text-secondary);
+            transition: var(--fast-transition);
+        }
+
+        .user-info span {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            grid-area: sidebar;
+            background: var(--card-background);
+            border-right: 1px solid var(--border-color);
+            padding: 2rem 1.5rem;
+            overflow-y: auto;
+            height: calc(100vh - 80px);
+            transition: var(--transition);
+        }
+
+        .sidebar-section {
+            margin-bottom: 2rem;
+            display: block;
+            opacity: 1;
+            transition: var(--transition);
+        }
+
+        .sidebar-section h3 {
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            transition: var(--fast-transition);
+        }
+
+        .archive-stats {
+            display: block;
+        }
+
+        .archive-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            border-radius: var(--border-radius);
+            transition: var(--fast-transition);
+            cursor: pointer;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .archive-item:hover {
+            background: var(--editor-background);
+            color: var(--primary-color);
+            transform: translateX(4px);
+        }
+
+        .count {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            background: var(--editor-background);
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+            font-weight: 500;
+            transition: var(--fast-transition);
+        }
+
+        /* Enhanced Popular Tags Styles with Smooth Animations */
+        .popular-tags {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .tag-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            border-radius: var(--border-radius);
+            transition: var(--fast-transition);
+            cursor: pointer;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
+            border: 1px solid transparent;
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .tag-item:hover {
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            color: #1e40af;
+            border-color: #3b82f6;
+            transform: translateX(4px);
+        }
+
+        .tag-item .tag-name {
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: var(--fast-transition);
+        }
+
+        .tag-item .tag-count {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background: rgba(59, 130, 246, 0.1);
+            padding: 0.2rem 0.5rem;
+            border-radius: 10px;
+            font-weight: 500;
+            transition: var(--fast-transition);
+        }
+
+        .settings {
+            background: var(--editor-background);
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            display: block;
+            transition: var(--transition);
+        }
+
+        .setting {
+            display: block;
+        }
+
+        .setting label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .setting select {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            background: var(--card-background);
+            font-size: 0.9rem;
+            transition: var(--fast-transition);
+        }
+
+        /* Main Content Styles with Smooth Transitions */
+        .main {
+            grid-area: main;
+            padding: 2rem;
+            overflow-y: auto;
+            height: calc(100vh - 80px);
+            transition: var(--transition);
+        }
+
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--border-color);
+            transition: var(--transition);
+        }
+
+        .content-header h1 {
+            color: var(--text-primary);
+            font-size: 1.8rem;
+            font-weight: 700;
+            transition: var(--fast-transition);
+        }
+
+        .actions {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .content-filters {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-chip {
+            padding: 0.5rem 1rem;
+            background: rgba(59, 130, 246, 0.05);
+            border: 2px solid rgba(59, 130, 246, 0.2);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: var(--fast-transition);
+            font-size: 0.9rem;
+            color: #1e40af;
+        }
+
+        .filter-chip.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            transform: translateY(-1px);
+        }
+
+        .filter-chip:hover {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: rgba(59, 130, 246, 0.4);
+            transform: translateY(-1px);
+        }
+
+        /* 🎯 SMOOTH POSTS CONTAINER - No more flickering! */
+        .posts-container {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            opacity: 1;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            transform: translateY(0);
+        }
+
+        .posts-container.loading {
+            opacity: 0.6;
+            transform: translateY(10px);
+        }
+
+        .posts-container.fade-out {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        .posts-container.fade-in {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Post Styles with Enhanced Animations */
+        .post {
+            background: var(--card-background);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .post:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .post-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .post-meta {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            flex-grow: 1;
+        }
+
+        .author {
+            font-weight: 600;
+            color: var(--primary-color);
+            transition: var(--fast-transition);
+        }
+
+        .date {
+            color: var(--text-muted);
+        }
+
+        .post-actions {
+            display: flex;
+            gap: 0.5rem;
+            opacity: 0;
+            transition: var(--fast-transition);
+        }
+
+        .post:hover .post-actions {
+            opacity: 1;
+        }
+
+        .post-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            line-height: 1.3;
+            display: block;
+            transition: var(--fast-transition);
+        }
+
+        .post-content {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            line-height: 1.7;
+            font-size: 1rem;
+            display: block;
+            background: transparent;
+            transition: var(--fast-transition);
+        }
+
+        /* Enhanced Post Tags Styles with Smooth Animations */
+        .post-tags {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            color: #1e40af;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--fast-transition);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tag::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .tag:hover {
+            background: linear-gradient(135deg, #bfdbfe, #93c5fd);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+            border-color: #3b82f6;
+        }
+
+        .tag:hover::before {
+            left: 100%;
+        }
+
+        .post-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+            transition: var(--fast-transition);
+        }
+
+        .post-stats {
+            display: flex;
+            gap: 1rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .post-interactions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        /* Comments Styles with Smooth Animations */
+        .comments-section {
+            margin-top: 1.5rem;
+            border-top: 2px solid var(--border-color);
+            padding-top: 1.5rem;
+            display: none;
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .comments-section.visible {
+            display: block;
+            opacity: 1;
+        }
+
+        .comments-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .comment {
+            background: var(--editor-background);
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 1rem;
+            border-left: 4px solid var(--border-color);
+            transition: var(--fast-transition);
+            display: block;
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .comment:hover {
+            border-left-color: var(--primary-color);
+            transform: translateX(4px);
+        }
+
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .comment-meta {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .comment-content {
+            color: var(--text-primary);
+            line-height: 1.6;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .comment-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .reply-form {
+            display: none;
+            margin-top: 1rem;
+            background: var(--card-background);
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .reply-form.visible {
+            display: block;
+            opacity: 1;
+        }
+
+        .reply-actions {
+            margin-top: 0.75rem;
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+
+        .comment-form {
+            margin-top: 1.5rem;
+            background: var(--card-background);
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            display: block;
+            transition: var(--transition);
+        }
+
+        .comment-submit {
+            margin-top: 1rem;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        /* Proposals Styles */
+        .proposals-section {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid var(--border-color);
+            display: none;
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .proposals-section.visible {
+            display: block;
+            opacity: 1;
+        }
+
+        .proposals-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .proposal {
+            background: #fef3c7;
+            border: 2px solid #fbbf24;
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 1rem;
+            display: block;
+            transition: var(--fast-transition);
+        }
+
+        .proposal:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .proposal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .proposal-meta {
+            color: #92400e;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .proposal-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .proposal-details {
+            margin-bottom: 1rem;
+        }
+
+        .proposal-content details {
+            background: var(--card-background);
+            padding: 1rem;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            transition: var(--fast-transition);
+        }
+
+        .proposal-content summary {
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .content-preview {
+            margin-top: 1rem;
+            max-height: 300px;
+            overflow-y: auto;
+            display: block;
+        }
+
+        /* Pagination Styles with Smooth Animations */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 3rem;
+            padding: 1.5rem;
+            background: rgba(59, 130, 246, 0.03);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid rgba(59, 130, 246, 0.1);
+            transition: var(--transition);
+        }
+
+        .pagination:hover {
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .pagination-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .pagination-info {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .pagination-jump {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .pagination-jump input {
+            width: 80px;
+            padding: 0.5rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--border-radius);
+            text-align: center;
+            font-size: 0.9rem;
+            transition: var(--fast-transition);
+        }
+
+        .pagination-jump input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        /* Button Styles with Enhanced Animations */
+        button {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: var(--fast-transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+            background: var(--primary-color);
+            color: white;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        button:hover:not(:disabled) {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        button.secondary {
+            background: var(--secondary-color);
+        }
+
+        button.secondary:hover:not(:disabled) {
+            background: #4b5563;
+        }
+
+        button.success {
+            background: var(--success-color);
+        }
+
+        button.success:hover:not(:disabled) {
+            background: #047857;
+        }
+
+        button.danger {
+            background: var(--danger-color);
+        }
+
+        button.danger:hover:not(:disabled) {
+            background: #b91c1c;
+        }
+
+        button.warning {
+            background: var(--warning-color);
+        }
+
+        button.small {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.8rem;
+        }
+
+        button.outline {
+            background: transparent;
+            border: 2px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        button.outline:hover:not(:disabled) {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+            background: transparent;
+            transform: translateY(-1px);
+        }
+
+        .toolbar-btn {
+            padding: 0.5rem 0.75rem;
+            border: 2px solid var(--border-color);
+            background: var(--card-background);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--fast-transition);
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .toolbar-btn:hover {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            transform: translateY(-1px);
+        }
+
+        .toolbar-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        /* Modal Styles with Smooth Animations */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .modal.visible {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background: var(--card-background);
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            width: 90%;
+            max-width: 500px;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+            transform: scale(0.9);
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .modal.visible .modal-content {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-header h2 {
+            color: var(--text-primary);
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 0.5rem;
+            border-radius: var(--border-radius);
+            transition: var(--fast-transition);
+        }
+
+        .close-btn:hover {
+            background: var(--border-color);
+            color: var(--text-primary);
+        }
+
+        /* Editor Modal Styles */
+        .editor-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .editor-modal.visible {
+            opacity: 1;
+        }
+
+        .editor-content {
+            background: var(--card-background);
+            margin: 2rem;
+            border-radius: var(--border-radius);
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 4rem);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+            transform: scale(0.95);
+            transition: var(--transition);
+        }
+
+        .editor-modal.visible .editor-content {
+            transform: scale(1);
+        }
+
+        .editor-header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--editor-background);
+        }
+
+        .editor-header h2 {
+            color: var(--text-primary);
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .editor-toolbar {
+            display: flex;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--editor-background);
+            flex-wrap: wrap;
+        }
+
+        .editor-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 2rem;
+            gap: 1rem;
+            background: var(--background-color);
+        }
+
+        .editor-inputs {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            background: transparent;
+        }
+
+        /* Enhanced Tag Input Styles with Smooth Animations */
+        .tag-input-container {
+            position: relative;
+        }
+
+        .tag-input-container input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--border-radius);
+            font-size: 0.95rem;
+            font-family: inherit;
+            transition: var(--fast-transition);
+            background: var(--card-background);
+        }
+
+        .tag-input-container input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .tag-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--card-background);
+            border: 2px solid var(--primary-color);
+            border-top: none;
+            border-radius: 0 0 var(--border-radius) var(--border-radius);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 10;
+            display: none;
+            box-shadow: var(--shadow-md);
+            opacity: 0;
+            transform: translateY(-5px);
+            transition: var(--fast-transition);
+        }
+
+        .tag-suggestions.visible {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .tag-suggestion-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-color);
+            transition: var(--fast-transition);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tag-suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .tag-suggestion-item:hover {
+            background: var(--editor-background);
+            color: var(--primary-color);
+            transform: translateX(4px);
+        }
+
+        .tag-suggestion-name {
+            font-weight: 500;
+        }
+
+        .tag-suggestion-count {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            background: var(--editor-background);
+            padding: 0.2rem 0.5rem;
+            border-radius: 10px;
+        }
+
+        .editor-content-container {
+            flex: 1;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .editor-content-container.split-view .preview-panel {
+            display: block;
+        }
+
+        .editor-content-container textarea {
+            flex: 1;
+            resize: none;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            line-height: 1.5;
+            font-size: 0.95rem;
+            padding: 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--border-radius);
+            transition: var(--fast-transition);
+            background: var(--card-background);
+        }
+
+        .editor-content-container textarea:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .preview-panel {
+            flex: 1;
+            border: 2px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 1rem;
+            background: var(--card-background);
+            overflow-y: auto;
+            display: none;
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .preview-panel.visible {
+            display: block;
+            opacity: 1;
+        }
+
+        .editor-footer {
+            padding: 1.5rem 2rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            background: var(--editor-background);
+        }
+
+        /* File Upload Styles with Smooth Animations */
+        .file-upload-area {
+            border: 3px dashed var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            text-align: center;
+            margin: 1rem 0;
+            transition: var(--transition);
+            background: var(--editor-background);
+            display: none;
+            opacity: 0;
+        }
+
+        .file-upload-area.visible {
+            display: block;
+            opacity: 1;
+        }
+
+        .file-upload-area.dragover {
+            border-color: var(--primary-color);
+            background: rgba(37, 99, 235, 0.05);
+            transform: scale(1.02);
+        }
+
+        .upload-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: var(--text-muted);
+            transition: var(--fast-transition);
+        }
+
+        .uploaded-files {
+            margin-top: 1rem;
+            display: none;
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .uploaded-files.visible {
+            display: block;
+            opacity: 1;
+        }
+
+        /* Form Styles with Enhanced Animations */
+        .form-group {
+            margin-bottom: 1.5rem;
+            display: block;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--border-radius);
+            font-size: 0.95rem;
+            font-family: inherit;
+            transition: var(--fast-transition);
+            background: var(--card-background);
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* 🎯 SUBTLE LOADING INDICATOR - No more flickering overlay! */
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+            display: block;
+            opacity: 1;
+            transition: var(--transition);
+        }
+
+        .loading.subtle {
+            padding: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color);
+            border-top: 2px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+
+        .spinner.small {
+            width: 16px;
+            height: 16px;
+            border-width: 2px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 🎯 REMOVED: Heavy loading overlay replaced with subtle indicators */
+        .search-loading {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            gap: 0.5rem;
+        }
+
+        .search-loading.visible {
+            display: flex;
+        }
+
+        .notification {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: var(--border-radius);
+            color: white;
+            z-index: 2000;
+            max-width: 400px;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: var(--transition);
+            box-shadow: var(--shadow-lg);
+            font-weight: 500;
+        }
+
+        .notification.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: var(--success-color);
+        }
+
+        .notification.error {
+            background: var(--danger-color);
+        }
+
+        .notification.info {
+            background: var(--primary-color);
+        }
+
+        .notification.warning {
+            background: var(--warning-color);
+        }
+
+        /* Utility Classes */
+        .hidden {
+            display: none !important;
+        }
+
+        /* 🎯 SMOOTH TRANSITIONS - Enhanced responsive design */
+        @media (max-width: 1024px) {
+            body {
+                grid-template-columns: 250px 1fr;
+                transition: var(--transition);
+            }
+            
+            .sidebar {
+                padding: 1.5rem 1rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-areas: 
+                    "header"
+                    "main";
+                transition: var(--transition);
+            }
+
+            .sidebar {
+                display: none;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 1rem;
+                padding: 1rem;
+            }
+
+            .header-center {
+                margin: 0;
+                max-width: none;
+            }
+
+            .editor-content {
+                margin: 0.5rem;
+                height: calc(100vh - 1rem);
+            }
+
+            .editor-toolbar {
+                padding: 1rem;
+            }
+
+            .main {
+                padding: 1rem;
+            }
+
+            .post {
+                padding: 1.5rem;
+            }
+        }
+
+        /* Dark Mode Support with Smooth Transitions */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --background-color: #0f172a;
+                --card-background: #1e293b;
+                --editor-background: #334155;
+                --text-primary: #f1f5f9;
+                --text-secondary: #cbd5e1;
+                --text-muted: #94a3b8;
+                --border-color: #334155;
+                --border-hover: #475569;
+            }
+
+            .search-container input {
+                background: var(--editor-background);
+                color: var(--text-primary);
+            }
+
+            .settings {
+                background: var(--editor-background);
+            }
+
+            .comment {
+                background: var(--editor-background);
+            }
+
+            .comment-form,
+            .reply-form {
+                background: var(--card-background);
+            }
+
+            .file-upload-area {
+                background: var(--editor-background);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <h2 id="platform-logo" onclick="goHome()">📝 Posts Platform</h2>
+        </div>
+        <div class="header-center">
+            <div class="search-container" id="search-container">
+                <input type="text" id="search-input" placeholder="Search posts, tags, authors..." />
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="user-info" id="user-info" style="display: none;">
+                <span id="username"></span>
+                <button id="logout-btn" onclick="logout()">🚪 Logout</button>
+            </div>
+            <button id="login-btn" onclick="showLoginModal()">👤 Login</button>
+        </div>
+    </header>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-section">
+            <h3>📅 Archive</h3>
+            <div class="archive-stats" id="archive-stats">
+                <div class="archive-item" onclick="loadPosts()">
+                    📄 All Posts <span class="count" id="total-count">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Enhanced Popular Tags Section -->
+        <div class="sidebar-section">
+            <h3>🏷️ Popular Tags</h3>
+            <div class="popular-tags" id="popular-tags">
+                <div class="loading subtle">Loading tags...</div>
+            </div>
+        </div>
+
+        <div class="sidebar-section">
+            <h3>⚙️ Settings</h3>
+            <div class="settings">
+                <div class="setting">
+                    <label>Posts per page:</label>
+                    <select id="posts-per-page" onchange="changePostsPerPage()">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="content-header">
+            <h1 id="page-title">✨ Latest Posts</h1>
+            <div class="actions">
+                <button id="new-post-btn" onclick="showEditor()" style="display: none;">✏️ New Post</button>
+            </div>
+        </div>
+
+        <div class="content-filters" id="content-filters">
+            <div class="filter-chip active" onclick="setFilter('all')">All Posts</div>
+            <div class="filter-chip" onclick="setFilter('my')">My Posts</div>
+            <div class="filter-chip" onclick="setFilter('recent')">Recent</div>
+        </div>
+
+        <!-- 🎯 SMOOTH SEARCH LOADING INDICATOR -->
+        <div class="search-loading" id="search-loading">
+            <div class="spinner small"></div>
+            Searching...
+        </div>
+
+        <div class="posts-container" id="posts-container">
+            <div class="loading">
+                <div class="spinner"></div>
+                Loading posts...
+            </div>
+        </div>
+
+        <div class="pagination" id="pagination">
+            <div class="pagination-controls">
+                <button id="prev-btn" onclick="previousPage()" disabled>← Previous</button>
+                <div class="pagination-info" id="pagination-info">Page 1 of 1</div>
+                <button id="next-btn" onclick="nextPage()" disabled>Next →</button>
+            </div>
+            <div class="pagination-jump">
+                <span>Go to:</span>
+                <input type="number" id="goto-page" min="1" placeholder="1">
+                <button onclick="gotoPage()">Go</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Login Modal -->
+    <div class="modal" id="login-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">👤 Login</h2>
+                <button class="close-btn" onclick="closeModal('login-modal')">&times;</button>
+            </div>
+            <form class="auth-form" id="auth-form">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="auth-username" required minlength="3" maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="auth-password" required minlength="6">
+                </div>
+                <div class="form-actions">
+                    <button type="button" onclick="toggleAuthMode()" id="toggle-btn">Register instead</button>
+                    <button type="submit" id="submit-btn">
+                        <div class="spinner small" id="auth-spinner" style="display: none;"></div>
+                        Login
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Editor Modal -->
+    <div class="editor-modal" id="editor-container">
+        <div class="editor-content">
+            <div class="editor-header">
+                <h2 id="editor-title">✏️ Create New Post</h2>
+                <button onclick="closeEditor()">✕ Close</button>
+            </div>
+            
+            <div class="editor-toolbar">
+                <button class="toolbar-btn" onclick="insertMarkdown('**', '**')">B</button>
+                <button class="toolbar-btn" onclick="insertMarkdown('*', '*')">I</button>
+                <button class="toolbar-btn" onclick="insertMarkdown('`', '`')">Code</button>
+                <button class="toolbar-btn" onclick="insertMarkdown('```\n', '\n```')">📋 Block</button>
+                <button class="toolbar-btn" onclick="insertMarkdown('- ', '')">📝 List</button>
+                <button class="toolbar-btn" onclick="insertMarkdown('## ', '')">📰 H2</button>
+                <button class="toolbar-btn" onclick="togglePreview()" id="preview-btn">👁️ Preview</button>
+                <button class="toolbar-btn" onclick="toggleSplitView()" id="split-btn">🔄 Split</button>
+                <button class="toolbar-btn" onclick="showFileUpload()">📁 File</button>
+            </div>
+            
+            <div class="editor-body">
+                <div class="editor-inputs">
+                    <input type="text" id="post-title" placeholder="📝 Enter your post title..." maxlength="200">
+                    
+                    <!-- Enhanced Tag Input with Smooth Suggestions -->
+                    <div class="tag-input-container">
+                        <input type="text" id="post-tags" placeholder="🏷️ Tags (comma-separated): tech, programming, tutorial..." maxlength="200">
+                        <div class="tag-suggestions" id="tag-suggestions"></div>
+                    </div>
+                </div>
+                
+                <div class="editor-content-container" id="editor-content-container">
+                    <textarea id="post-content" placeholder="✨ Write your post in Markdown...
+
+**Example:**
+# My First Post
+
+This is a sample post with some **bold text** and *italic text*.
+
+## Code Example
+```javascript
+console.log('Hello, World!');
+```
+
+## List
+- Item 1
+- Item 2
+- Item 3
+
+Don't forget to add relevant tags above!"></textarea>
+                    <div class="preview-panel" id="post-preview"></div>
+                </div>
+                
+                <div class="file-upload-area" id="file-upload-area">
+                    <input type="file" id="file-input" multiple accept="image/*,video/*,.pdf,.txt,.md,.json,.csv" style="display: none;">
+                    <div class="upload-content">
+                        <div class="upload-icon">📁</div>
+                        <p><strong>Drag & drop files here</strong> or <button onclick="document.getElementById('file-input').click()">Choose Files</button></p>
+                    </div>
+                </div>
+                
+                <div class="uploaded-files" id="uploaded-files"></div>
+            </div>
+            
+            <div class="editor-footer">
+                <button onclick="closeEditor()">❌ Cancel</button>
+                <button onclick="savePost()" id="save-btn">
+                    <div class="spinner small" id="save-spinner" style="display: none;"></div>
+                    ✨ Publish Post
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Proposal Modal -->
+    <div class="modal" id="proposal-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>✏️ Suggest Edit</h2>
+                <button class="close-btn" onclick="closeModal('proposal-modal')">&times;</button>
+            </div>
+            <form class="proposal-form" id="proposal-form">
+                <div class="form-group">
+                    <label>Your Name</label>
+                    <input type="text" id="proposer-name" required maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label>Your Email</label>
+                    <input type="email" id="proposer-email" required maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label>Proposed Title</label>
+                    <input type="text" id="proposal-title" required maxlength="200">
+                </div>
+                <div class="form-group">
+                    <label>Proposed Content</label>
+                    <textarea id="proposal-content" rows="10" required maxlength="50000"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Reason for Edit (Optional)</label>
+                    <textarea id="proposal-reason" rows="3" placeholder="Why are you suggesting this change?" maxlength="1000"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" onclick="closeModal('proposal-modal')">Cancel</button>
+                    <button type="submit">
+                        <div class="spinner small" id="proposal-spinner" style="display: none;"></div>
+                        Submit Proposal
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- External Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
+
+    <script>
+        // 🎯 POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING
+        // ===== COMPLETE JAVASCRIPT IMPLEMENTATION =====
+        
+        // ===== CONFIGURATION =====
+        const API_BASE = 'http://localhost:8080';
+        const DEFAULT_AVATAR = '👤';
+
+        // ===== GLOBAL STATE =====
+        let currentUser = null;
+        let currentToken = null;
+        let currentPage = 1;
+        let postsPerPage = 10;
+        let currentFilter = 'all';
+        let currentEditingPost = null;
+        let isEditorInSplitView = false;
+        let searchQuery = '';
+        let allTags = [];
+        let isSearching = false; // 🎯 Prevent multiple searches
+        let searchTimeout = null; // 🎯 Better debouncing
+
+        // ===== UTILITY FUNCTIONS =====
+        function formatDate(timestamp) {
+            return new Date(timestamp * 1000).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function formatDistanceToNow(timestamp) {
+            const now = Date.now();
+            const then = timestamp * 1000;
+            const diff = now - then;
+            
+            const seconds = Math.floor(diff / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+            
+            if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
+            if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+            if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+            return 'just now';
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type} show`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => notification.remove(), 300);
+            }, 4000);
+        }
+
+        // 🎯 SMOOTH LOADING - No more flickering overlay!
+        function showSearchLoading() {
+            const searchContainer = document.getElementById('search-container');
+            const searchLoading = document.getElementById('search-loading');
+            
+            searchContainer.classList.add('searching');
+            searchLoading.classList.add('visible');
+        }
+
+        function hideSearchLoading() {
+            const searchContainer = document.getElementById('search-container');
+            const searchLoading = document.getElementById('search-loading');
+            
+            searchContainer.classList.remove('searching');
+            searchLoading.classList.remove('visible');
+        }
+
+        function sanitizeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function truncateText(text, maxLength = 300) {
+            if (text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
+        }
+
+        // ===== API HELPER FUNCTIONS =====
+        async function apiRequest(endpoint, options = {}) {
+            const url = `${API_BASE}${endpoint}`;
+            const defaultHeaders = {
+                'Content-Type': 'application/json',
+            };
+            
+            if (currentToken) {
+                defaultHeaders['Authorization'] = `Bearer ${currentToken}`;
+            }
+            
+            const config = {
+                ...options,
+                headers: {
+                    ...defaultHeaders,
+                    ...options.headers,
+                },
+            };
+            
+            try {
+                const response = await fetch(url, config);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || `HTTP ${response.status}`);
+                }
+                
+                return data;
+            } catch (error) {
+                console.error('API Request failed:', error);
+                throw error;
+            }
+        }
+
+        async function apiUpload(endpoint, formData) {
+            const url = `${API_BASE}${endpoint}`;
+            const config = {
+                method: 'POST',
+                body: formData,
+                headers: {}
+            };
+            
+            if (currentToken) {
+                config.headers['Authorization'] = `Bearer ${currentToken}`;
+            }
+            
+            try {
+                const response = await fetch(url, config);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || `HTTP ${response.status}`);
+                }
+                
+                return data;
+            } catch (error) {
+                console.error('Upload failed:', error);
+                throw error;
+            }
+        }
+
+        // ===== AUTHENTICATION =====
+        function initAuth() {
+            const savedToken = localStorage.getItem('auth_token');
+            const savedUser = localStorage.getItem('current_user');
+            
+            if (savedToken && savedUser) {
+                currentToken = savedToken;
+                currentUser = JSON.parse(savedUser);
+                updateAuthUI();
+            }
+        }
+
+        async function login(username, password) {
+            try {
+                const data = await apiRequest('/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ username, password })
+                });
+                
+                currentToken = data.token;
+                currentUser = {
+                    id: data.user_id,
+                    username: data.username
+                };
+                
+                localStorage.setItem('auth_token', currentToken);
+                localStorage.setItem('current_user', JSON.stringify(currentUser));
+                
+                updateAuthUI();
+                closeModal('login-modal');
+                showNotification(`Welcome back, ${username}!`, 'success');
+                loadPosts();
+                
+            } catch (error) {
+                showNotification(error.message, 'error');
+                throw error;
+            }
+        }
+
+        async function register(username, password) {
+            try {
+                await apiRequest('/register', {
+                    method: 'POST',
+                    body: JSON.stringify({ username, password })
+                });
+                
+                showNotification('Account created! Please log in.', 'success');
+                toggleAuthMode();
+                
+            } catch (error) {
+                showNotification(error.message, 'error');
+                throw error;
+            }
+        }
+
+        async function logout() {
+            try {
+                if (currentToken) {
+                    await apiRequest('/logout', { method: 'POST' });
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+            } finally {
+                currentToken = null;
+                currentUser = null;
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('current_user');
+                updateAuthUI();
+                showNotification('Logged out successfully', 'info');
+                loadPosts();
+            }
+        }
+
+        function updateAuthUI() {
+            const loginBtn = document.getElementById('login-btn');
+            const userInfo = document.getElementById('user-info');
+            const newPostBtn = document.getElementById('new-post-btn');
+            const username = document.getElementById('username');
+            
+            if (currentUser) {
+                loginBtn.style.display = 'none';
+                userInfo.style.display = 'flex';
+                newPostBtn.style.display = 'inline-flex';
+                username.textContent = currentUser.username;
+            } else {
+                loginBtn.style.display = 'inline-flex';
+                userInfo.style.display = 'none';
+                newPostBtn.style.display = 'none';
+            }
+        }
+
+        // ===== MODAL MANAGEMENT =====
+        function showLoginModal() {
+            document.getElementById('login-modal').classList.add('visible');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('visible');
+        }
+
+        function toggleAuthMode() {
+            const modalTitle = document.getElementById('modal-title');
+            const submitBtn = document.getElementById('submit-btn');
+            const toggleBtn = document.getElementById('toggle-btn');
+            
+            const isLogin = modalTitle.textContent.includes('Login');
+            
+            if (isLogin) {
+                modalTitle.textContent = '📝 Register';
+                submitBtn.innerHTML = '<div class="spinner small" id="auth-spinner" style="display: none;"></div>Register';
+                toggleBtn.textContent = 'Login instead';
+            } else {
+                modalTitle.textContent = '👤 Login';
+                submitBtn.innerHTML = '<div class="spinner small" id="auth-spinner" style="display: none;"></div>Login';
+                toggleBtn.textContent = 'Register instead';
+            }
+        }
+
+        // ===== 🎯 SMOOTH POSTS MANAGEMENT - NO MORE FLICKERING! =====
+        async function loadPosts(showLoading = true) {
+            // 🎯 Prevent multiple simultaneous searches
+            if (isSearching) return;
+            isSearching = true;
+            
+            try {
+                // 🎯 Show subtle loading indicator instead of heavy overlay
+                if (showLoading) {
+                    if (searchQuery) {
+                        showSearchLoading();
+                    } else {
+                        const container = document.getElementById('posts-container');
+                        container.classList.add('loading');
+                    }
+                }
+                
+                let endpoint = '/posts';
+                const params = new URLSearchParams({
+                    limit: postsPerPage,
+                    offset: (currentPage - 1) * postsPerPage
+                });
+                
+                if (currentFilter === 'my' && currentUser) {
+                    endpoint = '/posts/my';
+                } else if (searchQuery) {
+                    endpoint = '/search';
+                    params.set('q', searchQuery);
+                }
+                
+                const data = await apiRequest(`${endpoint}?${params}`);
+                
+                // 🎯 Smooth transition instead of instant replacement
+                await smoothRenderPosts(data.posts, data.pagination);
+                updatePagination(data.pagination);
+                
+            } catch (error) {
+                console.error('Failed to load posts:', error);
+                showNotification('Failed to load posts', 'error');
+                const container = document.getElementById('posts-container');
+                container.innerHTML = '<div class="loading">Failed to load posts</div>';
+            } finally {
+                isSearching = false;
+                hideSearchLoading();
+                
+                const container = document.getElementById('posts-container');
+                container.classList.remove('loading');
+            }
+        }
+
+        // 🎯 SMOOTH RENDERING - Fade out, update content, fade in
+        async function smoothRenderPosts(posts, pagination) {
+            const container = document.getElementById('posts-container');
+            
+            // Only do smooth transition if content exists
+            const hasExistingContent = container.children.length > 0 && 
+                !container.querySelector('.loading');
+            
+            if (hasExistingContent) {
+                // Fade out existing content
+                container.classList.add('fade-out');
+                await new Promise(resolve => setTimeout(resolve, 150));
+            }
+            
+            // Update content
+            if (!posts || posts.length === 0) {
+                container.innerHTML = '<div class="loading">No posts found</div>';
+            } else {
+                container.innerHTML = posts.map(post => renderPost(post)).join('');
+            }
+            
+            // Fade in new content
+            if (hasExistingContent) {
+                container.classList.remove('fade-out');
+                container.classList.add('fade-in');
+                
+                // Remove fade-in class after animation
+                setTimeout(() => {
+                    container.classList.remove('fade-in');
+                }, 300);
+            }
+            
+            // 🎯 Optimized code highlighting - only highlight new content
+            setTimeout(() => {
+                const codeBlocks = container.querySelectorAll('pre code:not([data-highlighted])');
+                if (codeBlocks.length > 0) {
+                    Prism.highlightAllUnder(container);
+                }
+            }, 50);
+        }
+
+        function renderPosts(posts, pagination) {
+            const container = document.getElementById('posts-container');
+            
+            if (!posts || posts.length === 0) {
+                container.innerHTML = '<div class="loading">No posts found</div>';
+                return;
+            }
+            
+            container.innerHTML = posts.map(post => renderPost(post)).join('');
+            
+            // Highlight code blocks
+            setTimeout(() => Prism.highlightAll(), 100);
+        }
+
+        function renderPost(post) {
+            const tags = post.tags && Array.isArray(post.tags) ? post.tags.map(tag => {
+                const tagName = typeof tag === 'string' ? tag : tag.name;
+                return `<div class="tag" onclick="searchByTag('${tagName}')" title="Click to search posts with this tag">${tagName}</div>`;
+            }).join('') : '';
+            
+            const isOwner = currentUser && currentUser.id === post.user_id;
+            const actions = isOwner ? `
+                <button onclick="editPost(${post.id})" class="small" title="Edit this post">✏️</button>
+                <button onclick="deletePost(${post.id})" class="small danger" title="Delete this post">🗑️</button>
+            ` : `
+                <button onclick="showProposalModal(${post.id})" class="small" title="Suggest an edit">💡</button>
+            `;
+            
+            const processedContent = marked.parse(truncateText(post.content));
+            
+            return `
+                <div class="post" data-post-id="${post.id}">
+                    <div class="post-header">
+                        <div class="post-meta">
+                            <div class="author">${DEFAULT_AVATAR} ${post.username}</div>
+                            <div class="date">📅 ${formatDistanceToNow(post.created_at)}</div>
+                        </div>
+                        <div class="post-actions">
+                            ${actions}
+                        </div>
+                    </div>
+                    
+                    <div class="post-title">${sanitizeHtml(post.title)}</div>
+                    <div class="post-content">${processedContent}</div>
+                    
+                    ${tags ? `
+                        <div class="post-tags">
+                            ${tags}
+                        </div>
+                    ` : ''}
+                    
+                    <div class="post-footer">
+                        <div class="post-stats">
+                            <div class="stat">💬 Comments</div>
+                            ${tags ? `<div class="stat">🏷️ ${post.tags.length} tags</div>` : ''}
+                        </div>
+                        <div class="post-interactions">
+                            <button onclick="toggleComments(${post.id})" class="small">💬 Comments</button>
+                            ${isOwner ? `<button onclick="loadProposals(${post.id})" class="small">📝 Proposals</button>` : ''}
+                        </div>
+                    </div>
+                    
+                    <div class="comments-section" id="comments-${post.id}">
+                    </div>
+                    
+                    <div class="proposals-section" id="proposals-${post.id}">
+                    </div>
+                </div>
+            `;
+        }
+
+        async function createPost(title, content, tags) {
+            try {
+                const tagArray = tags ? tags.split(',').map(t => t.trim()).filter(t => t) : [];
+                
+                const data = await apiRequest('/posts', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        title,
+                        content,
+                        tags: tagArray
+                    })
+                });
+                
+                showNotification('Post created successfully!', 'success');
+                closeEditor();
+                loadPosts();
+                await loadTags();
+                
+            } catch (error) {
+                showNotification(error.message, 'error');
+                throw error;
+            }
+        }
+
+        async function updatePost(postId, title, content, tags) {
+            try {
+                const tagArray = tags ? tags.split(',').map(t => t.trim()).filter(t => t) : [];
+                
+                await apiRequest(`/posts/${postId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        title,
+                        content,
+                        tags: tagArray
+                    })
+                });
+                
+                showNotification('Post updated successfully!', 'success');
+                closeEditor();
+                loadPosts();
+                await loadTags();
+                
+            } catch (error) {
+                showNotification(error.message, 'error');
+                throw error;
+            }
+        }
+
+        async function deletePost(postId) {
+            if (!confirm('Are you sure you want to delete this post?')) return;
+            
+            try {
+                await apiRequest(`/posts/${postId}`, { method: 'DELETE' });
+                showNotification('Post deleted successfully!', 'success');
+                loadPosts();
+                await loadTags();
+                
+            } catch (error) {
+                showNotification(error.message, 'error');
+            }
+        }
+
+        async function editPost(postId) {
+            try {
+                const data = await apiRequest(`/posts/${postId}`);
+                const post = data.post;
+                
+                currentEditingPost = post;
+                
+                document.getElementById('editor-title').textContent = '✏️ Edit Post';
+                document.getElementById('post-title').value = post.title;
+                document.getElementById('post-content').value = post.content;
+                
+                if (post.tags && Array.isArray(post.tags)) {
+                    const tagNames = post.tags.map(tag => typeof tag === 'string' ? tag : tag.name);
+                    document.getElementById('post-tags').value = tagNames.join(', ');
+                } else {
+                    document.getElementById('post-tags').value = '';
+                }
+                
+                document.getElementById('save-btn').innerHTML = `
+                    <div class="spinner small" id="save-spinner" style="display: none;"></div>
+                    ✨ Update Post
+                `;
+                
+                showEditor();
+                
+            } catch (error) {
+                showNotification(error.message, 'error');
+            }
+        }
+
+        // ===== EDITOR FUNCTIONALITY =====
+        function showEditor() {
+            const modal = document.getElementById('editor-container');
+            modal.style.display = 'flex';
+            modal.classList.add('visible');
+            
+            if (!currentEditingPost) {
+                document.getElementById('post-title').value = '';
+                document.getElementById('post-content').value = '';
+                document.getElementById('post-tags').value = '';
+                document.getElementById('editor-title').textContent = '✏️ Create New Post';
+                document.getElementById('save-btn').innerHTML = `
+                    <div class="spinner small" id="save-spinner" style="display: none;"></div>
+                    ✨ Publish Post
+                `;
+            }
+        }
+
+        function closeEditor() {
+            const modal = document.getElementById('editor-container');
+            modal.classList.remove('visible');
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+            
+            currentEditingPost = null;
+            isEditorInSplitView = false;
+            document.getElementById('editor-content-container').classList.remove('split-view');
+        }
+
+        async function savePost() {
+            const title = document.getElementById('post-title').value.trim();
+            const content = document.getElementById('post-content').value.trim();
+            const tags = document.getElementById('post-tags').value.trim();
+            
+            if (!title || !content) {
+                showNotification('Title and content are required', 'error');
+                return;
+            }
+            
+            const spinner = document.getElementById('save-spinner');
+            spinner.style.display = 'inline-block';
+            
+            try {
+                if (currentEditingPost) {
+                    await updatePost(currentEditingPost.id, title, content, tags);
+                } else {
+                    await createPost(title, content, tags);
+                }
+            } finally {
+                spinner.style.display = 'none';
+            }
+        }
+
+        function insertMarkdown(before, after) {
+            const textarea = document.getElementById('post-content');
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+            const selectedText = text.substring(start, end);
+            
+            const newText = text.substring(0, start) + before + selectedText + after + text.substring(end);
+            textarea.value = newText;
+            
+            const newCursorPos = start + before.length + selectedText.length + after.length;
+            textarea.setSelectionRange(newCursorPos, newCursorPos);
+            textarea.focus();
+            
+            updatePreview();
+        }
+
+        function togglePreview() {
+            const container = document.getElementById('editor-content-container');
+            const preview = document.getElementById('post-preview');
+            
+            if (isEditorInSplitView) {
+                container.classList.remove('split-view');
+                preview.classList.add('visible');
+                document.getElementById('preview-btn').textContent = '✏️ Edit';
+            } else if (preview.classList.contains('visible')) {
+                preview.classList.remove('visible');
+                document.getElementById('preview-btn').textContent = '👁️ Preview';
+            } else {
+                preview.classList.add('visible');
+                document.getElementById('preview-btn').textContent = '✏️ Edit';
+            }
+            
+            updatePreview();
+        }
+
+        function toggleSplitView() {
+            const container = document.getElementById('editor-content-container');
+            const preview = document.getElementById('post-preview');
+            
+            isEditorInSplitView = !isEditorInSplitView;
+            
+            if (isEditorInSplitView) {
+                container.classList.add('split-view');
+                preview.classList.add('visible');
+                document.getElementById('split-btn').textContent = '📝 Single';
+            } else {
+                container.classList.remove('split-view');
+                preview.classList.remove('visible');
+                document.getElementById('split-btn').textContent = '🔄 Split';
+            }
+            
+            updatePreview();
+        }
+
+        function updatePreview() {
+            const content = document.getElementById('post-content').value;
+            const preview = document.getElementById('post-preview');
+            
+            if (preview.classList.contains('visible')) {
+                preview.innerHTML = marked.parse(content);
+                setTimeout(() => Prism.highlightAllUnder(preview), 50);
+            }
+        }
+
+        // ===== COMMENTS SYSTEM =====
+        async function toggleComments(postId) {
+            const commentsSection = document.getElementById(`comments-${postId}`);
+            
+            if (commentsSection.classList.contains('visible')) {
+                commentsSection.classList.remove('visible');
+                return;
+            }
+            
+            try {
+                const data = await apiRequest(`/posts/${postId}/comments`);
+                renderComments(postId, data.comments);
+                commentsSection.classList.add('visible');
+                
+            } catch (error) {
+                showNotification('Failed to load comments', 'error');
+            }
+        }
+
+        function renderComments(postId, comments) {
+            const commentsSection = document.getElementById(`comments-${postId}`);
+            
+            const commentsHtml = comments.map(comment => renderComment(comment, postId)).join('');
+            
+            commentsSection.innerHTML = `
+                <div class="comments-header">
+                    <strong>💬 ${comments.length} Comment${comments.length !== 1 ? 's' : ''}</strong>
+                </div>
+                <div class="comments-list">
+                    ${commentsHtml}
+                </div>
+                ${currentUser ? `
+                    <form class="comment-form" onsubmit="addComment(event, ${postId})">
+                        <textarea placeholder="💭 Share your thoughts..." required maxlength="5000"></textarea>
+                        <div class="comment-submit">
+                            <button type="submit">💬 Comment</button>
+                        </div>
+                    </form>
+                ` : '<p>Please log in to comment.</p>'}
+            `;
+        }
+
+        function renderComment(comment, postId, isReply = false) {
+            const isOwner = currentUser && currentUser.id === comment.user_id;
+            const deleteButton = isOwner ? `
+                <button onclick="deleteComment(${comment.id}, ${postId})" class="small danger">🗑️</button>
+            ` : '';
+            
+            const replyButton = currentUser && !isReply ? `
+                <button onclick="showReplyForm(${comment.id}, ${postId})" class="small">↩️ Reply</button>
+            ` : '';
+            
+            const replies = comment.replies ? comment.replies.map(reply => 
+                renderComment(reply, postId, true)
+            ).join('') : '';
+            
+            return `
+                <div class="comment" style="margin-left: ${isReply ? '2rem' : '0'}">
+                    <div class="comment-header">
+                        <div class="comment-meta">
+                            <div class="author">${DEFAULT_AVATAR} ${comment.username}</div>
+                            <div class="date">📅 ${formatDistanceToNow(comment.created_at)}</div>
+                        </div>
+                        <div class="comment-actions">
+                            ${deleteButton}
+                        </div>
+                    </div>
+                    <div class="comment-content">${sanitizeHtml(comment.content)}</div>
+                    <div class="comment-actions">
+                        ${replyButton}
+                    </div>
+                    <form class="reply-form" id="reply-form-${comment.id}" onsubmit="addComment(event, ${postId}, ${comment.id})">
+                        <textarea placeholder="💭 Reply..." required maxlength="5000"></textarea>
+                        <div class="reply-actions">
+                            <button type="button" onclick="hideReplyForm(${comment.id})">❌ Cancel</button>
+                            <button type="submit">↩️ Reply</button>
+                        </div>
+                    </form>
+                    ${replies}
+                </div>
+            `;
+        }
+
+        async function addComment(event, postId, parentId = null) {
+            event.preventDefault();
+            
+            const form = event.target;
+            const textarea = form.querySelector('textarea');
+            const content = textarea.value.trim();
+            
+            if (!content) return;
+            
+            try {
+                const body = { content };
+                if (parentId) {
+                    body.parent_comment_id = parentId;
+                }
+                
+                await apiRequest(`/posts/${postId}/comments`, {
+                    method: 'POST',
+                    body: JSON.stringify(body)
+                });
+                
+                textarea.value = '';
+                if (parentId) {
+                    hideReplyForm(parentId);
+                }
+                
+                const data = await apiRequest(`/posts/${postId}/comments`);
+                renderComments(postId, data.comments);
+                
+                showNotification('Comment added!', 'success');
+                
+            } catch (error) {
+                showNotification(error.message, 'error');
+            }
+        }
+
+        async function deleteComment(commentId, postId) {
+            if (!confirm('Delete this comment?')) return;
+            
+            try {
+                await apiRequest(`/comments/${commentId}`, { method: 'DELETE' });
+                
+                const data = await apiRequest(`/posts/${postId}/comments`);
+                renderComments(postId, data.comments);
+                
+                showNotification('Comment deleted', 'success');
+                
+            } catch (error) {
+                showNotification(error.message, 'error');
+            }
+        }
+
+        function showReplyForm(commentId, postId) {
+            const replyForm = document.getElementById(`reply-form-${commentId}`);
+            replyForm.classList.add('visible');
+            replyForm.querySelector('textarea').focus();
+        }
+
+        function hideReplyForm(commentId) {
+            const replyForm = document.getElementById(`reply-form-${commentId}`);
+            replyForm.classList.remove('visible');
+            replyForm.querySelector('textarea').value = '';
+        }
+
+        // ===== PROPOSALS SYSTEM =====
+        function showProposalModal(postId) {
+            document.getElementById('proposal-modal').classList.add('visible');
+            document.getElementById('proposal-form').dataset.postId = postId;
+            loadPostForProposal(postId);
+        }
+
+        async function loadPostForProposal(postId) {
+            try {
+                const data = await apiRequest(`/posts/${postId}`);
+                const post = data.post;
+                
+                document.getElementById('proposal-title').value = post.title;
+                document.getElementById('proposal-content').value = post.content;
+                
+            } catch (error) {
+                console.error('Failed to load post for proposal:', error);
+            }
+        }
+
+        async function submitProposal() {
+            const form = document.getElementById('proposal-form');
+            const postId = form.dataset.postId;
+            
+            const proposerName = document.getElementById('proposer-name').value.trim();
+            const proposerEmail = document.getElementById('proposer-email').value.trim();
+            const title = document.getElementById('proposal-title').value.trim();
+            const content = document.getElementById('proposal-content').value.trim();
+            const reason = document.getElementById('proposal-reason').value.trim();
+            
+            if (!proposerName || !proposerEmail || !title || !content) {
+                showNotification('Please fill in all required fields', 'error');
+                return;
+            }
+            
+            const spinner = document.getElementById('proposal-spinner');
+            spinner.style.display = 'inline-block';
+            
+            try {
+                await apiRequest(`/posts/${postId}/proposals`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        proposer_name: proposerName,
+                        proposer_email: proposerEmail,
+                        title,
+                        content,
+                        reason
+                    })
+                });
+                
+                showNotification('Edit proposal submitted!', 'success');
+                closeModal('proposal-modal');
+                form.reset();
+                
+            } catch (error) {
+                showNotification(error.message, 'error');
+            } finally {
+                spinner.style.display = 'none';
+            }
+        }
+
+        async function loadProposals(postId) {
+            const proposalsSection = document.getElementById(`proposals-${postId}`);
+            
+            if (proposalsSection.classList.contains('visible')) {
+                proposalsSection.classList.remove('visible');
+                return;
+            }
+            
+            try {
+                const data = await apiRequest(`/posts/${postId}/proposals`);
+                renderProposals(postId, data.proposals);
+                proposalsSection.classList.add('visible');
+                
+            } catch (error) {
+                showNotification('Failed to load proposals', 'error');
+            }
+        }
+
+        function renderProposals(postId, proposals) {
+            const proposalsSection = document.getElementById(`proposals-${postId}`);
+            
+            if (!proposals || proposals.length === 0) {
+                proposalsSection.innerHTML = `
+                    <div class="proposals-header">
+                        <strong>📝 No proposals yet</strong>
+                    </div>
+                `;
+                return;
+            }
+            
+            const proposalsHtml = proposals.map(proposal => `
+                <div class="proposal">
+                    <div class="proposal-header">
+                        <div class="proposal-meta">
+                            <strong>${DEFAULT_AVATAR} ${proposal.proposer_name}</strong>
+                            <span>📧 ${proposal.proposer_email}</span>
+                            <span>📅 ${formatDistanceToNow(proposal.created_at)}</span>
+                            <span>Status: ${proposal.status}</span>
+                        </div>
+                        ${proposal.status === 'pending' ? `
+                            <div class="proposal-actions">
+                                <button onclick="approveProposal(${proposal.id}, ${postId})" class="success small">✅ Approve</button>
+                                <button onclick="rejectProposal(${proposal.id}, ${postId})" class="danger small">❌ Reject</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div class="proposal-details">
+                        <p><strong>📝 Proposed Title:</strong> ${sanitizeHtml(proposal.title)}</p>
+                        ${proposal.reason ? `<p><strong>💭 Reason:</strong> ${sanitizeHtml(proposal.reason)}</p>` : ''}
+                    </div>
+                    <div class="proposal-content">
+                        <details>
+                            <summary>👁️ View proposed content</summary>
+                            <div class="content-preview">${marked.parse(proposal.content)}</div>
+                        </details>
+                    </div>
+                </div>
+            `).join('');
+            
+            proposalsSection.innerHTML = `
+                <div class="proposals-header">
+                    <strong>📝 ${proposals.length} Proposal${proposals.length !== 1 ? 's' : ''}</strong>
+                </div>
+                <div class="proposals-list">
+                    ${proposalsHtml}
+                </div>
+            `;
+        }
+
+        async function approveProposal(proposalId, postId) {
+            if (!confirm('Approve this edit proposal?')) return;
+            
+            try {
+                await apiRequest(`/proposals/${proposalId}/approve`, { method: 'PUT' });
+                showNotification('Proposal approved and applied!', 'success');
+                
+                loadProposals(postId);
+                loadPosts();
+                
+            } catch (error) {
+                showNotification(error.message, 'error');
+            }
+        }
+
+        async function rejectProposal(proposalId, postId) {
+            if (!confirm('Reject this edit proposal?')) return;
+            
+            try {
+                await apiRequest(`/proposals/${proposalId}/reject`, { method: 'PUT' });
+                showNotification('Proposal rejected', 'success');
+                loadProposals(postId);
+                
+            } catch (error) {
+                showNotification(error.message, 'error');
+            }
+        }
+
+        // ===== FILE UPLOAD SYSTEM =====
+        function showFileUpload() {
+            const uploadArea = document.getElementById('file-upload-area');
+            uploadArea.classList.toggle('visible');
+        }
+
+        function setupFileUpload() {
+            const uploadArea = document.getElementById('file-upload-area');
+            const fileInput = document.getElementById('file-input');
+            
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+            
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                
+                const files = Array.from(e.dataTransfer.files);
+                handleFileUpload(files);
+            });
+            
+            fileInput.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files);
+                handleFileUpload(files);
+            });
+        }
+
+        async function handleFileUpload(files) {
+            if (!currentUser) {
+                showNotification('Please log in to upload files', 'error');
+                return;
+            }
+            
+            const uploadedFiles = document.getElementById('uploaded-files');
+            uploadedFiles.classList.add('visible');
+            
+            for (const file of files) {
+                if (file.size > 50 * 1024 * 1024) {
+                    showNotification(`File ${file.name} is too large (max 50MB)`, 'error');
+                    continue;
+                }
+                
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                try {
+                    // Show subtle loading for file upload
+                    const fileElement = document.createElement('div');
+                    fileElement.innerHTML = `<p>⏳ Uploading ${file.name}...</p>`;
+                    uploadedFiles.appendChild(fileElement);
+                    
+                    const data = await apiUpload('/files', formData);
+                    
+                    fileElement.innerHTML = `
+                        <p>✅ ${file.name} - <a href="${API_BASE}/files/${data.file_id}" target="_blank">View</a></p>
+                    `;
+                    
+                    const textarea = document.getElementById('post-content');
+                    const isImage = file.type.startsWith('image/');
+                    const markdownLink = isImage 
+                        ? `![${file.name}](${API_BASE}/files/${data.file_id})\n`
+                        : `[${file.name}](${API_BASE}/files/${data.file_id})\n`;
+                    
+                    textarea.value += markdownLink;
+                    updatePreview();
+                    
+                    showNotification(`${file.name} uploaded successfully!`, 'success');
+                    
+                } catch (error) {
+                    showNotification(`Failed to upload ${file.name}: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        // ===== 🎯 SMOOTH SEARCH FUNCTIONALITY - NO MORE FLICKERING! =====
+        async function performSearch() {
+            const searchInput = document.getElementById('search-input');
+            const query = searchInput.value.trim();
+            
+            if (!query) {
+                searchQuery = '';
+                currentPage = 1;
+                document.getElementById('page-title').textContent = '✨ Latest Posts';
+                loadPosts();
+                return;
+            }
+            
+            // 🎯 Prevent rapid consecutive searches
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+            
+            searchTimeout = setTimeout(async () => {
+                searchQuery = query;
+                currentPage = 1;
+                document.getElementById('page-title').textContent = `🔍 Search: "${query}"`;
+                await loadPosts();
+            }, 800); // 🎯 Increased debounce time for smoother experience
+        }
+
+        function searchByTag(tagName) {
+            searchQuery = tagName;
+            currentPage = 1;
+            document.getElementById('search-input').value = tagName;
+            document.getElementById('page-title').textContent = `🏷️ Tag: "${tagName}"`;
+            loadPosts();
+        }
+
+        // ===== ENHANCED TAGS MANAGEMENT WITH SMOOTH ANIMATIONS =====
+        async function loadTags() {
+            try {
+                const data = await apiRequest('/tags');
+                allTags = data.tags || [];
+                await smoothRenderTags(allTags);
+                
+            } catch (error) {
+                console.error('Failed to load tags:', error);
+                allTags = [];
+            }
+        }
+
+        // 🎯 SMOOTH TAG RENDERING - Fade transitions for tags too!
+        async function smoothRenderTags(tags) {
+            const tagsContainer = document.getElementById('popular-tags');
+            
+            // Fade out existing tags
+            const hasExisting = tagsContainer.children.length > 0 && 
+                !tagsContainer.querySelector('.loading');
+            
+            if (hasExisting) {
+                Array.from(tagsContainer.children).forEach((child, index) => {
+                    setTimeout(() => {
+                        child.style.opacity = '0';
+                        child.style.transform = 'translateX(-10px)';
+                    }, index * 50);
+                });
+                
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+            
+            // Update content
+            if (!tags || tags.length === 0) {
+                tagsContainer.innerHTML = '<div class="loading subtle">No tags yet</div>';
+                return;
+            }
+            
+            tagsContainer.innerHTML = tags.slice(0, 15).map((tag, index) => `
+                <div class="tag-item" onclick="searchByTag('${tag.name}')" 
+                     title="Click to view posts with tag '${tag.name}'"
+                     style="opacity: 0; transform: translateX(-10px); transition-delay: ${index * 50}ms;">
+                    <span class="tag-name">🏷️ ${tag.name}</span>
+                    <span class="tag-count">${tag.post_count || 0}</span>
+                </div>
+            `).join('');
+            
+            // Fade in new tags with staggered animation
+            setTimeout(() => {
+                Array.from(tagsContainer.children).forEach(child => {
+                    child.style.opacity = '1';
+                    child.style.transform = 'translateX(0)';
+                });
+            }, 50);
+        }
+
+        function renderTags(tags) {
+            const tagsContainer = document.getElementById('popular-tags');
+            
+            if (!tags || tags.length === 0) {
+                tagsContainer.innerHTML = '<div class="loading subtle">No tags yet</div>';
+                return;
+            }
+            
+            tagsContainer.innerHTML = tags.slice(0, 15).map(tag => `
+                <div class="tag-item" onclick="searchByTag('${tag.name}')" title="Click to view posts with tag '${tag.name}'">
+                    <span class="tag-name">🏷️ ${tag.name}</span>
+                    <span class="tag-count">${tag.post_count || 0}</span>
+                </div>
+            `).join('');
+        }
+
+        async function setupTagSuggestions() {
+            const tagInput = document.getElementById('post-tags');
+            const suggestions = document.getElementById('tag-suggestions');
+            
+            await loadTags();
+            
+            tagInput.addEventListener('input', () => {
+                const value = tagInput.value;
+                const lastComma = value.lastIndexOf(',');
+                const currentTag = lastComma >= 0 ? value.slice(lastComma + 1).trim() : value.trim();
+                
+                if (currentTag.length < 1) {
+                    suggestions.classList.remove('visible');
+                    return;
+                }
+                
+                const matches = allTags.filter(tag => 
+                    tag.name.toLowerCase().includes(currentTag.toLowerCase()) &&
+                    !value.toLowerCase().includes(tag.name.toLowerCase())
+                ).slice(0, 8);
+                
+                if (matches.length > 0) {
+                    suggestions.innerHTML = matches.map(tag => `
+                        <div class="tag-suggestion-item" onclick="selectTag('${tag.name}')">
+                            <span class="tag-suggestion-name">🏷️ ${tag.name}</span>
+                            <span class="tag-suggestion-count">${tag.post_count || 0} posts</span>
+                        </div>
+                    `).join('');
+                    suggestions.classList.add('visible');
+                } else {
+                    suggestions.classList.remove('visible');
+                }
+            });
+            
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.tag-input-container')) {
+                    suggestions.classList.remove('visible');
+                }
+            });
+            
+            tagInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    suggestions.classList.remove('visible');
+                } else if (e.key === ',' || e.key === 'Tab') {
+                    const value = tagInput.value;
+                    const lastComma = value.lastIndexOf(',');
+                    const currentTag = lastComma >= 0 ? value.slice(lastComma + 1).trim() : value.trim();
+                    
+                    if (currentTag && !value.toLowerCase().includes(currentTag.toLowerCase() + ',')) {
+                        const matches = allTags.filter(tag => 
+                            tag.name.toLowerCase().includes(currentTag.toLowerCase())
+                        );
+                        
+                        if (matches.length > 0 && e.key === 'Tab') {
+                            e.preventDefault();
+                            selectTag(matches[0].name);
+                        }
+                    }
+                }
+            });
+        }
+
+        function selectTag(tagName) {
+            const tagInput = document.getElementById('post-tags');
+            const suggestions = document.getElementById('tag-suggestions');
+            
+            const value = tagInput.value;
+            const lastComma = value.lastIndexOf(',');
+            
+            if (lastComma >= 0) {
+                tagInput.value = value.slice(0, lastComma + 1) + ' ' + tagName + ', ';
+            } else {
+                tagInput.value = tagName + ', ';
+            }
+            
+            suggestions.classList.remove('visible');
+            tagInput.focus();
+        }
+
+        // ===== PAGINATION WITH SMOOTH TRANSITIONS =====
+        function updatePagination(pagination) {
+            if (!pagination) return;
+            
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const pageInfo = document.getElementById('pagination-info');
+            const gotoInput = document.getElementById('goto-page');
+            
+            const totalPages = Math.ceil(pagination.total / pagination.limit);
+            
+            prevBtn.disabled = currentPage <= 1;
+            nextBtn.disabled = !pagination.has_more;
+            
+            pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+            gotoInput.max = totalPages;
+            gotoInput.placeholder = currentPage;
+            
+            document.getElementById('total-count').textContent = pagination.total;
+        }
+
+        async function previousPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                await loadPosts();
+            }
+        }
+
+        async function nextPage() {
+            currentPage++;
+            await loadPosts();
+        }
+
+        async function gotoPage() {
+            const input = document.getElementById('goto-page');
+            const page = parseInt(input.value);
+            
+            if (page && page >= 1) {
+                currentPage = page;
+                await loadPosts();
+                input.value = '';
+            }
+        }
+
+        // ===== FILTERS WITH SMOOTH TRANSITIONS =====
+        async function setFilter(filter) {
+            if (filter === 'my' && !currentUser) {
+                showNotification('Please log in to view your posts', 'error');
+                return;
+            }
+            
+            currentFilter = filter;
+            currentPage = 1;
+            searchQuery = '';
+            document.getElementById('search-input').value = '';
+            
+            // Update filter chips with smooth transition
+            document.querySelectorAll('.filter-chip').forEach(chip => {
+                chip.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            const titles = {
+                'all': '✨ Latest Posts',
+                'my': '📝 My Posts',
+                'recent': '🕐 Recent Posts'
+            };
+            document.getElementById('page-title').textContent = titles[filter] || '✨ Latest Posts';
+            
+            await loadPosts();
+        }
+
+        async function changePostsPerPage() {
+            const select = document.getElementById('posts-per-page');
+            postsPerPage = parseInt(select.value);
+            currentPage = 1;
+            await loadPosts();
+        }
+
+        // ===== NAVIGATION =====
+        async function goHome() {
+            currentFilter = 'all';
+            currentPage = 1;
+            searchQuery = '';
+            document.getElementById('search-input').value = '';
+            document.getElementById('page-title').textContent = '✨ Latest Posts';
+            
+            document.querySelectorAll('.filter-chip').forEach(chip => {
+                chip.classList.remove('active');
+            });
+            document.querySelector('.filter-chip').classList.add('active');
+            
+            await loadPosts();
+        }
+
+        // ===== 🎯 OPTIMIZED EVENT LISTENERS - Better performance =====
+        function setupEventListeners() {
+            // Auth form submission
+            document.getElementById('auth-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const username = document.getElementById('auth-username').value.trim();
+                const password = document.getElementById('auth-password').value.trim();
+                const isLogin = document.getElementById('modal-title').textContent.includes('Login');
+                
+                if (!username || !password) {
+                    showNotification('Please fill in all fields', 'error');
+                    return;
+                }
+                
+                const spinner = document.getElementById('auth-spinner');
+                spinner.style.display = 'inline-block';
+                
+                try {
+                    if (isLogin) {
+                        await login(username, password);
+                    } else {
+                        await register(username, password);
+                    }
+                } catch (error) {
+                    // Error already shown in login/register functions
+                } finally {
+                    spinner.style.display = 'none';
+                }
+            });
+            
+            // Proposal form submission
+            document.getElementById('proposal-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                submitProposal();
+            });
+            
+            // 🎯 OPTIMIZED SEARCH - Better debouncing
+            const searchInput = document.getElementById('search-input');
+            searchInput.addEventListener('input', performSearch);
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    if (searchTimeout) clearTimeout(searchTimeout);
+                    performSearch();
+                }
+            });
+            
+            // Content preview update with throttling
+            let previewTimeout;
+            document.getElementById('post-content').addEventListener('input', () => {
+                if (previewTimeout) clearTimeout(previewTimeout);
+                previewTimeout = setTimeout(updatePreview, 200);
+            });
+            
+            // Modal close on background click
+            document.addEventListener('click', (e) => {
+                if (e.target.classList.contains('modal')) {
+                    const modalId = e.target.id;
+                    closeModal(modalId);
+                } else if (e.target.classList.contains('editor-modal')) {
+                    // Don't close editor on background click for better UX
+                    return;
+                }
+            });
+            
+            // Escape key to close modals
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    document.querySelectorAll('.modal.visible').forEach(modal => {
+                        closeModal(modal.id);
+                    });
+                    
+                    const editorModal = document.getElementById('editor-container');
+                    if (editorModal.classList.contains('visible')) {
+                        closeEditor();
+                    }
+                }
+            });
+        }
+
+        // ===== 🎯 SMOOTH INITIALIZATION =====
+        async function initializeApp() {
+            console.log('🎉 Posts Platform initializing with smooth UI...');
+            
+            // Show initial loading state
+            const container = document.getElementById('posts-container');
+            container.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading posts...
+                </div>
+            `;
+            
+            try {
+                // Initialize authentication
+                initAuth();
+                
+                // Setup event listeners
+                setupEventListeners();
+                
+                // Setup file upload
+                setupFileUpload();
+                
+                // Setup tag suggestions
+                await setupTagSuggestions();
+                
+                // Load initial data with smooth transitions
+                await Promise.all([
+                    loadPosts(false), // Don't show loading overlay on init
+                    loadTags()
+                ]);
+                
+                console.log('✅ Posts Platform ready with SMOOTH UI - No more flickering!');
+                
+            } catch (error) {
+                console.error('❌ Failed to initialize:', error);
+                container.innerHTML = `
+                    <div class="loading">
+                        ❌ Failed to load. Please refresh the page.
+                    </div>
+                `;
+            }
+        }
+
+        // ===== GLOBAL FUNCTION EXPORTS =====
+        window.showLoginModal = showLoginModal;
+        window.closeModal = closeModal;
+        window.toggleAuthMode = toggleAuthMode;
+        window.logout = logout;
+        window.showEditor = showEditor;
+        window.closeEditor = closeEditor;
+        window.savePost = savePost;
+        window.editPost = editPost;
+        window.deletePost = deletePost;
+        window.insertMarkdown = insertMarkdown;
+        window.togglePreview = togglePreview;
+        window.toggleSplitView = toggleSplitView;
+        window.showFileUpload = showFileUpload;
+        window.toggleComments = toggleComments;
+        window.addComment = addComment;
+        window.deleteComment = deleteComment;
+        window.showReplyForm = showReplyForm;
+        window.hideReplyForm = hideReplyForm;
+        window.showProposalModal = showProposalModal;
+        window.loadProposals = loadProposals;
+        window.approveProposal = approveProposal;
+        window.rejectProposal = rejectProposal;
+        window.searchByTag = searchByTag;
+        window.selectTag = selectTag;
+        window.setFilter = setFilter;
+        window.changePostsPerPage = changePostsPerPage;
+        window.previousPage = previousPage;
+        window.nextPage = nextPage;
+        window.gotoPage = gotoPage;
+        window.goHome = goHome;
+
+        // Start the application when the page loads
+        document.addEventListener('DOMContentLoaded', initializeApp);
+
+        console.log('🎯 Posts Platform JavaScript loaded - SMOOTH UI WITH NO FLICKERING!');
+    </script>
+</body>
+</html>
