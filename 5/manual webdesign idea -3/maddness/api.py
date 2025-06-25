@@ -210,6 +210,14 @@ class DB:
                                 (token, time.time()), 'one')
     
     @staticmethod
+    async def renew_session(token):
+        """🆕 NEW: Renew session expiry time on activity"""
+        new_expiry = time.time() + SESSION_DURATION
+        result = await DB._execute("UPDATE sessions SET expires_at = ? WHERE token = ? AND expires_at > ?", 
+                                 (new_expiry, token, time.time()))
+        return new_expiry if result else None
+    
+    @staticmethod
     async def delete_session(token):
         await DB._execute("DELETE FROM sessions WHERE token = ?", (token,))
     
@@ -1048,6 +1056,14 @@ def require_auth(handler):
         if not user:
             return web.json_response({'error': 'Invalid token'}, status=401)
         
+        # 🆕 NEW: Automatically renew session on authenticated activity
+        try:
+            new_expiry = await DB.renew_session(token)
+            if new_expiry:
+                logger.debug(f"Session renewed for user {user['username']} until {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(new_expiry))}")
+        except Exception as e:
+            logger.error(f"Failed to renew session: {e}")
+        
         request['user'] = user
         request['token'] = token
         return await handler(request)
@@ -1061,6 +1077,14 @@ def optional_auth(handler):
             token = auth_header[7:]
             user = await DB.get_user_by_token(token)
             if user:
+                # 🆕 NEW: Automatically renew session on any authenticated activity
+                try:
+                    new_expiry = await DB.renew_session(token)
+                    if new_expiry:
+                        logger.debug(f"Session renewed for user {user['username']} until {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(new_expiry))}")
+                except Exception as e:
+                    logger.error(f"Failed to renew session: {e}")
+                    
                 request['user'] = user
                 request['token'] = token
         return await handler(request)
@@ -1182,6 +1206,30 @@ async def post_logout(request):
     if auth_header and auth_header.startswith('Bearer '):
         await DB.delete_session(auth_header[7:])
     return web.json_response({'message': 'Logged out successfully'})
+
+@require_auth
+async def post_renew_session(request):
+    """🆕 NEW: Dedicated endpoint to renew session on user activity"""
+    try:
+        user = request['user']
+        token = request['token']
+        
+        # Renew the session
+        new_expiry = await DB.renew_session(token)
+        if not new_expiry:
+            return web.json_response({'error': 'Failed to renew session'}, status=400)
+        
+        logger.info(f"Session explicitly renewed for user {user['username']} until {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(new_expiry))}")
+        
+        return web.json_response({
+            'message': 'Session renewed successfully',
+            'expires_at': new_expiry,
+            'expires_in': SESSION_DURATION
+        })
+        
+    except Exception as e:
+        logger.error(f"Session renewal error: {e}")
+        return web.json_response({'error': 'Session renewal failed'}, status=500)
 
 @require_auth
 async def get_profile(request):
@@ -2203,7 +2251,7 @@ for name, handler in list(globals().items()):
             break
 
 if __name__ == '__main__':
-    print("🎯 FIXED API - TAG COUNTING RACE CONDITION RESOLVED WITH ROBUST ERROR HANDLING!")
+    print("🎯 FIXED API - TAG COUNTING RACE CONDITION RESOLVED + 29-DAY SESSIONS!")
     print("=" * 80)
     print("✅ Fixed race condition between tag count update and retrieval")
     print("✅ Post update/delete work without SQL errors")
@@ -2214,6 +2262,7 @@ if __name__ == '__main__':
     print("✅ ROBUST error handling with fallback mechanisms")
     print("✅ Comprehensive logging for debugging")
     print("✅ Database safety checks and table creation")
+    print("🆕 NEW: 29-day session expiration for better user experience")
     print("🎯 CRITICAL: All tag operations now use single database transaction")
     print("🎯 CRITICAL: Tag counts are updated and retrieved atomically")
     print("🎯 CRITICAL: No race conditions between separate DB connections")
@@ -2263,6 +2312,17 @@ if __name__ == '__main__':
     print(f"  🎯 Tag counts are always accurate and consistent")
     print(f"  🎯 Graceful degradation when primary methods fail")
     print(f"  • Check server logs for detailed tag operation information")
+    
+    print(f"\n🆕 SESSION MANAGEMENT UPDATES:")
+    print(f"  • Session duration extended to 29 days ({SESSION_DURATION:,} seconds)")
+    print(f"  • 🆕 NEW: Automatic session renewal on user activity")
+    print(f"  • 🆕 NEW: Session extended on every authenticated API request")
+    print(f"  • 🆕 NEW: Dedicated /renew/session endpoint for explicit renewal")
+    print(f"  • Automatic session cleanup every 5 minutes")
+    print(f"  • Sessions expire after 29 days of inactivity")
+    print(f"  • Login response includes accurate expires_in value")
+    print(f"  • Web client will handle expired sessions gracefully")
+    print(f"  • Active users never experience session expiry")
     
     # Start the server
     try:

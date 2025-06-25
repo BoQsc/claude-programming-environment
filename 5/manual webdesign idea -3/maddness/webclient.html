@@ -1721,12 +1721,16 @@ Don't forget to add relevant tags above!"></textarea>
         const SESSION_DURATION = 29 * 24 * 60 * 60 * 1000; // 29 days in milliseconds
         const SESSION_CHECK_INTERVAL = 5 * 60 * 1000; // Check every 5 minutes
         const SESSION_WARNING_TIME = 24 * 60 * 60 * 1000; // Warn 24 hours before expiry
+        const SESSION_RENEWAL_THROTTLE = 5 * 60 * 1000; // Don't renew more than once per 5 minutes
+        const ACTIVITY_RENEWAL_DELAY = 30 * 1000; // Wait 30 seconds after activity before renewing
 
         // ===== GLOBAL STATE =====
         let currentUser = null;
         let currentToken = null;
         let sessionExpiryTime = null;
         let sessionCheckInterval = null;
+        let lastSessionRenewal = 0;
+        let activityRenewalTimeout = null;
         let currentPage = 1;
         let postsPerPage = 10;
         let currentFilter = 'all';
@@ -1777,7 +1781,144 @@ Don't forget to add relevant tags above!"></textarea>
             }, 4000);
         }
 
-        // 🆕 NEW: Session management functions
+        // 🆕 NEW: Session renewal functions
+        async function renewSession() {
+            if (!currentToken || !currentUser) return false;
+            
+            const now = Date.now();
+            
+            // Throttle renewal requests
+            if (now - lastSessionRenewal < SESSION_RENEWAL_THROTTLE) {
+                console.log('🔐 Session renewal throttled');
+                return false;
+            }
+            
+            try {
+                console.log('🔐 Renewing session due to user activity...');
+                
+                const data = await apiRequest('/renew/session', {
+                    method: 'POST'
+                });
+                
+                // Update session expiry time
+                const newExpiryTime = data.expires_at * 1000; // Convert to milliseconds
+                sessionExpiryTime = newExpiryTime;
+                lastSessionRenewal = now;
+                
+                // Update localStorage
+                localStorage.setItem('session_expiry', sessionExpiryTime.toString());
+                localStorage.removeItem('last_session_warning'); // Reset warning
+                
+                // Update UI
+                updateSessionInfo();
+                
+                console.log(`🔐 Session renewed successfully, new expiry: ${new Date(sessionExpiryTime).toLocaleString()}`);
+                
+                // Show subtle notification for successful renewal
+                showNotification('Session renewed automatically', 'info');
+                
+                return true;
+                
+            } catch (error) {
+                console.error('🔐 Failed to renew session:', error);
+                
+                // If renewal fails due to expired session, handle logout
+                if (error.message.includes('Session expired') || error.message.includes('Invalid token')) {
+                    handleSessionExpiry();
+                }
+                
+                return false;
+            }
+        }
+
+        function scheduleSessionRenewal() {
+            // Clear existing timeout
+            if (activityRenewalTimeout) {
+                clearTimeout(activityRenewalTimeout);
+            }
+            
+            // Schedule renewal after delay to batch activity
+            activityRenewalTimeout = setTimeout(() => {
+                if (currentUser && currentToken) {
+                    renewSession();
+                }
+            }, ACTIVITY_RENEWAL_DELAY);
+        }
+
+        function onUserActivity() {
+            if (!currentUser || !currentToken) return;
+            
+            // Only schedule renewal if session is not recently renewed
+            const now = Date.now();
+            if (now - lastSessionRenewal >= SESSION_RENEWAL_THROTTLE) {
+                console.log('🔐 User activity detected, scheduling session renewal');
+                scheduleSessionRenewal();
+            }
+        }
+
+        function setupActivityDetection() {
+            if (!currentUser) return;
+            
+            console.log('🔐 Setting up activity detection for session renewal');
+            
+            // Page visibility change (switching tabs, minimizing browser)
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    console.log('🔐 Page became visible, renewing session');
+                    onUserActivity();
+                }
+            });
+            
+            // Page focus (clicking on browser window)
+            window.addEventListener('focus', () => {
+                console.log('🔐 Window focused, renewing session');
+                onUserActivity();
+            });
+            
+            // Mouse movement (but throttled)
+            let mouseMoveTimeout;
+            document.addEventListener('mousemove', () => {
+                if (mouseMoveTimeout) return;
+                mouseMoveTimeout = setTimeout(() => {
+                    onUserActivity();
+                    mouseMoveTimeout = null;
+                }, 30000); // Only once per 30 seconds for mouse movement
+            });
+            
+            // Keyboard activity
+            let keyboardTimeout;
+            document.addEventListener('keydown', () => {
+                if (keyboardTimeout) return;
+                keyboardTimeout = setTimeout(() => {
+                    onUserActivity();
+                    keyboardTimeout = null;
+                }, 30000); // Only once per 30 seconds for keyboard
+            });
+            
+            // Scroll activity
+            let scrollTimeout;
+            window.addEventListener('scroll', () => {
+                if (scrollTimeout) return;
+                scrollTimeout = setTimeout(() => {
+                    onUserActivity();
+                    scrollTimeout = null;
+                }, 30000); // Only once per 30 seconds for scrolling
+            });
+            
+            // Initial renewal on setup (page load)
+            scheduleSessionRenewal();
+        }
+
+        function teardownActivityDetection() {
+            console.log('🔐 Tearing down activity detection');
+            
+            if (activityRenewalTimeout) {
+                clearTimeout(activityRenewalTimeout);
+                activityRenewalTimeout = null;
+            }
+            
+            // Note: We don't remove event listeners as they're global and passive
+        }
         function updateSessionInfo() {
             const sessionInfo = document.getElementById('session-info');
             if (!sessionInfo || !sessionExpiryTime) return;
@@ -1798,7 +1939,7 @@ Don't forget to add relevant tags above!"></textarea>
             
             if (timeLeft <= SESSION_WARNING_TIME) {
                 // Show warning
-                sessionInfo.textContent = `Session expires in ${days}d ${hours}h`;
+                sessionInfo.textContent = `Session: ${days}d ${hours}h (auto-renews)`;
                 sessionInfo.className = 'session-info expiring';
                 
                 // Show warning notification once per day
@@ -1807,14 +1948,14 @@ Don't forget to add relevant tags above!"></textarea>
                 
                 if (!lastWarning || parseInt(lastWarning) < oneDayAgo) {
                     showNotification(
-                        `⚠️ Your session will expire in ${days} day${days !== 1 ? 's' : ''} and ${hours} hour${hours !== 1 ? 's' : ''}`, 
+                        `⚠️ Your session will expire in ${days} day${days !== 1 ? 's' : ''} and ${hours} hour${hours !== 1 ? 's' : ''} without activity`, 
                         'warning'
                     );
                     localStorage.setItem('last_session_warning', now.toString());
                 }
             } else {
                 // Normal session display
-                sessionInfo.textContent = `Session: ${days}d left`;
+                sessionInfo.textContent = `Session: ${days}d (auto-renews)`;
                 sessionInfo.className = 'session-info';
             }
         }
@@ -1967,11 +2108,21 @@ Don't forget to add relevant tags above!"></textarea>
                     currentToken = savedToken;
                     currentUser = JSON.parse(savedUser);
                     sessionExpiryTime = expiryTime;
+                    lastSessionRenewal = 0; // Allow immediate renewal on activity
+                    
                     updateAuthUI();
                     startSessionCheck();
                     updateSessionInfo();
                     
+                    // 🆕 NEW: Set up activity detection for restored session
+                    setupActivityDetection();
+                    
                     console.log(`🔐 Restored valid session, expires: ${new Date(expiryTime).toLocaleString()}`);
+                    console.log('🔐 Activity-based session renewal enabled');
+                    
+                    // 🆕 NEW: Immediately renew session on page load to extend it
+                    scheduleSessionRenewal();
+                    
                 } else {
                     // Session expired
                     console.log('🔐 Stored session expired, clearing');
@@ -1999,6 +2150,7 @@ Don't forget to add relevant tags above!"></textarea>
                 // 🆕 NEW: Calculate session expiry time
                 const now = Date.now();
                 sessionExpiryTime = now + (data.expires_in * 1000); // Convert seconds to milliseconds
+                lastSessionRenewal = now; // Mark as recently renewed
                 
                 // Store session info
                 localStorage.setItem('auth_token', currentToken);
@@ -2008,14 +2160,16 @@ Don't forget to add relevant tags above!"></textarea>
                 
                 updateAuthUI();
                 closeModal('login-modal');
-                showNotification(`Welcome back, ${username}! Your session is valid for 29 days.`, 'success');
+                showNotification(`Welcome back, ${username}! Your session will renew automatically with activity.`, 'success');
                 loadPosts();
                 
-                // 🆕 NEW: Start session monitoring
+                // 🆕 NEW: Start session monitoring and activity detection
                 startSessionCheck();
                 updateSessionInfo();
+                setupActivityDetection();
                 
                 console.log(`🔐 User ${username} logged in with 29-day session (expires: ${new Date(sessionExpiryTime).toLocaleString()})`);
+                console.log('🔐 Activity-based session renewal enabled');
                 
             } catch (error) {
                 showNotification(error.message, 'error');
@@ -2047,11 +2201,13 @@ Don't forget to add relevant tags above!"></textarea>
             } catch (error) {
                 console.error('Logout error:', error);
             } finally {
-                // 🆕 NEW: Clear session state
+                // 🆕 NEW: Clear session state and activity detection
                 currentToken = null;
                 currentUser = null;
                 sessionExpiryTime = null;
+                lastSessionRenewal = 0;
                 stopSessionCheck();
+                teardownActivityDetection();
                 
                 localStorage.removeItem('auth_token');
                 localStorage.removeItem('current_user');
@@ -3368,6 +3524,8 @@ Don't forget to add relevant tags above!"></textarea>
                 console.log('🔧 FIXED: Search race condition resolved - no more unwanted searches!');
                 console.log('🔧 FIXED: Accurate tag counts and improved search with debug logging!');
                 console.log('🆕 NEW: 29-day session management with automatic logout!');
+                console.log('🆕 NEW: Automatic session renewal on user activity!');
+                console.log('🆕 NEW: Smart activity detection with throttled renewals!');
                 
             } catch (error) {
                 console.error('❌ Failed to initialize:', error);
@@ -3415,13 +3573,17 @@ Don't forget to add relevant tags above!"></textarea>
         // Start the application when the page loads
         document.addEventListener('DOMContentLoaded', initializeApp);
 
-        console.log('🎯 Posts Platform JavaScript loaded - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS!');
+        console.log('🎯 Posts Platform JavaScript loaded - SMOOTH UI WITH NO FLICKERING + 29-DAY AUTO-RENEWING SESSIONS!');
         console.log('🆕 Enhanced with comments search and proper All Posts functionality!');
         console.log('🔧 FIXED: Search race condition resolved - no more unwanted "z" searches!');
         console.log('🔧 FIXED: Accurate tag counts and improved search with debug logging!');
         console.log('🆕 NEW: 29-day session management with automatic logout on expiry!');
         console.log('🆕 NEW: Session validation and warning system!');
         console.log('🆕 NEW: Graceful session expiry handling with notifications!');
+        console.log('🆕 NEW: Automatic session renewal on user activity!');
+        console.log('🆕 NEW: Activity detection (page focus, mouse, keyboard, scroll)!');
+        console.log('🆕 NEW: Smart renewal throttling to prevent excessive API calls!');
+        console.log('🆕 NEW: Sessions extend automatically - active users never log out!');
     </script>
 </body>
 </html>
