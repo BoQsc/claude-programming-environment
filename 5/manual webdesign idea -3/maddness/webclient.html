@@ -1479,12 +1479,6 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING
             <div class="popular-tags" id="popular-tags">
                 <div class="loading subtle">Loading tags...</div>
             </div>
-            <!-- 🔧 DEBUG: Manual refresh button -->
-            <div style="margin-top: 1rem;">
-                <button onclick="debugRefreshTags()" class="small" style="width: 100%; background: var(--warning-color);">
-                    🔧 Refresh Tag Counts
-                </button>
-            </div>
         </div>
 
         <div class="sidebar-section">
@@ -2780,33 +2774,6 @@ Don't forget to add relevant tags above!"></textarea>
             loadPosts();
         }
 
-        // ===== 🔧 DEBUG FUNCTIONS =====
-        async function debugRefreshTags() {
-            if (!currentUser) {
-                showNotification('Please log in to refresh tag counts', 'error');
-                return;
-            }
-            
-            try {
-                showNotification('Refreshing tag counts...', 'info');
-                console.log('🔧 Manually refreshing tag counts...');
-                
-                const data = await apiRequest('/debug/refresh-tags', {
-                    method: 'POST'
-                });
-                
-                console.log('🔧 Debug response:', data);
-                showNotification('Tag counts refreshed! Check console for details.', 'success');
-                
-                // Reload tags to show updated counts
-                await loadTags();
-                
-            } catch (error) {
-                console.error('Debug refresh failed:', error);
-                showNotification(`Debug refresh failed: ${error.message}`, 'error');
-            }
-        }
-
         async function loadTags() {
             try {
                 console.log('📋 Loading tags with updated counts...');
@@ -3285,7 +3252,6 @@ Don't forget to add relevant tags above!"></textarea>
         window.nextPage = nextPage;
         window.gotoPage = gotoPage;
         window.goHome = goHome;
-        window.debugRefreshTags = debugRefreshTags;
 
         // Start the application when the page loads
         document.addEventListener('DOMContentLoaded', initializeApp);
