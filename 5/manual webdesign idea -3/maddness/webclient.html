@@ -2,9 +2,10 @@
 <html lang="en">
 
 <!--
-POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING
+POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS
 🎯 FIXED: All flickering issues resolved with smooth transitions
 🔧 FIXED: Search debouncing race condition resolved
+🆕 NEW: 29-day session management with automatic logout
 ✅ Smooth search results with fade transitions
 ✅ Optimized debouncing (600ms) with proper cleanup
 ✅ Subtle loading indicators instead of overlay
@@ -17,6 +18,9 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING
 🔧 FIXED: Accurate tag counts with proper updates
 🔧 FIXED: Improved search with case-insensitive matching and debug logging
 🔧 FIXED: Search race condition when rapidly backspacing
+🆕 NEW: Automatic session expiration handling and logout
+🆕 NEW: Session validation every 5 minutes
+🆕 NEW: Graceful session expiry notifications
 -->
 
 <head>
@@ -179,6 +183,18 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING
         .user-info span {
             font-weight: 600;
             color: var(--text-primary);
+        }
+
+        /* 🆕 NEW: Session info display */
+        .session-info {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-left: 0.5rem;
+        }
+
+        .session-info.expiring {
+            color: var(--warning-color);
+            font-weight: 500;
         }
 
         /* Sidebar Styles */
@@ -1344,6 +1360,12 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING
             background: var(--warning-color);
         }
 
+        /* 🆕 NEW: Session expiry notification styles */
+        .notification.session-expiry {
+            background: var(--warning-color);
+            border-left: 4px solid #f59e0b;
+        }
+
         /* Utility Classes */
         .hidden {
             display: none !important;
@@ -1455,6 +1477,8 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING
         <div class="header-right">
             <div class="user-info" id="user-info" style="display: none;">
                 <span id="username"></span>
+                <!-- 🆕 NEW: Session info display -->
+                <div class="session-info" id="session-info"></div>
                 <button id="logout-btn" onclick="logout()">🚪 Logout</button>
             </div>
             <button id="login-btn" onclick="showLoginModal()">👤 Login</button>
@@ -1685,18 +1709,24 @@ Don't forget to add relevant tags above!"></textarea>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
 
     <script>
-        // 🎯 POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING
+        // 🎯 POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS
         // 🔧 FIXED: Search debouncing race condition resolved
+        // 🆕 NEW: 29-day session management with automatic logout
         // 🆕 ENHANCED WITH COMMENTS SEARCH AND PROPER ALL POSTS FUNCTIONALITY
         // ===== COMPLETE JAVASCRIPT IMPLEMENTATION =====
         
         // ===== CONFIGURATION =====
         const API_BASE = 'http://localhost:8080';
         const DEFAULT_AVATAR = '👤';
+        const SESSION_DURATION = 29 * 24 * 60 * 60 * 1000; // 29 days in milliseconds
+        const SESSION_CHECK_INTERVAL = 5 * 60 * 1000; // Check every 5 minutes
+        const SESSION_WARNING_TIME = 24 * 60 * 60 * 1000; // Warn 24 hours before expiry
 
         // ===== GLOBAL STATE =====
         let currentUser = null;
         let currentToken = null;
+        let sessionExpiryTime = null;
+        let sessionCheckInterval = null;
         let currentPage = 1;
         let postsPerPage = 10;
         let currentFilter = 'all';
@@ -1747,6 +1777,78 @@ Don't forget to add relevant tags above!"></textarea>
             }, 4000);
         }
 
+        // 🆕 NEW: Session management functions
+        function updateSessionInfo() {
+            const sessionInfo = document.getElementById('session-info');
+            if (!sessionInfo || !sessionExpiryTime) return;
+            
+            const now = Date.now();
+            const timeLeft = sessionExpiryTime - now;
+            
+            if (timeLeft <= 0) {
+                // Session expired
+                sessionInfo.textContent = 'Session expired';
+                sessionInfo.className = 'session-info expiring';
+                handleSessionExpiry();
+                return;
+            }
+            
+            const days = Math.floor(timeLeft / (24 * 60 * 60 * 1000));
+            const hours = Math.floor((timeLeft % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+            
+            if (timeLeft <= SESSION_WARNING_TIME) {
+                // Show warning
+                sessionInfo.textContent = `Session expires in ${days}d ${hours}h`;
+                sessionInfo.className = 'session-info expiring';
+                
+                // Show warning notification once per day
+                const lastWarning = localStorage.getItem('last_session_warning');
+                const oneDayAgo = now - 24 * 60 * 60 * 1000;
+                
+                if (!lastWarning || parseInt(lastWarning) < oneDayAgo) {
+                    showNotification(
+                        `⚠️ Your session will expire in ${days} day${days !== 1 ? 's' : ''} and ${hours} hour${hours !== 1 ? 's' : ''}`, 
+                        'warning'
+                    );
+                    localStorage.setItem('last_session_warning', now.toString());
+                }
+            } else {
+                // Normal session display
+                sessionInfo.textContent = `Session: ${days}d left`;
+                sessionInfo.className = 'session-info';
+            }
+        }
+
+        function handleSessionExpiry() {
+            console.log('🔐 Session expired, automatically logging out');
+            showNotification('Your session has expired. Please log in again.', 'warning');
+            logout();
+        }
+
+        function startSessionCheck() {
+            if (sessionCheckInterval) {
+                clearInterval(sessionCheckInterval);
+            }
+            
+            sessionCheckInterval = setInterval(() => {
+                if (currentUser && sessionExpiryTime) {
+                    updateSessionInfo();
+                    
+                    // Check if session is expired
+                    if (Date.now() >= sessionExpiryTime) {
+                        handleSessionExpiry();
+                    }
+                }
+            }, 60000); // Check every minute for UI updates
+        }
+
+        function stopSessionCheck() {
+            if (sessionCheckInterval) {
+                clearInterval(sessionCheckInterval);
+                sessionCheckInterval = null;
+            }
+        }
+
         // 🎯 SMOOTH LOADING - No more flickering overlay!
         function showSearchLoading() {
             const searchContainer = document.getElementById('search-container');
@@ -1775,7 +1877,7 @@ Don't forget to add relevant tags above!"></textarea>
             return text.substring(0, maxLength) + '...';
         }
 
-        // ===== API HELPER FUNCTIONS =====
+        // ===== 🆕 ENHANCED API HELPER FUNCTIONS WITH SESSION HANDLING =====
         async function apiRequest(endpoint, options = {}) {
             const url = `${API_BASE}${endpoint}`;
             const defaultHeaders = {
@@ -1797,6 +1899,13 @@ Don't forget to add relevant tags above!"></textarea>
             try {
                 const response = await fetch(url, config);
                 const data = await response.json();
+                
+                // 🆕 NEW: Handle session expiry
+                if (response.status === 401 && currentToken) {
+                    console.log('🔐 Received 401 Unauthorized, session may be expired');
+                    handleSessionExpiry();
+                    throw new Error('Session expired');
+                }
                 
                 if (!response.ok) {
                     throw new Error(data.error || `HTTP ${response.status}`);
@@ -1825,6 +1934,13 @@ Don't forget to add relevant tags above!"></textarea>
                 const response = await fetch(url, config);
                 const data = await response.json();
                 
+                // 🆕 NEW: Handle session expiry
+                if (response.status === 401 && currentToken) {
+                    console.log('🔐 Received 401 Unauthorized during upload, session may be expired');
+                    handleSessionExpiry();
+                    throw new Error('Session expired');
+                }
+                
                 if (!response.ok) {
                     throw new Error(data.error || `HTTP ${response.status}`);
                 }
@@ -1836,15 +1952,34 @@ Don't forget to add relevant tags above!"></textarea>
             }
         }
 
-        // ===== AUTHENTICATION =====
+        // ===== 🆕 ENHANCED AUTHENTICATION WITH 29-DAY SESSIONS =====
         function initAuth() {
             const savedToken = localStorage.getItem('auth_token');
             const savedUser = localStorage.getItem('current_user');
+            const savedExpiry = localStorage.getItem('session_expiry');
             
-            if (savedToken && savedUser) {
-                currentToken = savedToken;
-                currentUser = JSON.parse(savedUser);
-                updateAuthUI();
+            if (savedToken && savedUser && savedExpiry) {
+                const expiryTime = parseInt(savedExpiry);
+                const now = Date.now();
+                
+                if (now < expiryTime) {
+                    // Session is still valid
+                    currentToken = savedToken;
+                    currentUser = JSON.parse(savedUser);
+                    sessionExpiryTime = expiryTime;
+                    updateAuthUI();
+                    startSessionCheck();
+                    updateSessionInfo();
+                    
+                    console.log(`🔐 Restored valid session, expires: ${new Date(expiryTime).toLocaleString()}`);
+                } else {
+                    // Session expired
+                    console.log('🔐 Stored session expired, clearing');
+                    localStorage.removeItem('auth_token');
+                    localStorage.removeItem('current_user');
+                    localStorage.removeItem('session_expiry');
+                    localStorage.removeItem('last_session_warning');
+                }
             }
         }
 
@@ -1861,13 +1996,26 @@ Don't forget to add relevant tags above!"></textarea>
                     username: data.username
                 };
                 
+                // 🆕 NEW: Calculate session expiry time
+                const now = Date.now();
+                sessionExpiryTime = now + (data.expires_in * 1000); // Convert seconds to milliseconds
+                
+                // Store session info
                 localStorage.setItem('auth_token', currentToken);
                 localStorage.setItem('current_user', JSON.stringify(currentUser));
+                localStorage.setItem('session_expiry', sessionExpiryTime.toString());
+                localStorage.removeItem('last_session_warning'); // Reset warning
                 
                 updateAuthUI();
                 closeModal('login-modal');
-                showNotification(`Welcome back, ${username}!`, 'success');
+                showNotification(`Welcome back, ${username}! Your session is valid for 29 days.`, 'success');
                 loadPosts();
+                
+                // 🆕 NEW: Start session monitoring
+                startSessionCheck();
+                updateSessionInfo();
+                
+                console.log(`🔐 User ${username} logged in with 29-day session (expires: ${new Date(sessionExpiryTime).toLocaleString()})`);
                 
             } catch (error) {
                 showNotification(error.message, 'error');
@@ -1899,10 +2047,17 @@ Don't forget to add relevant tags above!"></textarea>
             } catch (error) {
                 console.error('Logout error:', error);
             } finally {
+                // 🆕 NEW: Clear session state
                 currentToken = null;
                 currentUser = null;
+                sessionExpiryTime = null;
+                stopSessionCheck();
+                
                 localStorage.removeItem('auth_token');
                 localStorage.removeItem('current_user');
+                localStorage.removeItem('session_expiry');
+                localStorage.removeItem('last_session_warning');
+                
                 updateAuthUI();
                 showNotification('Logged out successfully', 'info');
                 loadPosts();
@@ -1914,16 +2069,19 @@ Don't forget to add relevant tags above!"></textarea>
             const userInfo = document.getElementById('user-info');
             const newPostBtn = document.getElementById('new-post-btn');
             const username = document.getElementById('username');
+            const sessionInfo = document.getElementById('session-info');
             
             if (currentUser) {
                 loginBtn.style.display = 'none';
                 userInfo.style.display = 'flex';
                 newPostBtn.style.display = 'inline-flex';
                 username.textContent = currentUser.username;
+                updateSessionInfo();
             } else {
                 loginBtn.style.display = 'inline-flex';
                 userInfo.style.display = 'none';
                 newPostBtn.style.display = 'none';
+                sessionInfo.textContent = '';
             }
         }
 
@@ -3175,7 +3333,7 @@ Don't forget to add relevant tags above!"></textarea>
 
         // ===== 🎯 SMOOTH INITIALIZATION =====
         async function initializeApp() {
-            console.log('🎉 Posts Platform initializing with smooth UI and FIXED search...');
+            console.log('🎉 Posts Platform initializing with smooth UI, FIXED search, and 29-day sessions...');
             
             // Show initial loading state
             const container = document.getElementById('posts-container');
@@ -3209,6 +3367,7 @@ Don't forget to add relevant tags above!"></textarea>
                 console.log('🆕 Enhanced with comments search and proper All Posts functionality!');
                 console.log('🔧 FIXED: Search race condition resolved - no more unwanted searches!');
                 console.log('🔧 FIXED: Accurate tag counts and improved search with debug logging!');
+                console.log('🆕 NEW: 29-day session management with automatic logout!');
                 
             } catch (error) {
                 console.error('❌ Failed to initialize:', error);
@@ -3256,10 +3415,13 @@ Don't forget to add relevant tags above!"></textarea>
         // Start the application when the page loads
         document.addEventListener('DOMContentLoaded', initializeApp);
 
-        console.log('🎯 Posts Platform JavaScript loaded - SMOOTH UI WITH NO FLICKERING!');
+        console.log('🎯 Posts Platform JavaScript loaded - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS!');
         console.log('🆕 Enhanced with comments search and proper All Posts functionality!');
         console.log('🔧 FIXED: Search race condition resolved - no more unwanted "z" searches!');
         console.log('🔧 FIXED: Accurate tag counts and improved search with debug logging!');
+        console.log('🆕 NEW: 29-day session management with automatic logout on expiry!');
+        console.log('🆕 NEW: Session validation and warning system!');
+        console.log('🆕 NEW: Graceful session expiry handling with notifications!');
     </script>
 </body>
 </html>

@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """
-Auth API - CLEAN WORKING VERSION WITH FIXED SEARCH AND TAGS
-===========================================================
+Auth API - CLEAN WORKING VERSION WITH FIXED SEARCH AND TAGS + 29-DAY SESSIONS
+===============================================================================
 🔧 FIXED: Tag counting race condition - atomic operations
+🆕 UPDATED: Session expiration extended to 29 days (2,505,600 seconds)
 ✅ TESTED: Clean database initialization and backward compatibility
 ✅ WORKING: Tag search with exact matching
 ✅ WORKING: General search with partial matching (NOW INCLUDES COMMENTS!)
 ✅ WORKING: Tag counts that update properly WITHOUT RACE CONDITIONS
 
 🎯 CRITICAL FIX: Tag count operations now use single database transaction
+🎯 NEW: 29-day session expiration for better user experience
 """
 
 from aiohttp import web
@@ -35,6 +37,9 @@ logger = logging.getLogger(__name__)
 
 DB_PATH = "auth.db"
 UPLOAD_DIR = Path("uploads")
+
+# 🆕 29-day session expiration (in seconds)
+SESSION_DURATION = 29 * 24 * 60 * 60  # 29 days = 2,505,600 seconds
 
 # Ensure upload directory exists
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -1152,12 +1157,16 @@ async def post_login(request):
             return web.json_response({'error': 'Invalid username or password'}, status=401)
         
         token = generate_token()
-        await DB.create_session(token, user['id'], time.time() + 3600, request.remote, request.headers.get('User-Agent'))
+        # 🆕 UPDATED: Use 29-day session duration
+        expires_at = time.time() + SESSION_DURATION
+        await DB.create_session(token, user['id'], expires_at, request.remote, request.headers.get('User-Agent'))
         await DB.update_last_login(user['id'])
+        
+        logger.info(f"User {username} logged in with 29-day session (expires: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(expires_at))})")
         
         return web.json_response({
             'token': token, 
-            'expires_in': 3600,
+            'expires_in': SESSION_DURATION,  # 🆕 UPDATED: Return 29-day duration
             'user_id': user['id'],
             'username': user['username']
         })
