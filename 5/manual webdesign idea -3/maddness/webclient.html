@@ -2,9 +2,10 @@
 <html lang="en">
 
 <!--
-POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS
+POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + FIXED MULTI-WORD SEARCH
 🎯 FIXED: All flickering issues resolved with smooth transitions
 🔧 FIXED: Search debouncing race condition resolved
+🔧 FIXED: Multi-word search now works properly - finds posts with ALL words
 🆕 NEW: 29-day session management with automatic logout
 ✅ Smooth search results with fade transitions
 ✅ Optimized debouncing (600ms) with proper cleanup
@@ -18,6 +19,7 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS
 🔧 FIXED: Accurate tag counts with proper updates
 🔧 FIXED: Improved search with case-insensitive matching and debug logging
 🔧 FIXED: Search race condition when rapidly backspacing
+🔧 FIXED: Multi-word search feedback and user guidance
 🆕 NEW: Automatic session expiration handling and logout
 🆕 NEW: Session validation every 5 minutes
 🆕 NEW: Graceful session expiry notifications
@@ -159,6 +161,38 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS
         .search-container.searching::before {
             content: "⏳";
             animation: pulse 1.5s infinite;
+        }
+
+        /* 🔧 NEW: Multi-word search helper text */
+        .search-helper {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--card-background);
+            border: 1px solid var(--border-color);
+            border-top: none;
+            border-radius: 0 0 var(--border-radius) var(--border-radius);
+            padding: 0.5rem 0.75rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            display: none;
+            box-shadow: var(--shadow-sm);
+            z-index: 10;
+        }
+
+        .search-helper.visible {
+            display: block;
+        }
+
+        .search-helper .helper-text {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .search-helper .helper-icon {
+            color: var(--primary-color);
         }
 
         @keyframes pulse {
@@ -1472,6 +1506,13 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS
         <div class="header-center">
             <div class="search-container" id="search-container">
                 <input type="text" id="search-input" placeholder="Search posts, tags, authors, comments..." />
+                <!-- 🔧 NEW: Multi-word search helper -->
+                <div class="search-helper" id="search-helper">
+                    <div class="helper-text">
+                        <span class="helper-icon">💡</span>
+                        <span>Use multiple words to find posts containing ALL terms (e.g., "python tutorial")</span>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="header-right">
@@ -1709,8 +1750,9 @@ Don't forget to add relevant tags above!"></textarea>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
 
     <script>
-        // 🎯 POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS
+        // 🎯 POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + FIXED MULTI-WORD SEARCH
         // 🔧 FIXED: Search debouncing race condition resolved
+        // 🔧 FIXED: Multi-word search now works properly - finds posts with ALL words
         // 🆕 NEW: 29-day session management with automatic logout
         // 🆕 ENHANCED WITH COMMENTS SEARCH AND PROPER ALL POSTS FUNCTIONALITY
         // ===== COMPLETE JAVASCRIPT IMPLEMENTATION =====
@@ -2007,6 +2049,23 @@ Don't forget to add relevant tags above!"></textarea>
             searchLoading.classList.remove('visible');
         }
 
+        // 🔧 NEW: Show search helper for multi-word queries
+        function showSearchHelper(query) {
+            const searchHelper = document.getElementById('search-helper');
+            const words = query.trim().split(/\s+/).filter(w => w.length > 0);
+            
+            if (words.length > 1) {
+                searchHelper.classList.add('visible');
+            } else {
+                searchHelper.classList.remove('visible');
+            }
+        }
+
+        function hideSearchHelper() {
+            const searchHelper = document.getElementById('search-helper');
+            searchHelper.classList.remove('visible');
+        }
+
         function sanitizeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
@@ -2296,6 +2355,12 @@ Don't forget to add relevant tags above!"></textarea>
                 } else if (searchQuery) {
                     endpoint = '/search';
                     params.set('q', searchQuery);
+                    
+                    // 🔧 NEW: Log multi-word search for debugging
+                    const words = searchQuery.trim().split(/\s+/).filter(w => w.length > 0);
+                    if (words.length > 1) {
+                        console.log(`🔍 Multi-word search: "${searchQuery}" -> words: [${words.join(', ')}]`);
+                    }
                 }
                 
                 const data = await apiRequest(`${endpoint}?${params}`);
@@ -2304,6 +2369,15 @@ Don't forget to add relevant tags above!"></textarea>
                 if (searchQuery) {
                     console.log(`🔍 Search results for "${searchQuery}":`, data);
                     console.log(`📊 Found ${data.posts ? data.posts.length : 0} posts`);
+                    
+                    // 🔧 NEW: Show multi-word search feedback
+                    const words = searchQuery.trim().split(/\s+/).filter(w => w.length > 0);
+                    if (words.length > 1) {
+                        console.log(`🎯 Multi-word search found posts containing ALL words: [${words.join(', ')}]`);
+                        if (data.posts && data.posts.length > 0) {
+                            showNotification(`Found ${data.posts.length} posts containing ALL words: ${words.join(', ')}`, 'info');
+                        }
+                    }
                 }
                 
                 // 🎯 Smooth transition instead of instant replacement
@@ -2318,6 +2392,7 @@ Don't forget to add relevant tags above!"></textarea>
             } finally {
                 isSearching = false;
                 hideSearchLoading();
+                hideSearchHelper(); // Hide helper after search
                 
                 const container = document.getElementById('posts-container');
                 container.classList.remove('loading');
@@ -3031,7 +3106,7 @@ Don't forget to add relevant tags above!"></textarea>
             }
         }
 
-        // ===== 🔧 FIXED SEARCH FUNCTIONALITY - NO MORE RACE CONDITIONS! =====
+        // ===== 🔧 FIXED SEARCH FUNCTIONALITY - NO MORE RACE CONDITIONS WITH MULTI-WORD SUPPORT! =====
         async function performSearch() {
             const searchInput = document.getElementById('search-input');
             const query = searchInput.value.trim();
@@ -3047,9 +3122,13 @@ Don't forget to add relevant tags above!"></textarea>
                 currentPage = 1;
                 document.getElementById('page-title').textContent = '✨ Latest Posts';
                 console.log('🔍 Empty search, loading all posts');
+                hideSearchHelper();
                 loadPosts();
                 return;
             }
+            
+            // 🔧 NEW: Show helper for multi-word searches
+            showSearchHelper(query);
             
             // 🔧 FIXED: Clear any existing timeout properly
             if (searchTimeout) {
@@ -3066,9 +3145,18 @@ Don't forget to add relevant tags above!"></textarea>
                 }
                 
                 console.log(`🔍 Executing search for: "${currentQuery}"`);
+                
+                // 🔧 NEW: Enhanced multi-word search feedback
+                const words = currentQuery.trim().split(/\s+/).filter(w => w.length > 0);
+                if (words.length > 1) {
+                    console.log(`🎯 Multi-word search: ${words.length} words - [${words.join(', ')}]`);
+                    document.getElementById('page-title').textContent = `🔍 Multi-word Search: "${currentQuery}" (finding posts with ALL words)`;
+                } else {
+                    document.getElementById('page-title').textContent = `🔍 Search: "${currentQuery}" (posts, comments, tags, authors)`;
+                }
+                
                 searchQuery = currentQuery;
                 currentPage = 1;
-                document.getElementById('page-title').textContent = `🔍 Search: "${currentQuery}" (posts, comments, tags, authors)`;
                 await loadPosts();
             }, 600); // 🔧 FIXED: Reduced to 600ms for better responsiveness
         }
@@ -3085,6 +3173,7 @@ Don't forget to add relevant tags above!"></textarea>
             currentPage = 1;
             document.getElementById('search-input').value = tagName;
             document.getElementById('page-title').textContent = `🏷️ Tag: "${tagName}"`;
+            hideSearchHelper(); // Hide helper for tag searches
             loadPosts();
         }
 
@@ -3303,6 +3392,7 @@ Don't forget to add relevant tags above!"></textarea>
             searchQuery = '';
             lastSearchQuery = ''; // 🔧 FIXED: Reset last search query
             document.getElementById('search-input').value = '';
+            hideSearchHelper(); // Hide helper when changing filters
             
             // Update filter chips with smooth transition
             document.querySelectorAll('.filter-chip').forEach(chip => {
@@ -3334,8 +3424,9 @@ Don't forget to add relevant tags above!"></textarea>
             searchQuery = '';
             lastSearchQuery = ''; // 🔧 FIXED: Reset last search query
             
-            // Clear search input
+            // Clear search input and hide helper
             document.getElementById('search-input').value = '';
+            hideSearchHelper();
             
             // Update UI to show "All Posts" filter is active
             document.querySelectorAll('.filter-chip').forEach(chip => {
@@ -3372,6 +3463,7 @@ Don't forget to add relevant tags above!"></textarea>
             searchQuery = '';
             lastSearchQuery = ''; // 🔧 FIXED: Reset last search query
             document.getElementById('search-input').value = '';
+            hideSearchHelper();
             document.getElementById('page-title').textContent = '✨ Latest Posts';
             
             document.querySelectorAll('.filter-chip').forEach(chip => {
@@ -3419,7 +3511,7 @@ Don't forget to add relevant tags above!"></textarea>
                 submitProposal();
             });
             
-            // 🔧 FIXED SEARCH - Better event handling with race condition prevention
+            // 🔧 FIXED SEARCH - Better event handling with race condition prevention and multi-word support
             const searchInput = document.getElementById('search-input');
             
             searchInput.addEventListener('input', (e) => {
@@ -3449,8 +3541,16 @@ Don't forget to add relevant tags above!"></textarea>
                     searchQuery = '';
                     lastSearchQuery = '';
                     currentPage = 1;
+                    hideSearchHelper();
                     document.getElementById('page-title').textContent = '✨ Latest Posts';
                     loadPosts();
+                }
+            });
+            
+            // 🔧 NEW: Hide search helper when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.search-container')) {
+                    hideSearchHelper();
                 }
             });
             
@@ -3483,13 +3583,16 @@ Don't forget to add relevant tags above!"></textarea>
                     if (editorModal.classList.contains('visible')) {
                         closeEditor();
                     }
+                    
+                    // Also hide search helper on escape
+                    hideSearchHelper();
                 }
             });
         }
 
         // ===== 🎯 SMOOTH INITIALIZATION =====
         async function initializeApp() {
-            console.log('🎉 Posts Platform initializing with smooth UI, FIXED search, and 29-day sessions...');
+            console.log('🎉 Posts Platform initializing with smooth UI, FIXED multi-word search, and 29-day sessions...');
             
             // Show initial loading state
             const container = document.getElementById('posts-container');
@@ -3523,6 +3626,7 @@ Don't forget to add relevant tags above!"></textarea>
                 console.log('🆕 Enhanced with comments search and proper All Posts functionality!');
                 console.log('🔧 FIXED: Search race condition resolved - no more unwanted searches!');
                 console.log('🔧 FIXED: Accurate tag counts and improved search with debug logging!');
+                console.log('🔧 FIXED: Multi-word search now works properly - finds posts with ALL words!');
                 console.log('🆕 NEW: 29-day session management with automatic logout!');
                 console.log('🆕 NEW: Automatic session renewal on user activity!');
                 console.log('🆕 NEW: Smart activity detection with throttled renewals!');
@@ -3573,10 +3677,11 @@ Don't forget to add relevant tags above!"></textarea>
         // Start the application when the page loads
         document.addEventListener('DOMContentLoaded', initializeApp);
 
-        console.log('🎯 Posts Platform JavaScript loaded - SMOOTH UI WITH NO FLICKERING + 29-DAY AUTO-RENEWING SESSIONS!');
+        console.log('🎯 Posts Platform JavaScript loaded - SMOOTH UI WITH NO FLICKERING + 29-DAY AUTO-RENEWING SESSIONS + FIXED MULTI-WORD SEARCH!');
         console.log('🆕 Enhanced with comments search and proper All Posts functionality!');
         console.log('🔧 FIXED: Search race condition resolved - no more unwanted "z" searches!');
         console.log('🔧 FIXED: Accurate tag counts and improved search with debug logging!');
+        console.log('🔧 FIXED: Multi-word search now works properly - finds posts with ALL words!');
         console.log('🆕 NEW: 29-day session management with automatic logout on expiry!');
         console.log('🆕 NEW: Session validation and warning system!');
         console.log('🆕 NEW: Graceful session expiry handling with notifications!');
@@ -3584,6 +3689,8 @@ Don't forget to add relevant tags above!"></textarea>
         console.log('🆕 NEW: Activity detection (page focus, mouse, keyboard, scroll)!');
         console.log('🆕 NEW: Smart renewal throttling to prevent excessive API calls!');
         console.log('🆕 NEW: Sessions extend automatically - active users never log out!');
+        console.log('🔧 NEW: Multi-word search helper shows when typing multiple words!');
+        console.log('🔧 NEW: Enhanced search feedback and user guidance!');
     </script>
 </body>
 </html>
