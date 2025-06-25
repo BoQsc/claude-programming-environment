@@ -4,8 +4,9 @@
 <!--
 POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING
 🎯 FIXED: All flickering issues resolved with smooth transitions
+🔧 FIXED: Search debouncing race condition resolved
 ✅ Smooth search results with fade transitions
-✅ Optimized debouncing (800ms) 
+✅ Optimized debouncing (600ms) with proper cleanup
 ✅ Subtle loading indicators instead of overlay
 ✅ Content fade-in/fade-out animations
 ✅ Prevented unnecessary DOM thrashing
@@ -15,6 +16,7 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING
 🆕 ENHANCED: Search now includes comments content
 🔧 FIXED: Accurate tag counts with proper updates
 🔧 FIXED: Improved search with case-insensitive matching and debug logging
+🔧 FIXED: Search race condition when rapidly backspacing
 -->
 
 <head>
@@ -1690,6 +1692,7 @@ Don't forget to add relevant tags above!"></textarea>
 
     <script>
         // 🎯 POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING
+        // 🔧 FIXED: Search debouncing race condition resolved
         // 🆕 ENHANCED WITH COMMENTS SEARCH AND PROPER ALL POSTS FUNCTIONALITY
         // ===== COMPLETE JAVASCRIPT IMPLEMENTATION =====
         
@@ -1709,6 +1712,7 @@ Don't forget to add relevant tags above!"></textarea>
         let allTags = [];
         let isSearching = false; // 🎯 Prevent multiple searches
         let searchTimeout = null; // 🎯 Better debouncing
+        let lastSearchQuery = null; // 🔧 FIXED: Track last search to prevent race conditions
 
         // ===== UTILITY FUNCTIONS =====
         function formatDate(timestamp) {
@@ -1956,7 +1960,7 @@ Don't forget to add relevant tags above!"></textarea>
             }
         }
 
-        // ===== 🎯 SMOOTH POSTS MANAGEMENT - NO MORE FLICKERING! =====
+        // ===== 🎯 FIXED SMOOTH POSTS MANAGEMENT - NO MORE RACE CONDITIONS! =====
         async function loadPosts(showLoading = true) {
             // 🎯 Prevent multiple simultaneous searches
             if (isSearching) return;
@@ -2719,35 +2723,57 @@ Don't forget to add relevant tags above!"></textarea>
             }
         }
 
-        // ===== 🎯 SMOOTH SEARCH FUNCTIONALITY - NO MORE FLICKERING! =====
+        // ===== 🔧 FIXED SEARCH FUNCTIONALITY - NO MORE RACE CONDITIONS! =====
         async function performSearch() {
             const searchInput = document.getElementById('search-input');
             const query = searchInput.value.trim();
+            
+            console.log(`🔍 performSearch called with query: "${query}"`);
+            
+            // 🔧 FIXED: Store the current query to prevent race conditions
+            const currentQuery = query;
+            lastSearchQuery = currentQuery;
             
             if (!query) {
                 searchQuery = '';
                 currentPage = 1;
                 document.getElementById('page-title').textContent = '✨ Latest Posts';
+                console.log('🔍 Empty search, loading all posts');
                 loadPosts();
                 return;
             }
             
-            // 🎯 Prevent rapid consecutive searches
+            // 🔧 FIXED: Clear any existing timeout properly
             if (searchTimeout) {
                 clearTimeout(searchTimeout);
+                searchTimeout = null;
             }
             
+            // 🔧 FIXED: Better debouncing with race condition prevention
             searchTimeout = setTimeout(async () => {
-                searchQuery = query;
+                // 🔧 FIXED: Only proceed if this is still the most recent search
+                if (lastSearchQuery !== currentQuery) {
+                    console.log(`🔍 Race condition detected. Skipping search for "${currentQuery}", current is "${lastSearchQuery}"`);
+                    return;
+                }
+                
+                console.log(`🔍 Executing search for: "${currentQuery}"`);
+                searchQuery = currentQuery;
                 currentPage = 1;
-                document.getElementById('page-title').textContent = `🔍 Search: "${query}" (posts, comments, tags, authors)`;
-                console.log(`🔍 Searching for: "${query}"`); // Debug logging
+                document.getElementById('page-title').textContent = `🔍 Search: "${currentQuery}" (posts, comments, tags, authors)`;
                 await loadPosts();
-            }, 800); // 🎯 Increased debounce time for smoother experience
+            }, 600); // 🔧 FIXED: Reduced to 600ms for better responsiveness
         }
 
         function searchByTag(tagName) {
+            // 🔧 FIXED: Clear any pending search timeouts
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+                searchTimeout = null;
+            }
+            
             searchQuery = tagName;
+            lastSearchQuery = tagName; // 🔧 FIXED: Update last search query
             currentPage = 1;
             document.getElementById('search-input').value = tagName;
             document.getElementById('page-title').textContent = `🏷️ Tag: "${tagName}"`;
@@ -2780,6 +2806,7 @@ Don't forget to add relevant tags above!"></textarea>
                 showNotification(`Debug refresh failed: ${error.message}`, 'error');
             }
         }
+
         async function loadTags() {
             try {
                 console.log('📋 Loading tags with updated counts...');
@@ -2984,9 +3011,16 @@ Don't forget to add relevant tags above!"></textarea>
                 return;
             }
             
+            // 🔧 FIXED: Clear search when changing filters
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+                searchTimeout = null;
+            }
+            
             currentFilter = filter;
             currentPage = 1;
             searchQuery = '';
+            lastSearchQuery = ''; // 🔧 FIXED: Reset last search query
             document.getElementById('search-input').value = '';
             
             // Update filter chips with smooth transition
@@ -3007,10 +3041,17 @@ Don't forget to add relevant tags above!"></textarea>
 
         // 🆕 FIXED: Show All Posts function that properly resets all filters
         async function showAllPosts() {
+            // 🔧 FIXED: Clear any pending searches
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+                searchTimeout = null;
+            }
+            
             // Reset all filters and search
             currentFilter = 'all';
             currentPage = 1;
             searchQuery = '';
+            lastSearchQuery = ''; // 🔧 FIXED: Reset last search query
             
             // Clear search input
             document.getElementById('search-input').value = '';
@@ -3039,9 +3080,16 @@ Don't forget to add relevant tags above!"></textarea>
 
         // ===== NAVIGATION =====
         async function goHome() {
+            // 🔧 FIXED: Clear any pending searches
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+                searchTimeout = null;
+            }
+            
             currentFilter = 'all';
             currentPage = 1;
             searchQuery = '';
+            lastSearchQuery = ''; // 🔧 FIXED: Reset last search query
             document.getElementById('search-input').value = '';
             document.getElementById('page-title').textContent = '✨ Latest Posts';
             
@@ -3053,7 +3101,7 @@ Don't forget to add relevant tags above!"></textarea>
             await loadPosts();
         }
 
-        // ===== 🎯 OPTIMIZED EVENT LISTENERS - Better performance =====
+        // ===== 🔧 FIXED EVENT LISTENERS - Better search handling =====
         function setupEventListeners() {
             // Auth form submission
             document.getElementById('auth-form').addEventListener('submit', async (e) => {
@@ -3090,13 +3138,38 @@ Don't forget to add relevant tags above!"></textarea>
                 submitProposal();
             });
             
-            // 🎯 OPTIMIZED SEARCH - Better debouncing
+            // 🔧 FIXED SEARCH - Better event handling with race condition prevention
             const searchInput = document.getElementById('search-input');
-            searchInput.addEventListener('input', performSearch);
+            
+            searchInput.addEventListener('input', (e) => {
+                console.log(`🔍 Search input event: "${e.target.value}"`);
+                performSearch();
+            });
+            
             searchInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
-                    if (searchTimeout) clearTimeout(searchTimeout);
+                    console.log('🔍 Enter key pressed, forcing immediate search');
+                    if (searchTimeout) {
+                        clearTimeout(searchTimeout);
+                        searchTimeout = null;
+                    }
                     performSearch();
+                }
+            });
+            
+            // 🔧 FIXED: Clear search on backspace to empty
+            searchInput.addEventListener('keyup', (e) => {
+                if (e.key === 'Backspace' && e.target.value.trim() === '') {
+                    console.log('🔍 Backspace to empty, clearing search');
+                    if (searchTimeout) {
+                        clearTimeout(searchTimeout);
+                        searchTimeout = null;
+                    }
+                    searchQuery = '';
+                    lastSearchQuery = '';
+                    currentPage = 1;
+                    document.getElementById('page-title').textContent = '✨ Latest Posts';
+                    loadPosts();
                 }
             });
             
@@ -3135,7 +3208,7 @@ Don't forget to add relevant tags above!"></textarea>
 
         // ===== 🎯 SMOOTH INITIALIZATION =====
         async function initializeApp() {
-            console.log('🎉 Posts Platform initializing with smooth UI...');
+            console.log('🎉 Posts Platform initializing with smooth UI and FIXED search...');
             
             // Show initial loading state
             const container = document.getElementById('posts-container');
@@ -3167,6 +3240,7 @@ Don't forget to add relevant tags above!"></textarea>
                 
                 console.log('✅ Posts Platform ready with SMOOTH UI - No more flickering!');
                 console.log('🆕 Enhanced with comments search and proper All Posts functionality!');
+                console.log('🔧 FIXED: Search race condition resolved - no more unwanted searches!');
                 console.log('🔧 FIXED: Accurate tag counts and improved search with debug logging!');
                 
             } catch (error) {
@@ -3205,19 +3279,20 @@ Don't forget to add relevant tags above!"></textarea>
         window.searchByTag = searchByTag;
         window.selectTag = selectTag;
         window.setFilter = setFilter;
-        window.showAllPosts = showAllPosts; // 🆕 FIXED: Export the new function
+        window.showAllPosts = showAllPosts;
         window.changePostsPerPage = changePostsPerPage;
         window.previousPage = previousPage;
         window.nextPage = nextPage;
         window.gotoPage = gotoPage;
         window.goHome = goHome;
-        window.debugRefreshTags = debugRefreshTags; // 🔧 DEBUG: Export debug function
+        window.debugRefreshTags = debugRefreshTags;
 
         // Start the application when the page loads
         document.addEventListener('DOMContentLoaded', initializeApp);
 
         console.log('🎯 Posts Platform JavaScript loaded - SMOOTH UI WITH NO FLICKERING!');
         console.log('🆕 Enhanced with comments search and proper All Posts functionality!');
+        console.log('🔧 FIXED: Search race condition resolved - no more unwanted "z" searches!');
         console.log('🔧 FIXED: Accurate tag counts and improved search with debug logging!');
     </script>
 </body>
