@@ -11,6 +11,10 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING
 ✅ Prevented unnecessary DOM thrashing
 ✅ Optimized rendering pipeline
 ✅ Smooth tag suggestions and interactions
+🆕 FIXED: "All Posts" archive item now properly resets filters
+🆕 ENHANCED: Search now includes comments content
+🔧 FIXED: Accurate tag counts with proper updates
+🔧 FIXED: Improved search with case-insensitive matching and debug logging
 -->
 
 <head>
@@ -1443,7 +1447,7 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING
         </div>
         <div class="header-center">
             <div class="search-container" id="search-container">
-                <input type="text" id="search-input" placeholder="Search posts, tags, authors..." />
+                <input type="text" id="search-input" placeholder="Search posts, tags, authors, comments..." />
             </div>
         </div>
         <div class="header-right">
@@ -1460,7 +1464,8 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING
         <div class="sidebar-section">
             <h3>📅 Archive</h3>
             <div class="archive-stats" id="archive-stats">
-                <div class="archive-item" onclick="loadPosts()">
+                <!-- 🆕 FIXED: All Posts now properly resets all filters -->
+                <div class="archive-item" onclick="showAllPosts()" title="Show all posts regardless of current filters">
                     📄 All Posts <span class="count" id="total-count">0</span>
                 </div>
             </div>
@@ -1471,6 +1476,12 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING
             <h3>🏷️ Popular Tags</h3>
             <div class="popular-tags" id="popular-tags">
                 <div class="loading subtle">Loading tags...</div>
+            </div>
+            <!-- 🔧 DEBUG: Manual refresh button -->
+            <div style="margin-top: 1rem;">
+                <button onclick="debugRefreshTags()" class="small" style="width: 100%; background: var(--warning-color);">
+                    🔧 Refresh Tag Counts
+                </button>
             </div>
         </div>
 
@@ -1508,7 +1519,7 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING
         <!-- 🎯 SMOOTH SEARCH LOADING INDICATOR -->
         <div class="search-loading" id="search-loading">
             <div class="spinner small"></div>
-            Searching...
+            Searching posts, comments, tags, and authors...
         </div>
 
         <div class="posts-container" id="posts-container">
@@ -1679,6 +1690,7 @@ Don't forget to add relevant tags above!"></textarea>
 
     <script>
         // 🎯 POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING
+        // 🆕 ENHANCED WITH COMMENTS SEARCH AND PROPER ALL POSTS FUNCTIONALITY
         // ===== COMPLETE JAVASCRIPT IMPLEMENTATION =====
         
         // ===== CONFIGURATION =====
@@ -1975,6 +1987,12 @@ Don't forget to add relevant tags above!"></textarea>
                 }
                 
                 const data = await apiRequest(`${endpoint}?${params}`);
+                
+                // 🔧 Debug logging for search results
+                if (searchQuery) {
+                    console.log(`🔍 Search results for "${searchQuery}":`, data);
+                    console.log(`📊 Found ${data.posts ? data.posts.length : 0} posts`);
+                }
                 
                 // 🎯 Smooth transition instead of instant replacement
                 await smoothRenderPosts(data.posts, data.pagination);
@@ -2722,7 +2740,8 @@ Don't forget to add relevant tags above!"></textarea>
             searchTimeout = setTimeout(async () => {
                 searchQuery = query;
                 currentPage = 1;
-                document.getElementById('page-title').textContent = `🔍 Search: "${query}"`;
+                document.getElementById('page-title').textContent = `🔍 Search: "${query}" (posts, comments, tags, authors)`;
+                console.log(`🔍 Searching for: "${query}"`); // Debug logging
                 await loadPosts();
             }, 800); // 🎯 Increased debounce time for smoother experience
         }
@@ -2735,11 +2754,38 @@ Don't forget to add relevant tags above!"></textarea>
             loadPosts();
         }
 
-        // ===== ENHANCED TAGS MANAGEMENT WITH SMOOTH ANIMATIONS =====
+        // ===== 🔧 DEBUG FUNCTIONS =====
+        async function debugRefreshTags() {
+            if (!currentUser) {
+                showNotification('Please log in to refresh tag counts', 'error');
+                return;
+            }
+            
+            try {
+                showNotification('Refreshing tag counts...', 'info');
+                console.log('🔧 Manually refreshing tag counts...');
+                
+                const data = await apiRequest('/debug/refresh-tags', {
+                    method: 'POST'
+                });
+                
+                console.log('🔧 Debug response:', data);
+                showNotification('Tag counts refreshed! Check console for details.', 'success');
+                
+                // Reload tags to show updated counts
+                await loadTags();
+                
+            } catch (error) {
+                console.error('Debug refresh failed:', error);
+                showNotification(`Debug refresh failed: ${error.message}`, 'error');
+            }
+        }
         async function loadTags() {
             try {
+                console.log('📋 Loading tags with updated counts...');
                 const data = await apiRequest('/tags');
                 allTags = data.tags || [];
+                console.log('📊 Tag counts:', allTags.map(tag => `${tag.name}: ${tag.post_count}`).join(', '));
                 await smoothRenderTags(allTags);
                 
             } catch (error) {
@@ -2959,6 +3005,31 @@ Don't forget to add relevant tags above!"></textarea>
             await loadPosts();
         }
 
+        // 🆕 FIXED: Show All Posts function that properly resets all filters
+        async function showAllPosts() {
+            // Reset all filters and search
+            currentFilter = 'all';
+            currentPage = 1;
+            searchQuery = '';
+            
+            // Clear search input
+            document.getElementById('search-input').value = '';
+            
+            // Update UI to show "All Posts" filter is active
+            document.querySelectorAll('.filter-chip').forEach(chip => {
+                chip.classList.remove('active');
+            });
+            document.querySelector('.filter-chip').classList.add('active'); // First chip (All Posts)
+            
+            // Update page title
+            document.getElementById('page-title').textContent = '✨ Latest Posts';
+            
+            // Load all posts without any filters
+            await loadPosts();
+            
+            showNotification('Showing all posts', 'info');
+        }
+
         async function changePostsPerPage() {
             const select = document.getElementById('posts-per-page');
             postsPerPage = parseInt(select.value);
@@ -3095,6 +3166,8 @@ Don't forget to add relevant tags above!"></textarea>
                 ]);
                 
                 console.log('✅ Posts Platform ready with SMOOTH UI - No more flickering!');
+                console.log('🆕 Enhanced with comments search and proper All Posts functionality!');
+                console.log('🔧 FIXED: Accurate tag counts and improved search with debug logging!');
                 
             } catch (error) {
                 console.error('❌ Failed to initialize:', error);
@@ -3132,16 +3205,20 @@ Don't forget to add relevant tags above!"></textarea>
         window.searchByTag = searchByTag;
         window.selectTag = selectTag;
         window.setFilter = setFilter;
+        window.showAllPosts = showAllPosts; // 🆕 FIXED: Export the new function
         window.changePostsPerPage = changePostsPerPage;
         window.previousPage = previousPage;
         window.nextPage = nextPage;
         window.gotoPage = gotoPage;
         window.goHome = goHome;
+        window.debugRefreshTags = debugRefreshTags; // 🔧 DEBUG: Export debug function
 
         // Start the application when the page loads
         document.addEventListener('DOMContentLoaded', initializeApp);
 
         console.log('🎯 Posts Platform JavaScript loaded - SMOOTH UI WITH NO FLICKERING!');
+        console.log('🆕 Enhanced with comments search and proper All Posts functionality!');
+        console.log('🔧 FIXED: Accurate tag counts and improved search with debug logging!');
     </script>
 </body>
 </html>
