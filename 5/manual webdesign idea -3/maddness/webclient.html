@@ -2,7 +2,11 @@
 <html lang="en">
 
 <!--
-POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + SMART FUZZY SEARCH + DEDUPLICATION
+POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + SMART FUZZY SEARCH + TEMPERATURE-BASED SCORING
+🎯 NEW: Temperature-based relevance scoring - most matching results at the top!
+🎯 NEW: Multi-factor scoring algorithm considering title, content, tags, and author matches
+🎯 NEW: Real-time score calculation with visual temperature indicators
+🎯 NEW: Enhanced relevance badges showing actual match scores
 🎯 NEW: Smart fuzzy search with relevance ranking instead of strict filtering
 🎯 NEW: Hashtag prioritization - #tags boost relevance but show all matches  
 🎯 NEW: Partial tag matching - #go matches #godot, #golang, etc.
@@ -537,7 +541,7 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + SMART FUZZY SE
             transform: translateY(-2px);
         }
 
-        /* 🎯 NEW: Relevance badges for smart search results */
+        /* 🎯 NEW: Enhanced temperature-based relevance badges with actual scores */
         .relevance-badge {
             display: inline-flex;
             align-items: center;
@@ -549,12 +553,42 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + SMART FUZZY SE
             margin-bottom: 0.75rem;
             opacity: 0.9;
             transition: var(--fast-transition);
+            position: relative;
+            overflow: hidden;
         }
 
-        .relevance-badge.exact {
+        /* 🎯 NEW: Temperature-based color coding */
+        .relevance-badge.hot {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            color: white;
+            border: 1px solid #991b1b;
+        }
+
+        .relevance-badge.hot::before {
+            content: "🔥";
+            margin-right: 0.2rem;
+        }
+
+        .relevance-badge.warm {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            border: 1px solid #b45309;
+        }
+
+        .relevance-badge.warm::before {
+            content: "🌡️";
+            margin-right: 0.2rem;
+        }
+
+        .relevance-badge.good {
             background: linear-gradient(135deg, #10b981, #059669);
             color: white;
             border: 1px solid #047857;
+        }
+
+        .relevance-badge.good::before {
+            content: "✅";
+            margin-right: 0.2rem;
         }
 
         .relevance-badge.partial {
@@ -563,9 +597,46 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + SMART FUZZY SE
             border: 1px solid #1d4ed8;
         }
 
+        .relevance-badge.partial::before {
+            content: "🔍";
+            margin-right: 0.2rem;
+        }
+
+        .relevance-badge.cold {
+            background: linear-gradient(135deg, #6b7280, #4b5563);
+            color: white;
+            border: 1px solid #374151;
+        }
+
+        .relevance-badge.cold::before {
+            content: "❄️";
+            margin-right: 0.2rem;
+        }
+
+        /* 🎯 NEW: Animated relevance score display */
+        .relevance-score {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-weight: 700;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
         .post:hover .relevance-badge {
             opacity: 1;
-            transform: translateY(-1px);
+            transform: translateY(-1px) scale(1.05);
+        }
+
+        /* 🎯 NEW: Pulsing animation for high relevance scores */
+        .relevance-badge.hot {
+            animation: hotPulse 2s infinite ease-in-out;
+        }
+
+        @keyframes hotPulse {
+            0%, 100% { 
+                box-shadow: 0 0 10px rgba(220, 38, 38, 0.3);
+            }
+            50% { 
+                box-shadow: 0 0 20px rgba(220, 38, 38, 0.6);
+            }
         }
 
         .post-header {
@@ -1871,7 +1942,11 @@ Don't forget to add relevant tags above!"></textarea>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
 
     <script>
-        // 🎯 POSTS PLATFORM - SMOOTH UI + 29-DAY SESSIONS + SMART FUZZY SEARCH + DEDUPLICATION
+        // 🎯 POSTS PLATFORM - TEMPERATURE-BASED SEARCH SCORING + SMOOTH UI + 29-DAY SESSIONS + SMART FUZZY SEARCH + DEDUPLICATION
+        // 🎯 NEW: Temperature-based relevance scoring - most matching results at the top!
+        // 🎯 NEW: Multi-factor scoring algorithm considering title, content, tags, and author matches
+        // 🎯 NEW: Real-time score calculation with visual temperature indicators
+        // 🎯 NEW: Enhanced relevance badges showing actual match scores
         // 🔧 FIXED: Search debouncing race condition resolved
         // 🔧 FIXED: Multi-word search now works properly - finds posts with ALL words
         // 🆕 NEW: 29-day session management with automatic logout
@@ -1892,6 +1967,31 @@ Don't forget to add relevant tags above!"></textarea>
         const SESSION_WARNING_TIME = 24 * 60 * 60 * 1000; // Warn 24 hours before expiry
         const SESSION_RENEWAL_THROTTLE = 5 * 60 * 1000; // Don't renew more than once per 5 minutes
         const ACTIVITY_RENEWAL_DELAY = 30 * 1000; // Wait 30 seconds after activity before renewing
+
+        // 🎯 NEW: Temperature-based scoring configuration
+        const SCORING_CONFIG = {
+            // Score weights for different match types
+            weights: {
+                titleExact: 100,      // Exact title match
+                titlePartial: 50,     // Partial title match
+                contentExact: 80,     // Exact content match
+                contentPartial: 40,   // Partial content match
+                tagExact: 90,         // Exact tag match
+                tagPartial: 45,       // Partial tag match
+                authorExact: 70,      // Exact author match
+                authorPartial: 35,    // Partial author match
+                recency: 20,          // Recency boost (max)
+                length: 10            // Content length factor
+            },
+            // Temperature thresholds
+            thresholds: {
+                hot: 200,     // 🔥 Hot results (very high relevance)
+                warm: 120,    // 🌡️ Warm results (high relevance)
+                good: 80,     // ✅ Good results (good relevance)
+                partial: 40,  // 🔍 Partial results (some relevance)
+                cold: 0       // ❄️ Cold results (low relevance)
+            }
+        };
 
         // ===== GLOBAL STATE =====
         let currentUser = null;
@@ -1991,6 +2091,153 @@ Don't forget to add relevant tags above!"></textarea>
             };
         }
 
+        // 🎯 NEW: TEMPERATURE-BASED SCORING SYSTEM!
+        function calculateRelevanceScore(post, searchInfo) {
+            if (!searchInfo || !searchInfo.uniqueTerms.length) return 0;
+
+            let score = 0;
+            const terms = searchInfo.uniqueTerms;
+            const { weights } = SCORING_CONFIG;
+
+            // Normalize text for comparison
+            const postTitle = (post.title || '').toLowerCase();
+            const postContent = (post.content || '').toLowerCase();
+            const postAuthor = (post.username || '').toLowerCase();
+            
+            // Get post tags
+            const postTags = post.tags ? post.tags.map(tag => {
+                const tagName = typeof tag === 'string' ? tag : tag.name;
+                return tagName.toLowerCase();
+            }) : [];
+
+            console.log(`🎯 Scoring post "${post.title}" for terms: [${terms.join(', ')}]`);
+
+            // Score each search term
+            terms.forEach(term => {
+                const termLower = term.toLowerCase();
+                
+                // Title scoring
+                if (postTitle === termLower) {
+                    score += weights.titleExact;
+                    console.log(`  🎯 Title exact match for "${term}": +${weights.titleExact}`);
+                } else if (postTitle.includes(termLower)) {
+                    score += weights.titlePartial;
+                    console.log(`  🎯 Title partial match for "${term}": +${weights.titlePartial}`);
+                }
+                
+                // Content scoring
+                const contentMatches = (postContent.match(new RegExp(termLower, 'g')) || []).length;
+                if (contentMatches > 0) {
+                    const contentScore = Math.min(contentMatches * weights.contentPartial, weights.contentExact);
+                    score += contentScore;
+                    console.log(`  🎯 Content matches (${contentMatches}x) for "${term}": +${contentScore}`);
+                }
+                
+                // Tag scoring (exact and partial)
+                postTags.forEach(tagName => {
+                    if (tagName === termLower) {
+                        score += weights.tagExact;
+                        console.log(`  🎯 Tag exact match for "${term}": +${weights.tagExact}`);
+                    } else if (tagName.includes(termLower)) {
+                        score += weights.tagPartial;
+                        console.log(`  🎯 Tag partial match for "${term}": +${weights.tagPartial}`);
+                    }
+                });
+                
+                // Author scoring
+                if (postAuthor === termLower) {
+                    score += weights.authorExact;
+                    console.log(`  🎯 Author exact match for "${term}": +${weights.authorExact}`);
+                } else if (postAuthor.includes(termLower)) {
+                    score += weights.authorPartial;
+                    console.log(`  🎯 Author partial match for "${term}": +${weights.authorPartial}`);
+                }
+            });
+
+            // 🎯 NEW: Hashtag bonus scoring
+            if (searchInfo.hasHashtags) {
+                searchInfo.hashtags.forEach(hashtag => {
+                    postTags.forEach(tagName => {
+                        if (tagName === hashtag.toLowerCase()) {
+                            score += weights.tagExact * 1.5; // 50% bonus for hashtag searches
+                            console.log(`  🏷️ Hashtag exact match bonus for "#${hashtag}": +${weights.tagExact * 1.5}`);
+                        } else if (tagName.includes(hashtag.toLowerCase())) {
+                            score += weights.tagPartial * 1.3; // 30% bonus for partial hashtag matches
+                            console.log(`  🏷️ Hashtag partial match bonus for "#${hashtag}": +${weights.tagPartial * 1.3}`);
+                        }
+                    });
+                });
+            }
+
+            // Recency boost (newer posts get higher scores)
+            const now = Date.now() / 1000;
+            const postAge = now - post.created_at;
+            const maxAge = 30 * 24 * 60 * 60; // 30 days
+            const recencyBoost = Math.max(0, weights.recency * (1 - postAge / maxAge));
+            score += recencyBoost;
+            
+            if (recencyBoost > 0) {
+                console.log(`  ⏰ Recency boost: +${recencyBoost.toFixed(1)}`);
+            }
+
+            // Length factor (longer content might be more comprehensive)
+            const contentLength = (post.content || '').length;
+            const lengthBoost = Math.min(weights.length, contentLength / 1000 * weights.length);
+            score += lengthBoost;
+            
+            if (lengthBoost > 0) {
+                console.log(`  📏 Length boost: +${lengthBoost.toFixed(1)}`);
+            }
+
+            const finalScore = Math.round(score * 10) / 10; // Round to 1 decimal
+            console.log(`  🎯 Final score for "${post.title}": ${finalScore}`);
+            
+            return finalScore;
+        }
+
+        // 🎯 NEW: Get temperature classification based on score
+        function getTemperatureClass(score) {
+            const { thresholds } = SCORING_CONFIG;
+            
+            if (score >= thresholds.hot) return 'hot';
+            if (score >= thresholds.warm) return 'warm';
+            if (score >= thresholds.good) return 'good';
+            if (score >= thresholds.partial) return 'partial';
+            return 'cold';
+        }
+
+        // 🎯 NEW: Sort posts by relevance score
+        function sortPostsByRelevance(posts, searchInfo) {
+            if (!searchInfo || !searchInfo.uniqueTerms.length) {
+                return posts; // Return original order for non-search results
+            }
+
+            console.log(`🎯 Sorting ${posts.length} posts by temperature-based relevance...`);
+
+            // Calculate scores for all posts
+            const scoredPosts = posts.map(post => ({
+                ...post,
+                relevanceScore: calculateRelevanceScore(post, searchInfo)
+            }));
+
+            // Sort by score (highest first), then by creation date (newest first) for ties
+            const sortedPosts = scoredPosts.sort((a, b) => {
+                if (Math.abs(a.relevanceScore - b.relevanceScore) < 0.1) {
+                    // Scores are very close, sort by date
+                    return b.created_at - a.created_at;
+                }
+                return b.relevanceScore - a.relevanceScore;
+            });
+
+            console.log(`🎯 Top 5 results by relevance:`);
+            sortedPosts.slice(0, 5).forEach((post, index) => {
+                const tempClass = getTemperatureClass(post.relevanceScore);
+                console.log(`  ${index + 1}. "${post.title}" - Score: ${post.relevanceScore} (${tempClass})`);
+            });
+
+            return sortedPosts;
+        }
+
         // 🎯 NEW: Update UI for smart search mode (always unified, but show different feedback)
         function setSmartSearchMode(searchInfo) {
             const searchContainer = document.getElementById('search-container');
@@ -2020,7 +2267,7 @@ Don't forget to add relevant tags above!"></textarea>
                 
                 // Update search loading text
                 document.getElementById('search-loading-text').textContent = 
-                    `Smart searching with tag prioritization...`;
+                    `🔥 Temperature-based scoring with tag prioritization...`;
                     
             } else {
                 searchContainer.classList.remove('tag-search');
@@ -2029,7 +2276,7 @@ Don't forget to add relevant tags above!"></textarea>
                 pageTitle.classList.remove('tag-search');
                 
                 if (searchInfo.fullQuery) {
-                    pageTitle.textContent = `🔍 Smart Search: "${searchInfo.fullQuery}" (all content)`;
+                    pageTitle.textContent = `🔍 Smart Search: "${searchInfo.fullQuery}" (🌡️ temperature-ranked)`;
                 } else {
                     pageTitle.textContent = '✨ Latest Posts';
                 }
@@ -2041,7 +2288,7 @@ Don't forget to add relevant tags above!"></textarea>
                     
                 // Reset search loading text
                 document.getElementById('search-loading-text').textContent = 
-                    'Smart searching posts, comments, tags, and authors...';
+                    '🔥 Temperature-based scoring for best relevance...';
             }
         }
 
@@ -2308,7 +2555,7 @@ Don't forget to add relevant tags above!"></textarea>
                 // Pure hashtag search
                 searchHelper.classList.add('visible', 'tag-helper');
                 document.getElementById('helper-text').innerHTML = 
-                    `<span class="helper-icon">🏷️</span>Smart tag search: <strong>#${searchInfo.hashtags[0]}</strong> finds exact + partial matches (#${searchInfo.hashtags[0]}dot, #my${searchInfo.hashtags[0]}, etc.)`;
+                    `<span class="helper-icon">🏷️</span>🔥 Temperature search: <strong>#${searchInfo.hashtags[0]}</strong> finds exact + partial matches (#${searchInfo.hashtags[0]}dot, #my${searchInfo.hashtags[0]}, etc.)`;
             } else {
                 // Regular keyword search
                 const words = query.trim().split(/\s+/).filter(w => w.length > 0);
@@ -2316,7 +2563,7 @@ Don't forget to add relevant tags above!"></textarea>
                     searchHelper.classList.remove('tag-helper');
                     searchHelper.classList.add('visible');
                     document.getElementById('helper-text').innerHTML = 
-                        `<span class="helper-icon">💡</span>Multi-keyword search: <strong>ALL</strong> words [${words.join(', ')}] must be present. Add #tags for prioritization!`;
+                        `<span class="helper-icon">🔥</span>Temperature search: <strong>ALL</strong> words [${words.join(', ')}] must be present. Results ranked by relevance score!`;
                 } else {
                     searchHelper.classList.remove('visible', 'tag-helper');
                 }
@@ -2589,7 +2836,7 @@ Don't forget to add relevant tags above!"></textarea>
             }
         }
 
-        // ===== 🎯 SMART FUZZY SEARCH - ALWAYS SHOWS RELEVANT RESULTS WITH PRIORITY RANKING! =====
+        // ===== 🎯 SMART FUZZY SEARCH WITH TEMPERATURE-BASED SCORING - ALWAYS SHOWS RELEVANT RESULTS WITH PRIORITY RANKING! =====
         async function loadPosts(showLoading = true) {
             // 🎯 Prevent multiple simultaneous searches
             if (isSearching) return;
@@ -2638,20 +2885,29 @@ Don't forget to add relevant tags above!"></textarea>
                 
                 const data = await apiRequest(`${endpoint}?${params}`);
                 
-                // 🔧 Enhanced debug logging for smart search results
+                // 🎯 NEW: Apply temperature-based scoring for search results
+                let processedPosts = data.posts || [];
                 if (searchQuery) {
                     const searchInfo = buildSmartSearchQuery(searchQuery);
-                    console.log(`🔍 Smart search results for "${searchQuery}":`, data);
-                    console.log(`📊 Found ${data.posts ? data.posts.length : 0} posts with smart ranking`);
+                    console.log(`🔥 Applying temperature-based scoring to ${processedPosts.length} results...`);
+                    processedPosts = sortPostsByRelevance(processedPosts, searchInfo);
+                    
+                    // Enhanced debug logging for temperature search results
+                    console.log(`🔍 Temperature search results for "${searchQuery}":`, data);
+                    console.log(`📊 Found ${processedPosts.length} posts with temperature ranking`);
                     
                     if (searchInfo.hasHashtags) {
-                        console.log(`🏷️ Tag-prioritized results - exact and partial tag matches boosted`);
+                        console.log(`🏷️ Tag-prioritized results - exact and partial tag matches boosted with temperature scoring`);
                     }
                     
-                    // Smart search feedback
-                    if (data.posts && data.posts.length > 0) {
+                    // Smart search feedback with temperature info
+                    if (processedPosts.length > 0) {
+                        const topScore = processedPosts[0].relevanceScore || 0;
+                        const tempClass = getTemperatureClass(topScore);
+                        const tempEmoji = tempClass === 'hot' ? '🔥' : tempClass === 'warm' ? '🌡️' : tempClass === 'good' ? '✅' : tempClass === 'partial' ? '🔍' : '❄️';
+                        
                         const words = searchInfo.uniqueTerms;
-                        let message = `Found ${data.posts.length} posts`;
+                        let message = `Found ${processedPosts.length} posts`;
                         
                         if (searchInfo.hasHashtags && searchInfo.cleanQuery) {
                             const dupTerms = searchInfo.hashtags.filter(tag => 
@@ -2670,6 +2926,7 @@ Don't forget to add relevant tags above!"></textarea>
                             message += ` matching: ${words.join(', ')}`;
                         }
                         
+                        message += ` ${tempEmoji} Best match: ${topScore.toFixed(1)} temp`;
                         showNotification(message, 'success');
                     } else {
                         let noResultsMsg = 'No posts found';
@@ -2684,7 +2941,7 @@ Don't forget to add relevant tags above!"></textarea>
                 }
                 
                 // 🎯 Smooth transition instead of instant replacement
-                await smoothRenderPosts(data.posts, data.pagination);
+                await smoothRenderPosts(processedPosts, data.pagination);
                 updatePagination(data.pagination);
                 
             } catch (error) {
@@ -2789,12 +3046,28 @@ Don't forget to add relevant tags above!"></textarea>
             
             const processedContent = marked.parse(truncateText(post.content));
             
-            // 🎯 SMART RELEVANCE: Add relevance indicator for search results
+            // 🎯 NEW: Enhanced temperature-based relevance indicator with actual scores
             let relevanceIndicator = '';
-            if (searchQuery) {
+            if (searchQuery && post.relevanceScore !== undefined) {
+                const score = post.relevanceScore;
+                const tempClass = getTemperatureClass(score);
+                const tempNames = {
+                    hot: 'Perfect Match',
+                    warm: 'Excellent Match',
+                    good: 'Good Match',
+                    partial: 'Partial Match',
+                    cold: 'Related'
+                };
+                
+                relevanceIndicator = `
+                    <div class="relevance-badge ${tempClass}">
+                        ${tempNames[tempClass]} <span class="relevance-score">${score.toFixed(1)}</span>
+                    </div>
+                `;
+            } else if (searchQuery) {
+                // Fallback for posts without calculated scores
                 const searchInfo = buildSmartSearchQuery(searchQuery);
                 if (searchInfo.hasHashtags) {
-                    // Check if this post has high relevance due to tag matches
                     const hasExactTag = post.tags && searchInfo.hashtags.some(h => 
                         post.tags.some(tag => {
                             const tagName = typeof tag === 'string' ? tag : tag.name;
@@ -3098,16 +3371,6 @@ Don't forget to add relevant tags above!"></textarea>
             }
             
             updatePreview();
-        }
-
-        function updatePreview() {
-            const content = document.getElementById('post-content').value;
-            const preview = document.getElementById('post-preview');
-            
-            if (preview.classList.contains('visible')) {
-                preview.innerHTML = marked.parse(content);
-                setTimeout(() => Prism.highlightAllUnder(preview), 50);
-            }
         }
 
         // ===== COMMENTS SYSTEM =====
@@ -3494,7 +3757,7 @@ Don't forget to add relevant tags above!"></textarea>
             }
         }
 
-        // ===== 🎯 SMART FUZZY SEARCH WITH HASHTAG SUPPORT AND RELEVANCE RANKING! =====
+        // ===== 🎯 SMART FUZZY SEARCH WITH HASHTAG SUPPORT AND TEMPERATURE-BASED RELEVANCE RANKING! =====
         async function performSearch() {
             const searchInput = document.getElementById('search-input');
             const query = searchInput.value.trim();
@@ -3538,7 +3801,7 @@ Don't forget to add relevant tags above!"></textarea>
                     return;
                 }
                 
-                console.log(`🔍 Executing smart search for: "${currentQuery}"`);
+                console.log(`🔥 Executing temperature-based search for: "${currentQuery}"`);
                 console.log(`🧠 Search analysis:`, searchInfo);
                 
                 searchQuery = currentQuery;
@@ -3586,7 +3849,7 @@ Don't forget to add relevant tags above!"></textarea>
             loadPosts();
             
             // Show user feedback
-            showNotification(`Smart search: #${tagName} prioritized + all matching content`, 'info');
+            showNotification(`🔥 Temperature search: #${tagName} prioritized + all matching content`, 'info');
         }
 
         async function loadTags() {
@@ -3954,10 +4217,9 @@ Don't forget to add relevant tags above!"></textarea>
                         searchTimeout = null;
                     }
                     searchQuery = '';
-                    tagSearchQuery = '';
                     lastSearchQuery = '';
                     currentPage = 1;
-                    setTagSearchMode(false);
+                    clearSearchMode();
                     hideSearchHelper();
                     document.getElementById('page-title').textContent = '✨ Latest Posts';
                     loadPosts();
@@ -4009,7 +4271,7 @@ Don't forget to add relevant tags above!"></textarea>
 
         // ===== 🎯 SMOOTH INITIALIZATION =====
         async function initializeApp() {
-            console.log('🎉 Posts Platform initializing with smooth UI, SMART FUZZY SEARCH + DEDUPLICATION, and 29-day sessions...');
+            console.log('🎉 Posts Platform initializing with TEMPERATURE-BASED SEARCH SCORING + smooth UI + 29-day sessions...');
             
             // Show initial loading state
             const container = document.getElementById('posts-container');
@@ -4039,7 +4301,11 @@ Don't forget to add relevant tags above!"></textarea>
                     loadTags()
                 ]);
                 
-                console.log('✅ Posts Platform ready with SMOOTH UI - No more flickering!');
+                console.log('✅ Posts Platform ready with TEMPERATURE-BASED SEARCH SCORING!');
+                console.log('🔥 Enhanced relevance ranking - most matching results at the top!');
+                console.log('🎯 Multi-factor scoring: title, content, tags, author, recency, length');
+                console.log('🌡️ Visual temperature indicators: 🔥 Hot, 🌡️ Warm, ✅ Good, 🔍 Partial, ❄️ Cold');
+                console.log('📊 Real-time score calculation with debug logging');
                 console.log('🆕 Enhanced with comments search and proper All Posts functionality!');
                 console.log('🔧 FIXED: Search race condition resolved - no more unwanted searches!');
                 console.log('🔧 FIXED: Accurate tag counts and improved search with debug logging!');
@@ -4099,7 +4365,11 @@ Don't forget to add relevant tags above!"></textarea>
         // Start the application when the page loads
         document.addEventListener('DOMContentLoaded', initializeApp);
 
-        console.log('🎯 Posts Platform JavaScript loaded - SMOOTH UI + 29-DAY AUTO-RENEWING SESSIONS + FIXED HASHTAG TAG SEARCH!');
+        console.log('🎯 Posts Platform JavaScript loaded - TEMPERATURE-BASED SEARCH SCORING + SMOOTH UI + 29-DAY AUTO-RENEWING SESSIONS!');
+        console.log('🔥 NEW: Temperature-based relevance scoring - most matching results at the top!');
+        console.log('🎯 NEW: Multi-factor scoring algorithm considering title, content, tags, and author matches');
+        console.log('🌡️ NEW: Real-time score calculation with visual temperature indicators');
+        console.log('📊 NEW: Enhanced relevance badges showing actual match scores');
         console.log('🆕 Enhanced with comments search and proper All Posts functionality!');
         console.log('🔧 FIXED: Search race condition resolved - no more unwanted searches!');
         console.log('🔧 FIXED: Accurate tag counts and improved search with debug logging!');
