@@ -2,11 +2,17 @@
 <html lang="en">
 
 <!--
-POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + FIXED MULTI-WORD SEARCH
-🎯 FIXED: All flickering issues resolved with smooth transitions
+POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + FIXED HASHTAG TAG SEARCH
+🎯 FIXED: Hashtag search syntax (#example) now works properly
+🎯 FIXED: Clicking on tags now uses dedicated tag search endpoint
+🎯 FIXED: Tag search prioritization with proper API endpoint routing
+🔧 FIXED: All flickering issues resolved with smooth transitions
 🔧 FIXED: Search debouncing race condition resolved
 🔧 FIXED: Multi-word search now works properly - finds posts with ALL words
 🆕 NEW: 29-day session management with automatic logout
+🆕 NEW: Hashtag detection in search with #tag syntax
+🆕 NEW: Dedicated tag search mode vs general search mode
+🆕 NEW: Tag search prioritization and proper UI feedback
 ✅ Smooth search results with fade transitions
 ✅ Optimized debouncing (600ms) with proper cleanup
 ✅ Subtle loading indicators instead of overlay
@@ -23,6 +29,9 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + FIXED MULTI-WO
 🆕 NEW: Automatic session expiration handling and logout
 🆕 NEW: Session validation every 5 minutes
 🆕 NEW: Graceful session expiry notifications
+🎯 NEW: Hashtag search with #tag syntax for precise tag finding
+🎯 NEW: Tag search mode vs general search mode with proper endpoint routing
+🎯 NEW: Enhanced tag search UI feedback and prioritization
 -->
 
 <head>
@@ -64,6 +73,9 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + FIXED MULTI-WO
             --border-radius: 8px;
             --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             --fast-transition: all 0.15s ease;
+            --tag-color: #059669;
+            --tag-bg: #d1fae5;
+            --tag-border: #10b981;
         }
 
         * {
@@ -140,7 +152,7 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + FIXED MULTI-WO
             transition: var(--fast-transition);
         }
 
-        /* 🎯 SMOOTH SEARCH - Enhanced search input with loading indicator */
+        /* 🎯 ENHANCED SEARCH - Now supports hashtag syntax */
         .search-container input {
             width: 100%;
             padding: 0.75rem 1rem 0.75rem 2.5rem;
@@ -163,7 +175,18 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + FIXED MULTI-WO
             animation: pulse 1.5s infinite;
         }
 
-        /* 🔧 NEW: Multi-word search helper text */
+        /* 🎯 NEW: Tag search mode indicator */
+        .search-container.tag-search::before {
+            content: "🏷️";
+            color: var(--tag-color);
+        }
+
+        .search-container.tag-search input {
+            border-color: var(--tag-border);
+            background: var(--tag-bg);
+        }
+
+        /* 🔧 ENHANCED: Multi-word and hashtag search helper text */
         .search-helper {
             position: absolute;
             top: 100%;
@@ -193,6 +216,16 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + FIXED MULTI-WO
 
         .search-helper .helper-icon {
             color: var(--primary-color);
+        }
+
+        /* 🎯 NEW: Tag search helper styling */
+        .search-helper.tag-helper {
+            background: var(--tag-bg);
+            border-color: var(--tag-border);
+        }
+
+        .search-helper.tag-helper .helper-icon {
+            color: var(--tag-color);
         }
 
         @keyframes pulse {
@@ -315,10 +348,11 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + FIXED MULTI-WO
             transform: translateX(0);
         }
 
+        /* 🎯 ENHANCED: Better tag hover effects */
         .tag-item:hover {
-            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
-            color: #1e40af;
-            border-color: #3b82f6;
+            background: var(--tag-bg);
+            color: var(--tag-color);
+            border-color: var(--tag-border);
             transform: translateX(4px);
         }
 
@@ -331,11 +365,16 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + FIXED MULTI-WO
         .tag-item .tag-count {
             font-size: 0.75rem;
             color: var(--text-muted);
-            background: rgba(59, 130, 246, 0.1);
+            background: rgba(5, 150, 105, 0.1);
             padding: 0.2rem 0.5rem;
             border-radius: 10px;
             font-weight: 500;
             transition: var(--fast-transition);
+        }
+
+        .tag-item:hover .tag-count {
+            background: rgba(5, 150, 105, 0.2);
+            color: var(--tag-color);
         }
 
         .settings {
@@ -395,6 +434,11 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + FIXED MULTI-WO
             transition: var(--fast-transition);
         }
 
+        /* 🎯 NEW: Tag search title styling */
+        .content-header h1.tag-search {
+            color: var(--tag-color);
+        }
+
         .actions {
             display: flex;
             gap: 1rem;
@@ -429,6 +473,24 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + FIXED MULTI-WO
             background: rgba(59, 130, 246, 0.1);
             border-color: rgba(59, 130, 246, 0.4);
             transform: translateY(-1px);
+        }
+
+        /* 🎯 NEW: Tag search filter chip styling */
+        .filter-chip.tag-search {
+            background: rgba(5, 150, 105, 0.05);
+            border-color: rgba(5, 150, 105, 0.2);
+            color: var(--tag-color);
+        }
+
+        .filter-chip.tag-search.active {
+            background: var(--tag-color);
+            color: white;
+            border-color: var(--tag-color);
+        }
+
+        .filter-chip.tag-search:hover {
+            background: rgba(5, 150, 105, 0.1);
+            border-color: rgba(5, 150, 105, 0.4);
         }
 
         /* 🎯 SMOOTH POSTS CONTAINER - No more flickering! */
@@ -472,6 +534,11 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + FIXED MULTI-WO
         .post:hover {
             box-shadow: var(--shadow-md);
             transform: translateY(-2px);
+        }
+
+        /* 🎯 NEW: Tag search result highlighting */
+        .post.tag-search-result {
+            border-left: 4px solid var(--tag-color);
         }
 
         .post-header {
@@ -540,15 +607,15 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + FIXED MULTI-WO
         }
 
         .tag {
-            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
-            color: #1e40af;
+            background: var(--tag-bg);
+            color: var(--tag-color);
             padding: 0.3rem 0.8rem;
             border-radius: 20px;
             font-size: 0.8rem;
             font-weight: 500;
             cursor: pointer;
             transition: var(--fast-transition);
-            border: 1px solid rgba(59, 130, 246, 0.2);
+            border: 1px solid var(--tag-border);
             position: relative;
             overflow: hidden;
         }
@@ -565,14 +632,22 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + FIXED MULTI-WO
         }
 
         .tag:hover {
-            background: linear-gradient(135deg, #bfdbfe, #93c5fd);
+            background: linear-gradient(135deg, var(--tag-bg), #a7f3d0);
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
-            border-color: #3b82f6;
+            box-shadow: 0 4px 8px rgba(5, 150, 105, 0.3);
+            border-color: var(--tag-color);
         }
 
         .tag:hover::before {
             left: 100%;
+        }
+
+        /* 🎯 NEW: Highlighted tag styling for search results */
+        .tag.highlighted {
+            background: var(--tag-color);
+            color: white;
+            border-color: var(--tag-color);
+            font-weight: 600;
         }
 
         .post-footer {
@@ -794,6 +869,16 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + FIXED MULTI-WO
 
         .pagination:hover {
             background: rgba(59, 130, 246, 0.05);
+        }
+
+        /* 🎯 NEW: Tag search pagination styling */
+        .pagination.tag-search {
+            background: rgba(5, 150, 105, 0.03);
+            border-color: rgba(5, 150, 105, 0.1);
+        }
+
+        .pagination.tag-search:hover {
+            background: rgba(5, 150, 105, 0.05);
         }
 
         .pagination-controls {
@@ -1357,6 +1442,11 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + FIXED MULTI-WO
             display: flex;
         }
 
+        /* 🎯 NEW: Tag search loading indicator */
+        .search-loading.tag-search {
+            color: var(--tag-color);
+        }
+
         .notification {
             position: fixed;
             top: 100px;
@@ -1470,6 +1560,9 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + FIXED MULTI-WO
                 --text-muted: #94a3b8;
                 --border-color: #334155;
                 --border-hover: #475569;
+                --tag-bg: #064e3b;
+                --tag-color: #10b981;
+                --tag-border: #059669;
             }
 
             .search-container input {
@@ -1505,12 +1598,12 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + FIXED MULTI-WO
         </div>
         <div class="header-center">
             <div class="search-container" id="search-container">
-                <input type="text" id="search-input" placeholder="Search posts, tags, authors, comments..." />
-                <!-- 🔧 NEW: Multi-word search helper -->
+                <input type="text" id="search-input" placeholder="Search posts, tags (#tag), authors, comments..." />
+                <!-- 🎯 ENHANCED: Multi-word and hashtag search helper -->
                 <div class="search-helper" id="search-helper">
                     <div class="helper-text">
                         <span class="helper-icon">💡</span>
-                        <span>Use multiple words to find posts containing ALL terms (e.g., "python tutorial")</span>
+                        <span id="helper-text">Use multiple words to find posts containing ALL terms (e.g., "python tutorial")</span>
                     </div>
                 </div>
             </div>
@@ -1577,10 +1670,10 @@ POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + FIXED MULTI-WO
             <div class="filter-chip" onclick="setFilter('recent')">Recent</div>
         </div>
 
-        <!-- 🎯 SMOOTH SEARCH LOADING INDICATOR -->
+        <!-- 🎯 ENHANCED SEARCH LOADING INDICATOR -->
         <div class="search-loading" id="search-loading">
             <div class="spinner small"></div>
-            Searching posts, comments, tags, and authors...
+            <span id="search-loading-text">Searching posts, comments, tags, and authors...</span>
         </div>
 
         <div class="posts-container" id="posts-container">
@@ -1750,11 +1843,14 @@ Don't forget to add relevant tags above!"></textarea>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
 
     <script>
-        // 🎯 POSTS PLATFORM - SMOOTH UI WITH NO FLICKERING + 29-DAY SESSIONS + FIXED MULTI-WORD SEARCH
+        // 🎯 POSTS PLATFORM - SMOOTH UI + 29-DAY SESSIONS + FIXED HASHTAG TAG SEARCH
         // 🔧 FIXED: Search debouncing race condition resolved
         // 🔧 FIXED: Multi-word search now works properly - finds posts with ALL words
         // 🆕 NEW: 29-day session management with automatic logout
         // 🆕 ENHANCED WITH COMMENTS SEARCH AND PROPER ALL POSTS FUNCTIONALITY
+        // 🎯 NEW: Hashtag syntax (#tag) for precise tag search with proper API routing
+        // 🎯 NEW: Tag search mode vs general search mode with UI feedback
+        // 🎯 NEW: Clicking tags now uses dedicated tag search endpoint
         // ===== COMPLETE JAVASCRIPT IMPLEMENTATION =====
         
         // ===== CONFIGURATION =====
@@ -1783,6 +1879,11 @@ Don't forget to add relevant tags above!"></textarea>
         let isSearching = false; // 🎯 Prevent multiple searches
         let searchTimeout = null; // 🎯 Better debouncing
         let lastSearchQuery = null; // 🔧 FIXED: Track last search to prevent race conditions
+        
+        // 🎯 NEW: Tag search state management
+        let isTagSearch = false; // Flag to indicate if we're doing a tag-specific search
+        let currentTagName = ''; // Current tag being searched
+        let tagSearchQuery = ''; // The actual tag name for API calls
 
         // ===== UTILITY FUNCTIONS =====
         function formatDate(timestamp) {
@@ -1821,6 +1922,64 @@ Don't forget to add relevant tags above!"></textarea>
                 notification.classList.remove('show');
                 setTimeout(() => notification.remove(), 300);
             }, 4000);
+        }
+
+        // 🎯 NEW: Hashtag detection utility
+        function detectHashtag(query) {
+            const trimmed = query.trim();
+            // Check if query starts with # and has at least one character after it
+            if (trimmed.startsWith('#') && trimmed.length > 1) {
+                const tagName = trimmed.slice(1).toLowerCase(); // Remove # and convert to lowercase
+                // Basic validation - tag should not contain spaces or special characters
+                if (/^[a-zA-Z0-9_-]+$/.test(tagName)) {
+                    return tagName;
+                }
+            }
+            return null;
+        }
+
+        // 🎯 NEW: Update UI for tag search mode
+        function setTagSearchMode(isTag, tagName = '') {
+            const searchContainer = document.getElementById('search-container');
+            const searchHelper = document.getElementById('search-helper');
+            const searchLoading = document.getElementById('search-loading');
+            const pageTitle = document.getElementById('page-title');
+            const pagination = document.getElementById('pagination');
+            
+            if (isTag) {
+                searchContainer.classList.add('tag-search');
+                searchLoading.classList.add('tag-search');
+                pagination.classList.add('tag-search');
+                pageTitle.classList.add('tag-search');
+                pageTitle.textContent = `🏷️ Tag: #${tagName}`;
+                
+                // Update search helper for tag mode
+                searchHelper.classList.add('tag-helper');
+                document.getElementById('helper-text').textContent = 
+                    `Searching for posts tagged with "#${tagName}". Try other hashtags like #javascript or #tutorial`;
+                
+                // Update search loading text
+                document.getElementById('search-loading-text').textContent = 
+                    `Searching posts with tag #${tagName}...`;
+                    
+            } else {
+                searchContainer.classList.remove('tag-search');
+                searchLoading.classList.remove('tag-search');
+                pagination.classList.remove('tag-search');
+                pageTitle.classList.remove('tag-search');
+                
+                // Reset search helper for general mode
+                searchHelper.classList.remove('tag-helper');
+                document.getElementById('helper-text').textContent = 
+                    'Use multiple words to find posts containing ALL terms (e.g., "python tutorial")';
+                    
+                // Reset search loading text
+                document.getElementById('search-loading-text').textContent = 
+                    'Searching posts, comments, tags, and authors...';
+            }
+            
+            isTagSearch = isTag;
+            currentTagName = tagName;
         }
 
         // 🆕 NEW: Session renewal functions
@@ -2049,21 +2208,31 @@ Don't forget to add relevant tags above!"></textarea>
             searchLoading.classList.remove('visible');
         }
 
-        // 🔧 NEW: Show search helper for multi-word queries
+        // 🔧 ENHANCED: Show search helper for multi-word queries and hashtags
         function showSearchHelper(query) {
             const searchHelper = document.getElementById('search-helper');
             const words = query.trim().split(/\s+/).filter(w => w.length > 0);
+            const hashtag = detectHashtag(query);
             
-            if (words.length > 1) {
+            if (hashtag) {
+                // Show hashtag helper
+                searchHelper.classList.add('visible', 'tag-helper');
+                document.getElementById('helper-text').textContent = 
+                    `Hashtag detected! Searching for posts tagged with "#${hashtag}". Try #javascript, #tutorial, etc.`;
+            } else if (words.length > 1) {
+                // Show multi-word helper
+                searchHelper.classList.remove('tag-helper');
                 searchHelper.classList.add('visible');
+                document.getElementById('helper-text').textContent = 
+                    'Use multiple words to find posts containing ALL terms (e.g., "python tutorial")';
             } else {
-                searchHelper.classList.remove('visible');
+                searchHelper.classList.remove('visible', 'tag-helper');
             }
         }
 
         function hideSearchHelper() {
             const searchHelper = document.getElementById('search-helper');
-            searchHelper.classList.remove('visible');
+            searchHelper.classList.remove('visible', 'tag-helper');
         }
 
         function sanitizeHtml(text) {
@@ -2327,7 +2496,7 @@ Don't forget to add relevant tags above!"></textarea>
             }
         }
 
-        // ===== 🎯 FIXED SMOOTH POSTS MANAGEMENT - NO MORE RACE CONDITIONS! =====
+        // ===== 🎯 FIXED SMOOTH POSTS MANAGEMENT WITH HASHTAG SUPPORT - NO MORE RACE CONDITIONS! =====
         async function loadPosts(showLoading = true) {
             // 🎯 Prevent multiple simultaneous searches
             if (isSearching) return;
@@ -2336,7 +2505,7 @@ Don't forget to add relevant tags above!"></textarea>
             try {
                 // 🎯 Show subtle loading indicator instead of heavy overlay
                 if (showLoading) {
-                    if (searchQuery) {
+                    if (searchQuery || isTagSearch) {
                         showSearchLoading();
                     } else {
                         const container = document.getElementById('posts-container');
@@ -2350,13 +2519,18 @@ Don't forget to add relevant tags above!"></textarea>
                     offset: (currentPage - 1) * postsPerPage
                 });
                 
+                // 🎯 NEW: Route to appropriate endpoint based on search type
                 if (currentFilter === 'my' && currentUser) {
                     endpoint = '/posts/my';
+                } else if (isTagSearch && currentTagName) {
+                    // 🎯 FIXED: Use dedicated tag search endpoint
+                    endpoint = `/tags/${encodeURIComponent(currentTagName)}/posts`;
+                    console.log(`🏷️ Tag search endpoint: ${endpoint}`);
                 } else if (searchQuery) {
                     endpoint = '/search';
                     params.set('q', searchQuery);
                     
-                    // 🔧 NEW: Log multi-word search for debugging
+                    // 🔧 Log search for debugging
                     const words = searchQuery.trim().split(/\s+/).filter(w => w.length > 0);
                     if (words.length > 1) {
                         console.log(`🔍 Multi-word search: "${searchQuery}" -> words: [${words.join(', ')}]`);
@@ -2366,11 +2540,14 @@ Don't forget to add relevant tags above!"></textarea>
                 const data = await apiRequest(`${endpoint}?${params}`);
                 
                 // 🔧 Debug logging for search results
-                if (searchQuery) {
+                if (isTagSearch) {
+                    console.log(`🏷️ Tag search results for "#${currentTagName}":`, data);
+                    console.log(`📊 Found ${data.posts ? data.posts.length : 0} posts with tag`);
+                } else if (searchQuery) {
                     console.log(`🔍 Search results for "${searchQuery}":`, data);
                     console.log(`📊 Found ${data.posts ? data.posts.length : 0} posts`);
                     
-                    // 🔧 NEW: Show multi-word search feedback
+                    // Multi-word search feedback
                     const words = searchQuery.trim().split(/\s+/).filter(w => w.length > 0);
                     if (words.length > 1) {
                         console.log(`🎯 Multi-word search found posts containing ALL words: [${words.join(', ')}]`);
@@ -2457,7 +2634,10 @@ Don't forget to add relevant tags above!"></textarea>
         function renderPost(post) {
             const tags = post.tags && Array.isArray(post.tags) ? post.tags.map(tag => {
                 const tagName = typeof tag === 'string' ? tag : tag.name;
-                return `<div class="tag" onclick="searchByTag('${tagName}')" title="Click to search posts with this tag">${tagName}</div>`;
+                // 🎯 NEW: Highlight current tag in search results
+                const isHighlighted = isTagSearch && tagName.toLowerCase() === currentTagName.toLowerCase();
+                const highlightClass = isHighlighted ? ' highlighted' : '';
+                return `<div class="tag${highlightClass}" onclick="searchByTag('${tagName}')" title="Click to search posts with this tag">${tagName}</div>`;
             }).join('') : '';
             
             const isOwner = currentUser && currentUser.id === post.user_id;
@@ -2470,8 +2650,11 @@ Don't forget to add relevant tags above!"></textarea>
             
             const processedContent = marked.parse(truncateText(post.content));
             
+            // 🎯 NEW: Add special styling for tag search results
+            const postClass = isTagSearch ? 'post tag-search-result' : 'post';
+            
             return `
-                <div class="post" data-post-id="${post.id}">
+                <div class="${postClass}" data-post-id="${post.id}">
                     <div class="post-header">
                         <div class="post-meta">
                             <div class="author">${DEFAULT_AVATAR} ${post.username}</div>
@@ -3106,7 +3289,7 @@ Don't forget to add relevant tags above!"></textarea>
             }
         }
 
-        // ===== 🔧 FIXED SEARCH FUNCTIONALITY - NO MORE RACE CONDITIONS WITH MULTI-WORD SUPPORT! =====
+        // ===== 🎯 ENHANCED SEARCH FUNCTIONALITY WITH HASHTAG SUPPORT - NO MORE RACE CONDITIONS! =====
         async function performSearch() {
             const searchInput = document.getElementById('search-input');
             const query = searchInput.value.trim();
@@ -3119,13 +3302,43 @@ Don't forget to add relevant tags above!"></textarea>
             
             if (!query) {
                 searchQuery = '';
+                tagSearchQuery = '';
                 currentPage = 1;
+                setTagSearchMode(false);
                 document.getElementById('page-title').textContent = '✨ Latest Posts';
                 console.log('🔍 Empty search, loading all posts');
                 hideSearchHelper();
                 loadPosts();
                 return;
             }
+            
+            // 🎯 NEW: Check for hashtag syntax
+            const hashtag = detectHashtag(query);
+            if (hashtag) {
+                console.log(`🏷️ Hashtag detected: #${hashtag}`);
+                setTagSearchMode(true, hashtag);
+                tagSearchQuery = hashtag;
+                searchQuery = ''; // Clear general search when doing tag search
+                currentPage = 1;
+                
+                // Update helper for hashtag
+                showSearchHelper(query);
+                
+                // 🔧 FIXED: Clear any existing timeout properly
+                if (searchTimeout) {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = null;
+                }
+                
+                // Execute tag search immediately for hashtags
+                console.log(`🏷️ Executing immediate tag search for: #${hashtag}`);
+                await loadPosts();
+                return;
+            }
+            
+            // Handle regular search (multi-word, etc.)
+            setTagSearchMode(false);
+            tagSearchQuery = '';
             
             // 🔧 NEW: Show helper for multi-word searches
             showSearchHelper(query);
@@ -3161,19 +3374,28 @@ Don't forget to add relevant tags above!"></textarea>
             }, 600); // 🔧 FIXED: Reduced to 600ms for better responsiveness
         }
 
+        // 🎯 ENHANCED: Tag search function with proper endpoint routing
         function searchByTag(tagName) {
+            console.log(`🏷️ searchByTag called with: "${tagName}"`);
+            
             // 🔧 FIXED: Clear any pending search timeouts
             if (searchTimeout) {
                 clearTimeout(searchTimeout);
                 searchTimeout = null;
             }
             
-            searchQuery = tagName;
+            // Set up tag search mode
+            setTagSearchMode(true, tagName);
+            tagSearchQuery = tagName;
+            searchQuery = ''; // Clear general search
             lastSearchQuery = tagName; // 🔧 FIXED: Update last search query
             currentPage = 1;
-            document.getElementById('search-input').value = tagName;
-            document.getElementById('page-title').textContent = `🏷️ Tag: "${tagName}"`;
-            hideSearchHelper(); // Hide helper for tag searches
+            
+            // Update search input to show hashtag syntax
+            document.getElementById('search-input').value = `#${tagName}`;
+            
+            console.log(`🏷️ Tag search setup complete for: #${tagName}`);
+            hideSearchHelper(); // Hide helper for direct tag clicks
             loadPosts();
         }
 
@@ -3390,8 +3612,10 @@ Don't forget to add relevant tags above!"></textarea>
             currentFilter = filter;
             currentPage = 1;
             searchQuery = '';
+            tagSearchQuery = '';
             lastSearchQuery = ''; // 🔧 FIXED: Reset last search query
             document.getElementById('search-input').value = '';
+            setTagSearchMode(false); // Reset tag search mode
             hideSearchHelper(); // Hide helper when changing filters
             
             // Update filter chips with smooth transition
@@ -3422,10 +3646,12 @@ Don't forget to add relevant tags above!"></textarea>
             currentFilter = 'all';
             currentPage = 1;
             searchQuery = '';
+            tagSearchQuery = '';
             lastSearchQuery = ''; // 🔧 FIXED: Reset last search query
             
             // Clear search input and hide helper
             document.getElementById('search-input').value = '';
+            setTagSearchMode(false); // Reset tag search mode
             hideSearchHelper();
             
             // Update UI to show "All Posts" filter is active
@@ -3461,8 +3687,10 @@ Don't forget to add relevant tags above!"></textarea>
             currentFilter = 'all';
             currentPage = 1;
             searchQuery = '';
+            tagSearchQuery = '';
             lastSearchQuery = ''; // 🔧 FIXED: Reset last search query
             document.getElementById('search-input').value = '';
+            setTagSearchMode(false); // Reset tag search mode
             hideSearchHelper();
             document.getElementById('page-title').textContent = '✨ Latest Posts';
             
@@ -3511,7 +3739,7 @@ Don't forget to add relevant tags above!"></textarea>
                 submitProposal();
             });
             
-            // 🔧 FIXED SEARCH - Better event handling with race condition prevention and multi-word support
+            // 🎯 ENHANCED SEARCH - Better event handling with hashtag support and race condition prevention
             const searchInput = document.getElementById('search-input');
             
             searchInput.addEventListener('input', (e) => {
@@ -3539,8 +3767,10 @@ Don't forget to add relevant tags above!"></textarea>
                         searchTimeout = null;
                     }
                     searchQuery = '';
+                    tagSearchQuery = '';
                     lastSearchQuery = '';
                     currentPage = 1;
+                    setTagSearchMode(false);
                     hideSearchHelper();
                     document.getElementById('page-title').textContent = '✨ Latest Posts';
                     loadPosts();
@@ -3592,7 +3822,7 @@ Don't forget to add relevant tags above!"></textarea>
 
         // ===== 🎯 SMOOTH INITIALIZATION =====
         async function initializeApp() {
-            console.log('🎉 Posts Platform initializing with smooth UI, FIXED multi-word search, and 29-day sessions...');
+            console.log('🎉 Posts Platform initializing with smooth UI, FIXED hashtag search, and 29-day sessions...');
             
             // Show initial loading state
             const container = document.getElementById('posts-container');
@@ -3630,6 +3860,10 @@ Don't forget to add relevant tags above!"></textarea>
                 console.log('🆕 NEW: 29-day session management with automatic logout!');
                 console.log('🆕 NEW: Automatic session renewal on user activity!');
                 console.log('🆕 NEW: Smart activity detection with throttled renewals!');
+                console.log('🎯 NEW: Hashtag search with #tag syntax for precise tag finding!');
+                console.log('🎯 NEW: Tag search mode vs general search mode with proper endpoint routing!');
+                console.log('🎯 NEW: Enhanced tag search UI feedback and prioritization!');
+                console.log('🎯 NEW: Clicking tags now uses dedicated tag search endpoint!');
                 
             } catch (error) {
                 console.error('❌ Failed to initialize:', error);
@@ -3677,9 +3911,9 @@ Don't forget to add relevant tags above!"></textarea>
         // Start the application when the page loads
         document.addEventListener('DOMContentLoaded', initializeApp);
 
-        console.log('🎯 Posts Platform JavaScript loaded - SMOOTH UI WITH NO FLICKERING + 29-DAY AUTO-RENEWING SESSIONS + FIXED MULTI-WORD SEARCH!');
+        console.log('🎯 Posts Platform JavaScript loaded - SMOOTH UI + 29-DAY AUTO-RENEWING SESSIONS + FIXED HASHTAG TAG SEARCH!');
         console.log('🆕 Enhanced with comments search and proper All Posts functionality!');
-        console.log('🔧 FIXED: Search race condition resolved - no more unwanted "z" searches!');
+        console.log('🔧 FIXED: Search race condition resolved - no more unwanted searches!');
         console.log('🔧 FIXED: Accurate tag counts and improved search with debug logging!');
         console.log('🔧 FIXED: Multi-word search now works properly - finds posts with ALL words!');
         console.log('🆕 NEW: 29-day session management with automatic logout on expiry!');
@@ -3691,6 +3925,12 @@ Don't forget to add relevant tags above!"></textarea>
         console.log('🆕 NEW: Sessions extend automatically - active users never log out!');
         console.log('🔧 NEW: Multi-word search helper shows when typing multiple words!');
         console.log('🔧 NEW: Enhanced search feedback and user guidance!');
+        console.log('🎯 NEW: Hashtag syntax (#tag) for precise tag search!');
+        console.log('🎯 NEW: Dedicated tag search endpoint routing for better performance!');
+        console.log('🎯 NEW: Tag search mode with visual feedback and UI updates!');
+        console.log('🎯 NEW: Tag search prioritization - clicking tags uses tag endpoint!');
+        console.log('🎯 NEW: Enhanced tag highlighting in search results!');
+        console.log('🎯 NEW: Smart hashtag detection with validation!');
     </script>
 </body>
 </html>
