@@ -27,6 +27,7 @@ POSTS PLATFORM - ENHANCED FUZZY SEARCH + TEMPERATURE-BASED SCORING + SMOOTH UI +
 ✅ PRESERVED: All existing UI animations and transitions
 ✅ PRESERVED: All existing search features and temperature scoring
 ✅ PRESERVED: All authentication, posting, commenting, and other features
+🎯 NEW: Unified editor input styling for consistent appearance
 -->
 
 <head>
@@ -1263,12 +1264,8 @@ POSTS PLATFORM - ENHANCED FUZZY SEARCH + TEMPERATURE-BASED SCORING + SMOOTH UI +
             background: transparent;
         }
 
-        /* Enhanced Tag Input Styles with Smooth Animations */
-        .tag-input-container {
-            position: relative;
-        }
-
-        .tag-input-container input {
+        /* 🎯 NEW: Unified editor input styling for consistent appearance */
+        .editor-inputs input[type="text"] {
             width: 100%;
             padding: 0.75rem 1rem;
             border: 2px solid var(--border-color);
@@ -1279,11 +1276,16 @@ POSTS PLATFORM - ENHANCED FUZZY SEARCH + TEMPERATURE-BASED SCORING + SMOOTH UI +
             background: var(--card-background);
         }
 
-        .tag-input-container input:focus {
+        .editor-inputs input[type="text"]:focus {
             outline: none;
             border-color: var(--primary-color);
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
             transform: translateY(-1px);
+        }
+
+        /* Enhanced Tag Input Styles with Smooth Animations */
+        .tag-input-container {
+            position: relative;
         }
 
         .tag-suggestions {
@@ -1944,13 +1946,14 @@ Don't forget to add relevant tags above!"></textarea>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
 
     <script>
-        // 🎯 POSTS PLATFORM - ENHANCED FUZZY SEARCH + TEMPERATURE-BASED SEARCH SCORING + SMOOTH UI + 29-DAY SESSIONS
+        // 🎯 POSTS PLATFORM - ENHANCED FUZZY SEARCH + TEMPERATURE-BASED SEARCH SCORING + SMOOTH UI + 29-DAY SESSIONS + UNIFIED EDITOR STYLING
         // 🎯 NEW: Enhanced fuzzy search with bidirectional matching - "games" finds "game", "doomsday" finds "doom"
         // 🎯 NEW: Levenshtein distance-based fuzzy matching - "wologing" finds "blogging" 
         // 🎯 NEW: Partial word matching with similarity scoring
         // 🎯 NEW: Bidirectional substring matching - works both ways
         // 🎯 NEW: Word similarity algorithms for better search results
         // 🎯 NEW: Enhanced temperature scoring with fuzzy match bonuses
+        // 🎯 NEW: Unified editor input styling for consistent appearance
         // 🎯 PRESERVED: Temperature-based relevance scoring - most matching results at the top!
         // 🎯 PRESERVED: Multi-factor scoring algorithm considering title, content, tags, and author matches
         // 🎯 PRESERVED: Real-time score calculation with visual temperature indicators
@@ -4584,7 +4587,7 @@ Don't forget to add relevant tags above!"></textarea>
 
         // ===== 🎯 ENHANCED INITIALIZATION =====
         async function initializeApp() {
-            console.log('🧠 Posts Platform initializing with ENHANCED FUZZY SEARCH + temperature scoring + smooth UI + 29-day sessions...');
+            console.log('🧠 Posts Platform initializing with ENHANCED FUZZY SEARCH + temperature scoring + smooth UI + 29-day sessions + unified editor styling...');
             
             // Show initial loading state
             const container = document.getElementById('posts-container');
@@ -4614,16 +4617,17 @@ Don't forget to add relevant tags above!"></textarea>
                     loadTags()
                 ]);
                 
-                console.log('✅ Posts Platform ready with NATIVE BACKEND ULTRA-FUZZY SEARCH!');
-                console.log('🧠 NEW: Native backend ultra-fuzzy search with custom Levenshtein implementation - zero dependencies!');
-                console.log('🧠 NEW: Server-side fuzzy matching with 40% similarity threshold');
-                console.log('🧠 NEW: Multiple custom fuzzy algorithms (ratio, partial_ratio, token_sort, token_set)');
-                console.log('🧠 NEW: Field-weighted scoring (title boost, content standard, tags boost, author lower)');
-                console.log('🧠 NEW: Intelligent hybrid search: SQL first, then fuzzy enhancement');
-                console.log('🧠 NEW: Recency bonuses and advanced relevance scoring on backend');
-                console.log('🧠 NEW: Scalable search architecture that works with thousands of posts');
-                console.log('🧠 NEW: No more client-side performance issues - all fuzzy logic on server');
-                console.log('🧠 NEW: Pure Python implementation - no external dependencies required');
+                console.log('✅ Posts Platform ready with UNIFIED EDITOR INPUT STYLING!');
+                console.log('🎯 NEW: Unified editor input styling for consistent appearance across all editor inputs');
+                console.log('🧠 PRESERVED: Native backend ultra-fuzzy search with custom Levenshtein implementation - zero dependencies!');
+                console.log('🧠 PRESERVED: Server-side fuzzy matching with 40% similarity threshold');
+                console.log('🧠 PRESERVED: Multiple custom fuzzy algorithms (ratio, partial_ratio, token_sort, token_set)');
+                console.log('🧠 PRESERVED: Field-weighted scoring (title boost, content standard, tags boost, author lower)');
+                console.log('🧠 PRESERVED: Intelligent hybrid search: SQL first, then fuzzy enhancement');
+                console.log('🧠 PRESERVED: Recency bonuses and advanced relevance scoring on backend');
+                console.log('🧠 PRESERVED: Scalable search architecture that works with thousands of posts');
+                console.log('🧠 PRESERVED: No more client-side performance issues - all fuzzy logic on server');
+                console.log('🧠 PRESERVED: Pure Python implementation - no external dependencies required');
                 console.log('🔥 PRESERVED: All existing functionality with improved native backend search');
                 console.log('🎯 PRESERVED: Multi-factor scoring: title, content, tags, author, recency, length');
                 console.log('🌡️ PRESERVED: Visual temperature indicators and relevance ranking');
@@ -4689,14 +4693,15 @@ Don't forget to add relevant tags above!"></textarea>
         // The backend does all the fuzzy matching using Levenshtein distance
         // Frontend just needs to call the search API and display results
         
-        console.log('🧠 Posts Platform JavaScript loaded - BACKEND ULTRA-FUZZY SEARCH + TEMPERATURE SCORING + SMOOTH UI + 29-DAY AUTO-RENEWING SESSIONS!');
-        console.log('🧠 NEW: Backend ultra-fuzzy search using TheFuzz library - scalable for thousands of posts!');
-        console.log('🧠 NEW: Server-side fuzzy matching with 40% similarity threshold');
-        console.log('🧠 NEW: Multiple fuzzy algorithms (ratio, partial_ratio, token_sort, token_set)');
-        console.log('🧠 NEW: Field-weighted scoring (title, content, tags, author)');
-        console.log('🧠 NEW: Intelligent SQL + fuzzy hybrid search');
-        console.log('🧠 NEW: Recency bonuses and advanced relevance scoring');
-        console.log('🧠 NEW: Scalable search that works with thousands of posts');
+        console.log('🧠 Posts Platform JavaScript loaded - UNIFIED EDITOR STYLING + BACKEND ULTRA-FUZZY SEARCH + TEMPERATURE SCORING + SMOOTH UI + 29-DAY AUTO-RENEWING SESSIONS!');
+        console.log('🎯 NEW: Unified editor input styling ensures consistent appearance across all editor inputs');
+        console.log('🧠 PRESERVED: Backend ultra-fuzzy search using TheFuzz library - scalable for thousands of posts!');
+        console.log('🧠 PRESERVED: Server-side fuzzy matching with 40% similarity threshold');
+        console.log('🧠 PRESERVED: Multiple fuzzy algorithms (ratio, partial_ratio, token_sort, token_set)');
+        console.log('🧠 PRESERVED: Field-weighted scoring (title, content, tags, author)');
+        console.log('🧠 PRESERVED: Intelligent SQL + fuzzy hybrid search');
+        console.log('🧠 PRESERVED: Recency bonuses and advanced relevance scoring');
+        console.log('🧠 PRESERVED: Scalable search that works with thousands of posts');
         console.log('🔥 PRESERVED: Temperature-based relevance scoring - most matching results at the top!');
         console.log('🎯 PRESERVED: Multi-factor scoring algorithm considering title, content, tags, and author matches');
         console.log('🌡️ PRESERVED: Real-time score calculation with visual temperature indicators');
