@@ -1,0 +1,170 @@
+The search engine seems to have problems: for example: I want to find "7 days to die" and I type a number "7" all other posts are shown higher in score than the post that actually contains "7 Days to Die Alpha 23 released" in its text.
+
+🔍 Native Ultra-Fuzzy: "7" (🧠 Custom)
+✏️ New Post
+All Posts
+My Posts
+Recent
+Good Match
+60.2
+👤 boqscboqsc5
+📅 1 day ago
+✏️
+🗑️
+Welcome to the blogging
+Something new
+We are about ot release some blogging system.asdf
+
+blogging
+game
+💬 Comments
+🏷️ 2 tags
+💬 Comments
+📝 Proposals
+Fuzzy Match
+59.5
+👤 boqscboqsc5
+📅 2 days ago
+✏️
+🗑️
+The next game here
+the next gameChatGPT Image Jun 24, 2025, 05_27_28 PM.png
+
+doom
+waffle
+💬 Comments
+🏷️ 2 tags
+💬 Comments
+📝 Proposals
+Fuzzy Match
+58.6
+👤 boqscboqsc5
+📅 2 days ago
+✏️
+🗑️
+Most game releases ever
+7 Days to Die Alpha 23 released
+
+interesting
+randoms
+verygood
+whaaaat is
+💬 Comments
+🏷️ 4 tags
+💬 Comments
+📝 Proposals
+Fuzzy Match
+18.6
+👤 boqscboqsc5
+📅 2 days ago
+✏️
+🗑️
+So many game releases today
+this is very doom game new game
+
+doom
+game
+
+
+
+Also here where post that includes "The next game here" is lower than the other that only have one word match that was searched for.
+
+🔍 Native Ultra-Fuzzy: "next game" (🧠 Custom)
+✏️ New Post
+All Posts
+My Posts
+Recent
+Perfect Match
+210.6
+👤 boqscboqsc5
+📅 2 days ago
+✏️
+🗑️
+So many game releases today
+this is very doom game new game
+
+doom
+game
+💬 Comments
+🏷️ 2 tags
+💬 Comments
+📝 Proposals
+Perfect Match
+199.5
+👤 boqscboqsc5
+📅 2 days ago
+✏️
+🗑️
+The next game here
+the next gameChatGPT Image Jun 24, 2025, 05_27_28 PM.png
+
+doom
+waffle
+💬 Comments
+🏷️ 2 tags
+💬 Comments
+📝 Proposals
+Excellent Match
+134.2
+👤 boqscboqsc5
+📅 1 day ago
+✏️
+🗑️
+Welcome to the blogging
+Something new
+We are about ot release some blogging system.asdf
+
+
+
+
+
+Also Search query: asks for text "next" but it's the second post in the matches.
+
+🔍🏷️ Enhanced Search: "next blogging waffle" (tags + fuzzy)
+✏️ New Post
+All Posts
+My Posts
+Recent
+Perfect Match
+347.2
+👤 boqscboqsc5
+📅 1 day ago
+✏️
+🗑️
+Welcome to the blogging
+Something new
+We are about ot release some blogging system.asdf
+
+blogging
+game
+💬 Comments
+🏷️ 2 tags
+💬 Comments
+📝 Proposals
+Perfect Match
+334.5
+👤 boqscboqsc5
+📅 2 days ago
+✏️
+🗑️
+The next game here
+the next gameChatGPT Image Jun 24, 2025, 05_27_28 PM.png
+
+doom
+waffle
+💬 Comments
+🏷️ 2 tags
+💬 Comments
+📝 Proposals
+Perfect Match
+243.4
+👤 boqscboqsc5
+📅 2 days ago
+✏️
+🗑️
+Cerebras Inference support (Faster than Groq) (Not released yet, waitlist)
+hambur me ter
+
+waffle
+💬 Comments
+🏷️ 1 tags
