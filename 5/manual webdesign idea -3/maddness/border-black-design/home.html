@@ -32,12 +32,15 @@
       background: #fff;
       width: 200px;
     }
-
+	#left-sidebar h3 {
+	    border-bottom: solid 1px lightgray;
+	}
     main {
       padding: 16px;
       overflow: auto;
       flex-grow: 1;
     }
+	
   </style>
 </head>
 
@@ -52,11 +55,17 @@
 
 <div class="content">
   <aside id="left-sidebar">
+	<h3>Archive</h3>
     <ul>
-      <li>Item 1</li>
-      <li>Item 2</li>
-      <li>Item 3</li>
-      <li>Item 20</li>
+		<li><button id="all-posts">All posts 10	</button></li>
+    </ul>
+
+	<h3>Popular tags</h3>
+    <ul>
+		<li><button id="tag">sometag 6</button></li>
+		<li><button id="tag">rantag 6</button></li>
+		<li><button id="tag">othertag 6</button></li>
+		<li><button id="tag">verytag 6</button></li>
     </ul>
   </aside>
 
