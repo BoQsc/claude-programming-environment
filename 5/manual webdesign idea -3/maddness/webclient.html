@@ -1989,28 +1989,28 @@ Don't forget to add relevant tags above!"></textarea>
         const ENHANCED_SCORING_CONFIG = {
             // Score weights for different match types
             weights: {
-                titleExact: 100,          // Exact title match
-                titlePartial: 50,         // Partial title match
-                titleFuzzy: 35,           // Fuzzy title match (increased!)
-                contentExact: 80,         // Exact content match
-                contentPartial: 40,       // Partial content match
-                contentFuzzy: 30,         // Fuzzy content match (increased!)
-                tagExact: 90,             // Exact tag match
-                tagPartial: 45,           // Partial tag match
-                tagFuzzy: 30,             // Fuzzy tag match (increased!)
+                titleExact: 120,          // Exact title match
+                titlePartial: 35,         // Partial title match
+                titleFuzzy: 25,           // Fuzzy title match (increased!)
+                contentExact: 100,         // Exact content match
+                contentPartial: 80,       // Partial content match
+                contentFuzzy: 40,         // Fuzzy content match (increased!)
+                tagExact: 110,             // Exact tag match
+                tagPartial: 60,           // Partial tag match
+                tagFuzzy: 35,             // Fuzzy tag match (increased!)
                 authorExact: 70,          // Exact author match
-                authorPartial: 35,        // Partial author match
-                authorFuzzy: 25,          // Fuzzy author match (increased!)
-                recency: 20,              // Recency boost (max)
-                length: 10,               // Content length factor
-                bidirectional: 15,        // Bidirectional match bonus (new!)
-                similarity: 25            // Similarity match bonus (increased!)
+                authorPartial: 30,        // Partial author match
+                authorFuzzy: 20,          // Fuzzy author match (increased!)
+                recency: 0,              // Recency boost (max)
+                length: 5,               // Content length factor
+                bidirectional: 10,        // Bidirectional match bonus (new!)
+                similarity: 15            // Similarity match bonus (increased!)
             },
             // Temperature thresholds (lowered for more permissive results)
             thresholds: {
-                hot: 180,     // 🔥 Hot results (very high relevance)
-                warm: 100,    // 🌡️ Warm results (high relevance)
-                good: 60,     // ✅ Good results (good relevance)
+                hot: 150,     // 🔥 Hot results (very high relevance)
+                warm: 90,    // 🌡️ Warm results (high relevance)
+                good: 50,     // ✅ Good results (good relevance)
                 partial: 25,  // 🔍 Partial results (some relevance)
                 cold: 0       // ❄️ Cold results (low relevance)
             },
@@ -2287,6 +2287,36 @@ Don't forget to add relevant tags above!"></textarea>
             return { score: 0, matchType: 'none' };
         }
 
+
+		// 🔧 NEW: Detect if URL contains random/meaningless content - ENHANCED
+		function isRandomUrlContent(url) {
+			const urlLower = url.toLowerCase();
+			
+			// Patterns for random content - much more comprehensive  
+			const patterns = [
+				/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i, // UUID format
+				/[a-f0-9]{32,64}/i,  // Long hex strings (MD5, SHA hashes)  
+				/\d{12,}/,           // Very long number sequences (12+ digits)
+				/[a-zA-Z0-9]{24,}/,  // Very long alphanumeric strings (24+ chars)
+				/sessionid|session_id|token|auth_token|access_token|refresh_token/i, // Session tokens
+				/key=\w{10,}|id=\w{10,}|hash=\w{10,}/i, // Parameter patterns
+				/\/files\/[a-f0-9-]{20,}/i,  // File upload paths with random IDs
+				/\/chat\/[a-f0-9-]{20,}/i,   // Chat URLs with random IDs  
+				/[a-f0-9]{6,}-[a-f0-9]{4,}-[a-f0-9]{4,}/i, // Partial UUID-like patterns
+			];
+			
+			return patterns.some(pattern => pattern.test(urlLower));
+		}
+
+		// 🔧 NEW: Calculate scoring weight for URLs based on content quality - ENHANCED
+		function calculateUrlScoreWeight(url) {
+			if (isRandomUrlContent(url)) {
+				return 0.02; // 2% weight for random URLs (much more severe penalty)
+			} else {
+				return 1.0;  // Full weight for meaningful URLs
+			}
+		}
+		
         // 🎯 NEW: ENHANCED TEMPERATURE-BASED SCORING WITH FUZZY MATCHING!
         function calculateEnhancedRelevanceScore(post, searchInfo) {
             if (!searchInfo || !searchInfo.uniqueTerms.length) return 0;
@@ -2321,14 +2351,47 @@ Don't forget to add relevant tags above!"></textarea>
                     console.log(`    🎯 Title ${titleMatch.matchType}: +${titleMatch.score} (${titleMatch.details})`);
                 }
                 
-                // Content scoring with fuzzy matching
-                const contentMatch = enhancedStringMatch(term, postContent, 'content');
-                if (contentMatch.score > 0) {
-                    totalScore += contentMatch.score;
-                    matchDetails.push(`Content ${contentMatch.matchType}: ${titleMatch.details}`);
-                    console.log(`    🎯 Content ${contentMatch.matchType}: +${contentMatch.score} (${contentMatch.details})`);
-                }
-                
+				
+				
+								// Content scoring with fuzzy matching
+				// Content scoring with smart URL handling
+				const contentMatch = enhancedStringMatch(term, postContent, 'content');
+				if (contentMatch.score > 0) {
+					let finalScore = contentMatch.score;
+					
+					// Check if match might be from random URLs
+					const urlPattern = /https?:\/\/[^\s<>"]+|www\.[^\s<>"]+"]/gi;
+					const urlsInContent = postContent.match(urlPattern) || [];
+					
+					// If term matches in URLs, check URL quality
+					let matchInRandomUrl = false;
+					for (const url of urlsInContent) {
+						if (url.toLowerCase().includes(term.toLowerCase())) {
+							const urlWeight = calculateUrlScoreWeight(url);
+							if (urlWeight < 0.5) { // Random URL detected
+								matchInRandomUrl = true;
+								break;
+							}
+						}
+					}
+					
+					if (matchInRandomUrl) {
+						// ZERO points for garbage URL matches
+						finalScore = 0;
+						matchDetails.push(`Content match in garbage URL (IGNORED): ${contentMatch.details}`);
+						console.log(`    🗑️ Content match in garbage URL, IGNORED completely: 0 points`);
+					} else {
+						matchDetails.push(`Content ${contentMatch.matchType}: ${contentMatch.details}`);
+						console.log(`    🎯 Content ${contentMatch.matchType}: +${finalScore} (${contentMatch.details})`);
+					}
+					
+					totalScore += finalScore;
+				}           
+
+
+
+
+				
                 // Tag scoring with enhanced fuzzy matching
                 postTags.forEach(tagName => {
                     const tagMatch = enhancedStringMatch(term, tagName, 'tag');
@@ -2363,16 +2426,6 @@ Don't forget to add relevant tags above!"></textarea>
                 });
             }
 
-            // 🎯 PRESERVED: Recency boost (newer posts get higher scores)
-            const now = Date.now() / 1000;
-            const postAge = now - post.created_at;
-            const maxAge = 30 * 24 * 60 * 60; // 30 days
-            const recencyBoost = Math.max(0, weights.recency * (1 - postAge / maxAge));
-            totalScore += recencyBoost;
-            
-            if (recencyBoost > 0) {
-                console.log(`    ⏰ Recency boost: +${recencyBoost.toFixed(1)}`);
-            }
 
             // 🎯 PRESERVED: Length factor (longer content might be more comprehensive)
             const contentLength = (post.content || '').length;

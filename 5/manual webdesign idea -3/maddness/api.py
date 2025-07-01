@@ -53,19 +53,19 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 FUZZY_CONFIG = {
     'similarity_threshold': 0.4,  # 40% similarity threshold
     'field_weights': {
-        'title': 1.2,     # Boost title matches
-        'content': 1.0,   # Standard content scoring
+        'title': 1.0,     # Boost title matches
+        'content': 1.4,   # Standard content scoring
         'tag': 1.3,       # Boost tag matches  
-        'author': 0.9     # Slightly lower author scoring
+        'author': 0.7     # Slightly lower author scoring
     },
     'score_weights': {
-        'exact': 100,
-        'partial': 60,
-        'word_exact': 80,
-        'word_partial': 50,
+        'exact': 120,
+        'partial': 80,
+        'word_exact': 100,
+        'word_partial': 60,
         'fuzzy': 40,
-        'recency_bonus': 20,
-        'length_bonus': 10
+        'recency_bonus': 0,
+        'length_bonus': 5
     },
     'min_word_length': 3,  # Minimum word length for fuzzy matching
     'max_fuzzy_distance': 4  # Maximum edit distance for fuzzy matching
@@ -340,6 +340,41 @@ class DB:
         
         return weighted_score
     
+    
+    @staticmethod
+    def is_random_url_content(url):
+        """🔧 Detect if URL contains random/meaningless content like UUIDs, hashes, etc."""
+        import re
+        
+        url_lower = url.lower()
+        
+        # Patterns for random content - much more comprehensive
+        patterns = [
+            r'[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}',  # UUID format
+            r'[a-f0-9]{32,64}',  # Long hex strings (MD5, SHA hashes)
+            r'\d{12,}',          # Very long number sequences (12+ digits)
+            r'[a-zA-Z0-9]{24,}', # Very long alphanumeric strings (24+ chars)
+            r'sessionid|session_id|token|auth_token|access_token|refresh_token',  # Session tokens
+            r'key=\w{10,}|id=\w{10,}|hash=\w{10,}',  # Parameter patterns
+            r'/files/[a-f0-9-]{20,}',  # File upload paths with random IDs
+            r'/chat/[a-f0-9-]{20,}',   # Chat URLs with random IDs
+            r'[a-f0-9]{6,}-[a-f0-9]{4,}-[a-f0-9]{4,}',  # Partial UUID-like patterns
+        ]
+        
+        for pattern in patterns:
+            if re.search(pattern, url_lower):
+                return True
+        
+        return False
+
+    @staticmethod
+    def calculate_url_score_weight(url):
+        """🔧 Calculate scoring weight for URLs based on content quality"""
+        if DB.is_random_url_content(url):
+            return 0.02  # 2% weight for random URLs (much more severe penalty)
+        else:
+            return 1.0   # Full weight for meaningful URLs
+        
     @staticmethod
     def calculate_post_fuzzy_relevance(post, search_terms, similarity_threshold=0.4):
         """🧠 Calculate overall fuzzy relevance score for a post"""
@@ -361,12 +396,36 @@ class DB:
                 weighted_score = title_score * score_weights['fuzzy']
                 term_scores['title'] = weighted_score
                 
-            # Check content  
+            # Check content with smart URL scoring
             content_score = DB.fuzzy_score(term, post.get('content', ''), 'content')
             if content_score >= similarity_threshold:
-                weighted_score = content_score * score_weights['fuzzy']
-                term_scores['content'] = weighted_score
+                # Check if the match might be from a random URL
+                content_text = post.get('content', '')
                 
+                # If content contains URLs, apply smart weighting
+                import re
+                url_pattern = r'https?://[^\s<>"]+|www\.[^\s<>"]+'
+                urls_in_content = re.findall(url_pattern, content_text, re.IGNORECASE)
+                
+                weighted_score = content_score * score_weights['fuzzy']
+                
+                # If term matches in URLs, adjust score based on URL quality
+                term_in_random_url = False
+                for url in urls_in_content:
+                    if term.lower() in url.lower():
+                        url_weight = DB.calculate_url_score_weight(url)
+                        if url_weight < 0.5:  # Random URL detected
+                            term_in_random_url = True
+                            break
+                
+                if term_in_random_url:
+                    # ZERO points for garbage URL matches
+                    weighted_score = 0
+                    logger.debug(f"  Content match in garbage URL, IGNORED completely: 0 points")
+                
+                if weighted_score > 0:
+                    term_scores['content'] = weighted_score               
+
             # Check author
             author_score = DB.fuzzy_score(term, post.get('username', ''), 'author')
             if author_score >= similarity_threshold:
@@ -413,13 +472,6 @@ class DB:
                 match_details.append(f"'{term}' in {best_field} ({best_score:.1f})")
                 logger.debug(f"🧠 Term '{term}' best match: {best_field} = {best_score:.1f}")
         
-        # Add recency bonus (newer posts get slight boost)
-        if post.get('created_at'):
-            days_old = (time.time() - post['created_at']) / (24 * 60 * 60)
-            recency_bonus = max(0, score_weights['recency_bonus'] - days_old * 0.1)
-            if recency_bonus > 1:
-                total_score += recency_bonus
-                match_details.append(f"recency bonus ({recency_bonus:.1f})")
         
         # Add content length factor (longer posts get small bonus)
         if post.get('content'):
