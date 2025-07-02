@@ -376,8 +376,58 @@ class DB:
             return 1.0   # Full weight for meaningful URLs
         
     @staticmethod
+    def analyze_url_matches(term, urls):
+        """🔧 Analyze the quality and comprehensiveness of URL matches"""
+        if not urls:
+            return {
+                'has_matches': False,
+                'comprehensive_match': False,
+                'meaningful_match': False,
+                'random_match': False
+            }
+        
+        term_lower = term.lower()
+        has_any_match = False
+        comprehensive_match = False
+        meaningful_match = False
+        
+        for url in urls:
+            url_lower = url.lower()
+            
+            if term_lower in url_lower:
+                has_any_match = True
+                
+                # Check if it's a comprehensive match (term is significant portion of URL)
+                # Remove common URL parts for analysis
+                clean_url = url_lower
+                for prefix in ['http://', 'https://', 'www.']:
+                    clean_url = clean_url.replace(prefix, '')
+                
+                # Remove common URL suffixes
+                for suffix in ['.com', '.org', '.net', '.edu', '.gov']:
+                    clean_url = clean_url.replace(suffix, '')
+                
+                # If term makes up significant portion of the cleaned URL (>30%)
+                if len(term_lower) > 0 and len(clean_url) > 0:
+                    coverage = len(term_lower) / len(clean_url)
+                    if coverage >= 0.3:  # Term covers 30%+ of meaningful URL content
+                        comprehensive_match = True
+                        break
+                
+                # Check if it's a meaningful match (not random ID/hash)
+                if not DB.is_random_url_content(url):
+                    meaningful_match = True
+        
+        return {
+            'has_matches': has_any_match,
+            'comprehensive_match': comprehensive_match,
+            'meaningful_match': meaningful_match,
+            'random_match': has_any_match and not meaningful_match and not comprehensive_match
+        }
+        
+    @staticmethod
     def calculate_post_fuzzy_relevance(post, search_terms, similarity_threshold=0.4):
-        """🧠 Calculate overall fuzzy relevance score for a post"""
+        """🧠 Calculate overall fuzzy relevance score for a post with smart URL handling"""
         if not search_terms:
             return 0.0
         
@@ -389,50 +439,75 @@ class DB:
         
         for term in search_terms:
             term_scores = {}
+            term_lower = term.lower()
             
-            # Check title
+            # Check title (always full scoring)
             title_score = DB.fuzzy_score(term, post.get('title', ''), 'title')
             if title_score >= similarity_threshold:
                 weighted_score = title_score * score_weights['fuzzy']
                 term_scores['title'] = weighted_score
-                
-            # Check content with smart URL scoring
-            content_score = DB.fuzzy_score(term, post.get('content', ''), 'content')
+            
+            # Check content with smart URL handling
+            content_text = post.get('content', '')
+            content_score = DB.fuzzy_score(term, content_text, 'content')
+            
             if content_score >= similarity_threshold:
-                # Check if the match might be from a random URL
-                content_text = post.get('content', '')
-                
-                # If content contains URLs, apply smart weighting
+                # Smart URL analysis for this term
                 import re
                 url_pattern = r'https?://[^\s<>"]+|www\.[^\s<>"]+'
                 urls_in_content = re.findall(url_pattern, content_text, re.IGNORECASE)
                 
-                weighted_score = content_score * score_weights['fuzzy']
-                
-                # If term matches in URLs, adjust score based on URL quality
-                term_in_random_url = False
+                # Check if term has exact matches in non-URL content
+                content_without_urls = content_text
                 for url in urls_in_content:
-                    if term.lower() in url.lower():
-                        url_weight = DB.calculate_url_score_weight(url)
-                        if url_weight < 0.5:  # Random URL detected
-                            term_in_random_url = True
-                            break
+                    content_without_urls = content_without_urls.replace(url, ' ')
                 
-                if term_in_random_url:
-                    # ZERO points for garbage URL matches
-                    weighted_score = 0
-                    logger.debug(f"  Content match in garbage URL, IGNORED completely: 0 points")
+                # Look for exact matches in non-URL content
+                has_exact_match_in_text = term_lower in content_without_urls.lower()
+                has_word_match_in_text = term_lower in content_without_urls.lower().split()
                 
-                if weighted_score > 0:
-                    term_scores['content'] = weighted_score               
+                # Check URL match quality
+                url_match_info = DB.analyze_url_matches(term_lower, urls_in_content)
+                
+                # Score based on match quality and location
+                if has_exact_match_in_text or has_word_match_in_text:
+                    # Exact/word matches in content get full score
+                    weighted_score = content_score * score_weights['fuzzy']
+                    term_scores['content'] = weighted_score
+                    logger.debug(f"  Content exact/word match for '{term}': +{weighted_score:.1f}")
+                    
+                elif url_match_info['has_matches']:
+                    # Only URL matches - apply smart scoring
+                    if url_match_info['comprehensive_match']:
+                        # Comprehensive URL match (matches significant portion)
+                        weighted_score = content_score * score_weights['fuzzy'] * 0.7  # 70% of full score
+                        term_scores['content'] = weighted_score
+                        logger.debug(f"  Comprehensive URL match for '{term}': +{weighted_score:.1f}")
+                        
+                    elif url_match_info['meaningful_match']:
+                        # Meaningful URL match (not random garbage)
+                        weighted_score = content_score * score_weights['fuzzy'] * 0.4  # 40% of full score
+                        term_scores['content'] = weighted_score
+                        logger.debug(f"  Meaningful URL match for '{term}': +{weighted_score:.1f}")
+                        
+                    else:
+                        # Random URL match - very low score
+                        weighted_score = content_score * score_weights['fuzzy'] * 0.05  # 5% of full score
+                        term_scores['content'] = weighted_score
+                        logger.debug(f"  Random URL match for '{term}': +{weighted_score:.1f}")
+                else:
+                    # Fuzzy content match (not in URLs)
+                    weighted_score = content_score * score_weights['fuzzy']
+                    term_scores['content'] = weighted_score
+                    logger.debug(f"  Content fuzzy match for '{term}': +{weighted_score:.1f}")
 
-            # Check author
+            # Check author (always full scoring)
             author_score = DB.fuzzy_score(term, post.get('username', ''), 'author')
             if author_score >= similarity_threshold:
                 weighted_score = author_score * score_weights['fuzzy']
                 term_scores['author'] = weighted_score
                 
-            # Check tags
+            # Check tags (always full scoring)
             if post.get('tags'):
                 best_tag_score = 0.0
                 for tag in post['tags']:
@@ -447,8 +522,6 @@ class DB:
                     term_scores['tags'] = weighted_score
             
             # Additional exact and partial matching bonuses
-            term_lower = term.lower()
-            
             # Exact word matching in title
             if post.get('title', '').lower().find(term_lower) != -1:
                 if term_lower in post['title'].lower().split():
@@ -456,13 +529,21 @@ class DB:
                 else:
                     term_scores['title_partial'] = score_weights['word_partial']
             
-            # Exact word matching in content
-            if post.get('content', '').lower().find(term_lower) != -1:
-                content_words = post['content'].lower().split()
-                if term_lower in content_words:
-                    term_scores['content_exact'] = score_weights['word_exact']
-                else:
-                    term_scores['content_partial'] = score_weights['word_partial']
+            # Exact word matching in content (non-URL)
+            if content_text:
+                content_without_urls = content_text
+                import re
+                url_pattern = r'https?://[^\s<>"]+|www\.[^\s<>"]+'
+                urls_in_content = re.findall(url_pattern, content_text, re.IGNORECASE)
+                for url in urls_in_content:
+                    content_without_urls = content_without_urls.replace(url, ' ')
+                
+                if content_without_urls.lower().find(term_lower) != -1:
+                    content_words = content_without_urls.lower().split()
+                    if term_lower in content_words:
+                        term_scores['content_exact'] = score_weights['word_exact']
+                    else:
+                        term_scores['content_partial'] = score_weights['word_partial']
             
             # Get best score for this term
             if term_scores:
@@ -471,7 +552,6 @@ class DB:
                 total_score += best_score
                 match_details.append(f"'{term}' in {best_field} ({best_score:.1f})")
                 logger.debug(f"🧠 Term '{term}' best match: {best_field} = {best_score:.1f}")
-        
         
         # Add content length factor (longer posts get small bonus)
         if post.get('content'):
