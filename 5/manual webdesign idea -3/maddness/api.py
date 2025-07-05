@@ -447,59 +447,31 @@ class DB:
                 weighted_score = title_score * score_weights['fuzzy']
                 term_scores['title'] = weighted_score
             
-            # Check content with smart URL handling
+            # Check content - separate real content from URLs
             content_text = post.get('content', '')
-            content_score = DB.fuzzy_score(term, content_text, 'content')
             
-            if content_score >= similarity_threshold:
-                # Smart URL analysis for this term
-                import re
-                url_pattern = r'https?://[^\s<>"]+|www\.[^\s<>"]+'
-                urls_in_content = re.findall(url_pattern, content_text, re.IGNORECASE)
+            # Remove URLs to check real content first
+            import re
+            url_pattern = r'https?://[^\s<>"]+|www\.[^\s<>"]+'
+            urls_in_content = re.findall(url_pattern, content_text, re.IGNORECASE)
+            content_without_urls = content_text
+            for url in urls_in_content:
+                content_without_urls = content_without_urls.replace(url, ' ')
+            
+            # Check for matches in real content (non-URL)
+            real_content_score = DB.fuzzy_score(term, content_without_urls, 'content')
+            
+            if real_content_score >= similarity_threshold:
+                # Real content match found - use it and ignore URLs
+                weighted_score = real_content_score * score_weights['fuzzy']
+                term_scores['content'] = weighted_score
+                logger.debug(f"  Real content match for '{term}': +{weighted_score:.1f}")
                 
-                # Check if term has exact matches in non-URL content
-                content_without_urls = content_text
-                for url in urls_in_content:
-                    content_without_urls = content_without_urls.replace(url, ' ')
-                
-                # Look for exact matches in non-URL content
-                has_exact_match_in_text = term_lower in content_without_urls.lower()
-                has_word_match_in_text = term_lower in content_without_urls.lower().split()
-                
-                # Check URL match quality
-                url_match_info = DB.analyze_url_matches(term_lower, urls_in_content)
-                
-                # Score based on match quality and location
-                if has_exact_match_in_text or has_word_match_in_text:
-                    # Exact/word matches in content get full score
-                    weighted_score = content_score * score_weights['fuzzy']
-                    term_scores['content'] = weighted_score
-                    logger.debug(f"  Content exact/word match for '{term}': +{weighted_score:.1f}")
-                    
-                elif url_match_info['has_matches']:
-                    # Only URL matches - apply smart scoring
-                    if url_match_info['comprehensive_match']:
-                        # Comprehensive URL match (matches significant portion)
-                        weighted_score = content_score * score_weights['fuzzy'] * 0.7  # 70% of full score
-                        term_scores['content'] = weighted_score
-                        logger.debug(f"  Comprehensive URL match for '{term}': +{weighted_score:.1f}")
-                        
-                    elif url_match_info['meaningful_match']:
-                        # Meaningful URL match (not random garbage)
-                        weighted_score = content_score * score_weights['fuzzy'] * 0.4  # 40% of full score
-                        term_scores['content'] = weighted_score
-                        logger.debug(f"  Meaningful URL match for '{term}': +{weighted_score:.1f}")
-                        
-                    else:
-                        # Random URL match - very low score
-                        weighted_score = content_score * score_weights['fuzzy'] * 0.05  # 5% of full score
-                        term_scores['content'] = weighted_score
-                        logger.debug(f"  Random URL match for '{term}': +{weighted_score:.1f}")
-                else:
-                    # Fuzzy content match (not in URLs)
-                    weighted_score = content_score * score_weights['fuzzy']
-                    term_scores['content'] = weighted_score
-                    logger.debug(f"  Content fuzzy match for '{term}': +{weighted_score:.1f}")
+            elif urls_in_content and term_lower in content_text.lower():
+                # No real content match, but exact match in URL - use as fallback
+                weighted_score = score_weights['fuzzy'] * 0.8  # Good but not better than real content
+                term_scores['content'] = weighted_score
+                logger.debug(f"  URL exact match fallback for '{term}': +{weighted_score:.1f}")
 
             # Check author (always full scoring)
             author_score = DB.fuzzy_score(term, post.get('username', ''), 'author')
@@ -560,12 +532,40 @@ class DB:
                 total_score += length_bonus
                 match_details.append(f"length bonus ({length_bonus:.1f})")
         
+        # 🎯 NEW: Check if this post has ANY exact matches - boost it significantly
+        has_any_exact_match = False
+        for term in search_terms:
+            term_lower = term.lower()
+            
+            # Check for exact matches in title, content (including URLs), author, or tags
+            if (post.get('title', '').lower().find(term_lower) != -1 or
+                post.get('content', '').lower().find(term_lower) != -1 or
+                post.get('username', '').lower().find(term_lower) != -1):
+                has_any_exact_match = True
+                break
+            
+            # Check tags for exact matches
+            if post.get('tags'):
+                for tag in post['tags']:
+                    tag_name = tag.get('name', '') if isinstance(tag, dict) else str(tag)
+                    if tag_name and tag_name.lower().find(term_lower) != -1:
+                        has_any_exact_match = True
+                        break
+                if has_any_exact_match:
+                    break
+        
+        # Apply exact match bonus
+        if has_any_exact_match:
+            exact_match_bonus = 50  # Significant bonus for having any exact match
+            total_score += exact_match_bonus
+            match_details.append(f"exact match bonus (+{exact_match_bonus})")
+            logger.info(f"🎯 EXACT MATCH BONUS applied to '{post.get('title', '')[:50]}...': +{exact_match_bonus}")
+
         if match_details:
             logger.info(f"🧠 Post '{post.get('title', '')[:50]}...' fuzzy score: {total_score:.1f} "
                        f"({', '.join(match_details)})")
         
         return total_score
-
     # 🔧 ENHANCED: Search functionality with custom fuzzy search
     @staticmethod
     async def search_posts(query, limit=50, offset=0):

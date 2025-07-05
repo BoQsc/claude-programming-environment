@@ -2317,7 +2317,7 @@ Don't forget to add relevant tags above!"></textarea>
 			}
 		}
 		
-        // 🎯 NEW: ENHANCED TEMPERATURE-BASED SCORING WITH FUZZY MATCHING!
+// 🎯 NEW: ENHANCED TEMPERATURE-BASED SCORING WITH FUZZY MATCHING!
         function calculateEnhancedRelevanceScore(post, searchInfo) {
             if (!searchInfo || !searchInfo.uniqueTerms.length) return 0;
 
@@ -2351,47 +2351,50 @@ Don't forget to add relevant tags above!"></textarea>
                     console.log(`    🎯 Title ${titleMatch.matchType}: +${titleMatch.score} (${titleMatch.details})`);
                 }
                 
-				
-				
-								// Content scoring with fuzzy matching
-				// Content scoring with smart URL handling
-				const contentMatch = enhancedStringMatch(term, postContent, 'content');
-				if (contentMatch.score > 0) {
-					let finalScore = contentMatch.score;
-					
-					// Check if match might be from random URLs
-					const urlPattern = /https?:\/\/[^\s<>"]+|www\.[^\s<>"]+"]/gi;
-					const urlsInContent = postContent.match(urlPattern) || [];
-					
-					// If term matches in URLs, check URL quality
-					let matchInRandomUrl = false;
-					for (const url of urlsInContent) {
-						if (url.toLowerCase().includes(term.toLowerCase())) {
-							const urlWeight = calculateUrlScoreWeight(url);
-							if (urlWeight < 0.5) { // Random URL detected
-								matchInRandomUrl = true;
-								break;
-							}
-						}
-					}
-					
-					if (matchInRandomUrl) {
-						// ZERO points for garbage URL matches
-						finalScore = 0;
-						matchDetails.push(`Content match in garbage URL (IGNORED): ${contentMatch.details}`);
-						console.log(`    🗑️ Content match in garbage URL, IGNORED completely: 0 points`);
-					} else {
-						matchDetails.push(`Content ${contentMatch.matchType}: ${contentMatch.details}`);
-						console.log(`    🎯 Content ${contentMatch.matchType}: +${finalScore} (${contentMatch.details})`);
-					}
-					
-					totalScore += finalScore;
-				}           
-
-
-
-
-				
+                // Content scoring with smart URL handling
+                const contentMatch = enhancedStringMatch(term, postContent, 'content');
+                if (contentMatch.score > 0) {
+                    let finalScore = contentMatch.score;
+                    
+                    // Check if match might be from random URLs
+                    const urlPattern = /https?:\/\/[^\s<>"]+|www\.[^\s<>"]+"]/gi;
+                    const urlsInContent = postContent.match(urlPattern) || [];
+                    
+                    // Check for exact matches in URLs
+                    let hasExactUrlMatch = false;
+                    let matchInRandomUrl = false;
+                    for (const url of urlsInContent) {
+                        if (url.toLowerCase().includes(term.toLowerCase())) {
+                            // Check if it's an exact match
+                            if (url.toLowerCase().includes(term.toLowerCase())) {
+                                hasExactUrlMatch = true;
+                            }
+                            
+                            const urlWeight = calculateUrlScoreWeight(url);
+                            if (urlWeight < 0.5) { // Random URL detected
+                                matchInRandomUrl = true;
+                            }
+                        }
+                    }
+                    
+                    if (matchInRandomUrl && !hasExactUrlMatch) {
+                        // ZERO points for garbage URL fuzzy matches
+                        finalScore = 0;
+                        matchDetails.push(`Content match in garbage URL (IGNORED): ${contentMatch.details}`);
+                        console.log(`    🗑️ Content match in garbage URL, IGNORED completely: 0 points`);
+                    } else if (matchInRandomUrl && hasExactUrlMatch) {
+                        // Exact matches in URLs get reduced but non-zero score
+                        finalScore = finalScore * 0.6; // 60% of normal score for exact URL matches
+                        matchDetails.push(`Content exact match in URL: ${contentMatch.details}`);
+                        console.log(`    🎯 Content exact match in URL: +${finalScore} (${contentMatch.details})`);
+                    } else {
+                        matchDetails.push(`Content ${contentMatch.matchType}: ${contentMatch.details}`);
+                        console.log(`    🎯 Content ${contentMatch.matchType}: +${finalScore} (${contentMatch.details})`);
+                    }
+                    
+                    totalScore += finalScore;
+                }           
+                
                 // Tag scoring with enhanced fuzzy matching
                 postTags.forEach(tagName => {
                     const tagMatch = enhancedStringMatch(term, tagName, 'tag');
@@ -2426,7 +2429,6 @@ Don't forget to add relevant tags above!"></textarea>
                 });
             }
 
-
             // 🎯 PRESERVED: Length factor (longer content might be more comprehensive)
             const contentLength = (post.content || '').length;
             const lengthBoost = Math.min(weights.length, contentLength / 1000 * weights.length);
@@ -2442,7 +2444,6 @@ Don't forget to add relevant tags above!"></textarea>
             
             return finalScore;
         }
-
         // 🎯 PRESERVED: Get temperature classification based on score
         function getTemperatureClass(score) {
             const { thresholds } = ENHANCED_SCORING_CONFIG;
