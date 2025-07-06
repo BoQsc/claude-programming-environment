@@ -1046,8 +1046,7 @@ class DB:
         """Update a comment - only the owner can update"""
         async with aiosqlite.connect(DB_PATH) as db:
             result = await db.execute(
-                "UPDATE comments SET content = ?, updated_at = ? WHERE id = ? AND user_id = ?",
-                (content, time.time(), comment_id, user_id)
+                "UPDATE comments SET content = ?, updated_at = ? WHERE id = ? AND user_id = ?", (content, time.time(), comment_id, user_id)
             )
             await db.commit()
             return result.rowcount > 0
