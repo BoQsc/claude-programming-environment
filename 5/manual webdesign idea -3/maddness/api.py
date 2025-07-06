@@ -779,8 +779,7 @@ class DB:
     @staticmethod
     async def create_user(username, salt, password_hash):
         async with aiosqlite.connect(DB_PATH) as db:
-            cursor = await db.execute("INSERT INTO users (username, salt, password_hash, created_at) VALUES (?, ?, ?, ?)", 
-                                    (username, salt, password_hash, time.time()))
+            cursor = await db.execute("INSERT INTO users (username, salt, password_hash, created_at) VALUES (?, ?, ?, ?)", (username, salt, password_hash, time.time()))
             await db.commit()
             return cursor.lastrowid
     
