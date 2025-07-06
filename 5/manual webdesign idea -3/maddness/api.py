@@ -89,7 +89,6 @@ class DB:
     @staticmethod
     async def init():
         async with aiosqlite.connect(DB_PATH) as db:
-            # Enable foreign keys
             await db.execute("PRAGMA foreign_keys = ON")
             
             # Core tables
