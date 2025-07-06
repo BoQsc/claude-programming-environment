@@ -75,8 +75,7 @@ class DB:
     @staticmethod
     async def _execute(query, params=None, fetch=None):
         async with aiosqlite.connect(DB_PATH) as db:
-            if fetch:
-                db.row_factory = aiosqlite.Row
+            if fetch: db.row_factory = aiosqlite.Row
             cursor = await db.execute(query, params or ())
             if fetch == 'one':
                 result = await cursor.fetchone()
