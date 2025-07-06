@@ -854,8 +854,7 @@ class DB:
         """Create a new post for the specified user"""
         async with aiosqlite.connect(DB_PATH) as db:
             cursor = await db.execute(
-                "INSERT INTO posts (user_id, title, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?)", 
-                (user_id, title, content, time.time(), time.time())
+                "INSERT INTO posts (user_id, title, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?)", (user_id, title, content, time.time(), time.time())
             )
             await db.commit()
             return cursor.lastrowid
