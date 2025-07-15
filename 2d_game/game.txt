@@ -3,3 +3,5 @@ In a single page of HTML using CSS and JS.
 Let's make a 2d game that is 
 
 Let's build up on this, by saying that this will be with simple graphics, like rectangle for player and mobs, also drag n drop UI system for inventory, quick interactions with trader by passing by the trader, it shows up the dialog buttons of "trade", "talk", "hire", there should be ability to mine ores like stone, iron, copper, silver, gold, and trader would have drag n drop ui for buying and selling, the mobs would be dropping coins or items, parts, mobs and ores would respawn also there should be trees and you can cut down trees and they regrow, there also should be grass.
+
+It would also have stats, levels, ability to invest level points into stats, if you swing sword unto enemy/mob, it should bounce back.
