@@ -1,4 +1,5 @@
 2D Hack-and-Slash RPG, Sandbox Survival, Building, Action Platformer in a Pure HTML, CSS and Vanilla JS
+This is only small notes, you have to fill in the most to make this a game.
 In a single page of HTML using CSS and JS.
 Let's make a 2d game that is 
 
