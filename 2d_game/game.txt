@@ -20,5 +20,6 @@ side-scroller like but without scrolling, allowing to jump around.
  the game would allow to go to next level by going over to left or right of the screen.
 
 
+Make sure that player and all mobs, entities, blocks, all touch the platforms, unless they are flying creatures/mobs.
 
-
+Make sure that trading is functional and consistent ui.
