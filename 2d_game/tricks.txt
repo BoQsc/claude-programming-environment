@@ -1,0 +1,1 @@
+What would be best to have a multiplayer where everyone join the same world. I'm doubting if single html page could do that. 
