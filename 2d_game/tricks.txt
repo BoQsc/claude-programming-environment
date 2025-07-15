@@ -1,1 +1,3 @@
 What would be best to have a multiplayer where everyone join the same world. I'm doubting if single html page could do that. 
+
+https://chatgpt.com/c/6876b17a-7380-800b-be56-a177c10aa992

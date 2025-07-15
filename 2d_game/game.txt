@@ -10,4 +10,11 @@ There should be axe, sword, pickaxe, shovel and other items. Ability to equip ar
 
 We will do it all in a single html page.
 Make sure the mobs have their titles over their head.
-https://chatgpt.com/c/6876b17a-7380-800b-be56-a177c10aa992
+
+
+Element	Description
+Arc Motion	Smooth, curved animation — not just linear slash
+
+
+
+
