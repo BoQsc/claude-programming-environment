@@ -23,3 +23,8 @@ side-scroller like but without scrolling, allowing to jump around.
 Make sure that player and all mobs, entities, blocks, all touch the platforms, unless they are flying creatures/mobs.
 
 Make sure that trading is functional and consistent ui.
+Make sure all dialogs and uis are implemented.
+
+WASD/Arrow Keys: Movement
+W: Jump
+Space: Attack
