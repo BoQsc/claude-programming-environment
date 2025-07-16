@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://cuj0p8fxlxeen"
+path="res://.godot/imported/voxel_mesher.glsl-54b131422601c103bb01208152989636.res"
+
+[deps]
+
+source_file="res://shaders/voxel_mesher.glsl"
+dest_files=["res://.godot/imported/voxel_mesher.glsl-54b131422601c103bb01208152989636.res"]
+
+[params]
+
