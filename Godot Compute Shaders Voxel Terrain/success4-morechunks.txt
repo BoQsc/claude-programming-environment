@@ -1,0 +1,318 @@
+extends Node3D
+
+# ——————————————————————————————————————————————————————
+# CONFIGURATION
+# ——————————————————————————————————————————————————————
+
+@export var chunk_size:    int    = 32
+@export var voxel_size:    float  = 1.0
+@export var noise_scale:   float  = 0.1
+@export var height_scale:  float  = 8.0
+
+# How many chunks total, and how many per row (in X/Z)
+@export var total_chunks:    int = 150
+@export var chunks_per_row:  int = 8   # 8×7 = 56 slots; only the first 50 are used
+
+# ——————————————————————————————————————————————————————
+# INTERNAL STATE
+# ——————————————————————————————————————————————————————
+
+var rd: RenderingDevice
+var generator_shader: RID
+var mesher_shader:    RID
+
+# ——————————————————————————————————————————————————————
+# LIFE‐CYCLE
+# ——————————————————————————————————————————————————————
+
+func _ready():
+	rd = RenderingServer.create_local_rendering_device()
+	if not rd:
+		push_error("Failed to create RenderingDevice – compute shaders not supported")
+		return
+
+	if not _load_shaders():
+		return
+
+	_generate_all_chunks()
+
+func _exit_tree():
+	if rd:
+		if generator_shader.is_valid(): rd.free_rid(generator_shader)
+		if mesher_shader.is_valid():    rd.free_rid(mesher_shader)
+
+# ——————————————————————————————————————————————————————
+# SHADER LOADING
+# ——————————————————————————————————————————————————————
+
+func _load_shaders() -> bool:
+	var gen_file = load("res://shaders/voxel_generator.glsl")
+	if not gen_file:
+		push_error("Failed to load voxel_generator.glsl")
+		return false
+	var gen_spirv = gen_file.get_spirv()
+	generator_shader = rd.shader_create_from_spirv(gen_spirv)
+	if not generator_shader.is_valid():
+		push_error("Failed to compile generator shader")
+		return false
+
+	var mesh_file = load("res://shaders/voxel_mesher.glsl")
+	if not mesh_file:
+		push_error("Failed to load voxel_mesher.glsl")
+		return false
+	var mesh_spirv = mesh_file.get_spirv()
+	mesher_shader = rd.shader_create_from_spirv(mesh_spirv)
+	if not mesher_shader.is_valid():
+		push_error("Failed to compile mesher shader")
+		return false
+
+	return true
+
+# ——————————————————————————————————————————————————————
+# CHUNK‐FIELD GENERATION
+# ——————————————————————————————————————————————————————
+
+func _generate_all_chunks():
+	# Clear old chunks
+	for c in get_children():
+		c.queue_free()
+
+	for i in range(total_chunks):
+		var row = i / chunks_per_row
+		var col = i % chunks_per_row
+
+		var world_x = col * chunk_size * voxel_size
+		var world_z = row * chunk_size * voxel_size
+		var chunk_origin = Vector3(world_x, 0.0, world_z)
+
+		# Container node
+		var chunk_node = Node3D.new()
+		chunk_node.name = "Chunk_%d" % i
+		chunk_node.position = chunk_origin    # ← correct property in Godot 4
+		add_child(chunk_node)
+
+		var mi = MeshInstance3D.new()
+		chunk_node.add_child(mi)
+
+		_generate_chunk(chunk_origin, mi)
+
+func _generate_chunk(chunk_pos: Vector3, mesh_instance: MeshInstance3D) -> void:
+	var voxel_buf = _generate_voxel_data(chunk_pos)
+	if not voxel_buf.is_valid():
+		push_error("Voxel generation failed at %s" % chunk_pos)
+		return
+
+	var mesh_data = generate_mesh(voxel_buf)
+	rd.free_rid(voxel_buf)
+
+	if mesh_data.vertex_count == 0:
+		push_error("Empty mesh at %s" % chunk_pos)
+		return
+
+	_create_godot_mesh(mesh_data, mesh_instance)
+
+# ——————————————————————————————————————————————————————
+# VOXEL BUFFER GENERATION (COMPUTE SHADER)
+# ——————————————————————————————————————————————————————
+
+func _generate_voxel_data(chunk_pos: Vector3) -> RID:
+	var voxel_count = chunk_size * chunk_size * chunk_size
+	var voxel_buffer = rd.storage_buffer_create(voxel_count * 4)
+	if not voxel_buffer.is_valid():
+		push_error("Failed to create voxel buffer")
+		return RID()
+
+	var params = PackedByteArray()
+	params.resize(32)
+	params.encode_float(  0, chunk_pos.x)
+	params.encode_float(  4, chunk_pos.y)
+	params.encode_float(  8, chunk_pos.z)
+	params.encode_float( 12, noise_scale)
+	params.encode_float( 16, height_scale)
+	params.encode_u32(    20, chunk_size)
+
+	var params_buf = rd.storage_buffer_create(params.size(), params)
+	if not params_buf.is_valid():
+		rd.free_rid(voxel_buffer)
+		push_error("Failed to create params buffer")
+		return RID()
+
+	var u1 = RDUniform.new()
+	u1.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+	u1.binding      = 0
+	u1.add_id(voxel_buffer)
+
+	var u2 = RDUniform.new()
+	u2.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+	u2.binding      = 1
+	u2.add_id(params_buf)
+
+	var uset = rd.uniform_set_create([u1, u2], generator_shader, 0)
+	if not uset.is_valid():
+		rd.free_rid(voxel_buffer)
+		rd.free_rid(params_buf)
+		push_error("Failed to create voxel uniform set")
+		return RID()
+
+	var pipeline = rd.compute_pipeline_create(generator_shader)
+	var groups   = int(ceil(chunk_size / 8.0))
+
+	var cl = rd.compute_list_begin()
+	rd.compute_list_bind_compute_pipeline(cl, pipeline)
+	rd.compute_list_bind_uniform_set(cl, uset, 0)
+	rd.compute_list_dispatch(cl, groups, groups, groups)
+	rd.compute_list_end()
+	rd.submit()
+	rd.sync()
+
+	rd.free_rid(params_buf)
+	rd.free_rid(pipeline)
+
+	return voxel_buffer
+
+# ——————————————————————————————————————————————————————
+# MESH GENERATION (COMPUTE SHADER)
+# ——————————————————————————————————————————————————————
+
+func generate_mesh(voxel_data_buffer: RID) -> Dictionary:
+	var bytes_per_vertex = 8 * 4
+	var max_verts = chunk_size**3 * 24
+	var max_inds  = chunk_size**3 * 36
+
+	var vb = rd.storage_buffer_create(max_verts * bytes_per_vertex)
+	if not vb.is_valid():
+		push_error("Failed to create vertex buffer")
+		return {}
+
+	var ib = rd.storage_buffer_create(max_inds * 4)
+	if not ib.is_valid():
+		rd.free_rid(vb)
+		push_error("Failed to create index buffer")
+		return {}
+
+	var ctr = PackedByteArray()
+	ctr.resize(8)
+	ctr.encode_u32(0, 0)
+	ctr.encode_u32(4, 0)
+	var cb = rd.storage_buffer_create(ctr.size(), ctr)
+	if not cb.is_valid():
+		rd.free_rid(vb); rd.free_rid(ib)
+		push_error("Failed to create counter buffer")
+		return {}
+
+	var mp = PackedByteArray()
+	mp.resize(8)
+	mp.encode_u32(0, chunk_size)
+	mp.encode_float(4, voxel_size)
+	var mpb = rd.storage_buffer_create(mp.size(), mp)
+	if not mpb.is_valid():
+		rd.free_rid(vb); rd.free_rid(ib); rd.free_rid(cb)
+		push_error("Failed to create mesh params buffer")
+		return {}
+
+	var uniforms = []
+	for b in [voxel_data_buffer, vb, ib, cb, mpb]:
+		var u = RDUniform.new()
+		u.uniform_type = RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER
+		u.binding      = uniforms.size()
+		u.add_id(b)
+		uniforms.append(u)
+
+	var uset2 = rd.uniform_set_create(uniforms, mesher_shader, 0)
+	if not uset2.is_valid():
+		rd.free_rid(vb); rd.free_rid(ib); rd.free_rid(cb); rd.free_rid(mpb)
+		push_error("Failed to create mesher uniform set")
+		return {}
+
+	var pip2 = rd.compute_pipeline_create(mesher_shader)
+	var groups2 = int(ceil(chunk_size / 8.0))
+
+	var cl2 = rd.compute_list_begin()
+	rd.compute_list_bind_compute_pipeline(cl2, pip2)
+	rd.compute_list_bind_uniform_set(cl2, uset2, 0)
+	rd.compute_list_dispatch(cl2, groups2, groups2, groups2)
+	rd.compute_list_end()
+	rd.submit()
+	rd.sync()
+
+	var ctr_data = rd.buffer_get_data(cb)
+	var vcount   = ctr_data.decode_u32(0)
+	var icount   = ctr_data.decode_u32(4)
+	var vdata    = rd.buffer_get_data(vb)
+	var idata    = rd.buffer_get_data(ib)
+
+	for b in [vb, ib, cb, mpb, pip2]:
+		if b.is_valid(): rd.free_rid(b)
+
+	return {
+		"vertex_count": vcount,
+		"index_count":  icount,
+		"vertex_data":  vdata,
+		"index_data":   idata
+	}
+
+# ——————————————————————————————————————————————————————
+# BUILD GODOT MESH & ASSIGN
+# ——————————————————————————————————————————————————————
+
+func _create_godot_mesh(mesh_data: Dictionary, mesh_instance: MeshInstance3D) -> void:
+	if mesh_data.vertex_count == 0:
+		push_error("No vertices generated; adjust noise_scale/height_scale/chunk_size")
+		return
+
+	var verts   = PackedVector3Array()
+	var normals = PackedVector3Array()
+	var uvs     = PackedVector2Array()
+	verts.resize(mesh_data.vertex_count)
+	normals.resize(mesh_data.vertex_count)
+	uvs.resize(mesh_data.vertex_count)
+
+	var bpf = 4
+	var fpv = 8
+	for i in range(mesh_data.vertex_count):
+		var off = i * fpv * bpf
+		verts[i] = Vector3(
+			mesh_data.vertex_data.decode_float(off + 0*bpf),
+			mesh_data.vertex_data.decode_float(off + 1*bpf),
+			mesh_data.vertex_data.decode_float(off + 2*bpf)
+		)
+		normals[i] = Vector3(
+			mesh_data.vertex_data.decode_float(off + 3*bpf),
+			mesh_data.vertex_data.decode_float(off + 4*bpf),
+			mesh_data.vertex_data.decode_float(off + 5*bpf)
+		)
+		uvs[i] = Vector2(
+			mesh_data.vertex_data.decode_float(off + 6*bpf),
+			mesh_data.vertex_data.decode_float(off + 7*bpf)
+		)
+
+	var indices = PackedInt32Array()
+	indices.resize(mesh_data.index_count)
+	for j in range(mesh_data.index_count):
+		indices[j] = mesh_data.index_data.decode_u32(j * 4)
+
+	var arrays = []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	arrays[Mesh.ARRAY_INDEX]  = indices
+
+	var mesh = ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+
+	var mat = StandardMaterial3D.new()
+	mat.albedo_color = Color.WHITE
+	mat.cull_mode    = BaseMaterial3D.CULL_DISABLED
+
+	var nt = NoiseTexture2D.new()
+	var fn = FastNoiseLite.new()
+	fn.noise_type = FastNoiseLite.TYPE_PERLIN
+	nt.noise      = fn
+	nt.width      = 256
+	nt.height     = 256
+	nt.seamless   = true
+	mat.albedo_texture = nt
+
+	mesh.surface_set_material(0, mat)
+	mesh_instance.mesh = mesh
